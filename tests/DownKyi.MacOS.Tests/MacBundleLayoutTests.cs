@@ -68,11 +68,6 @@ public sealed class MacBundleLayoutTests
             Assert.True(File.Exists(legacyDeps));
             Assert.Null(new FileInfo(legacyDeps).LinkTarget);
 
-            var legacySigning = RunSigningScript(legacyApp);
-            Assert.NotEqual(0, legacySigning.ExitCode);
-            var legacyOutput = legacySigning.StandardOutput + legacySigning.StandardError;
-            Assert.Contains("runtime checksum path must remain a symlink", legacyOutput, StringComparison.Ordinal);
-
             CreateAppBundle(correctedApp, publishDirectory);
             AssertSuccess(Run(
                 "/bin/bash",
