@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
@@ -12,9 +11,6 @@ namespace DownKyi.Desktop.Tests;
 
 public sealed class SettingsComboBoxLayoutTests
 {
-    private static readonly string[] AriaLogLevels = ["debug", "info", "warn"];
-    private static readonly string[] AriaFileAllocations =
-        ["PREALLOC（预分配磁盘空间，避免文件碎片）"];
     private static readonly string[] FileNameTimeFormats = ["yyyy-MM-dd", "yyyy.MM.dd"];
     private static readonly OrderFormatDisplay[] OrderFormats =
     [
@@ -63,38 +59,7 @@ public sealed class SettingsComboBoxLayoutTests
                 {
                     application.RequestedThemeVariant = theme;
                     AssertGeneralNetworkHierarchy(application, theme);
-                    AssertAriaNetworkHierarchy(application, theme);
-                    AssertCustomAriaHierarchy(application, theme);
-                }
-            }
-            finally
-            {
-                application.RequestedThemeVariant = originalTheme;
-                application.Styles.Remove(fluentTheme);
-            }
-        });
-    }
-
-    [AvaloniaFact]
-    public Task DescriptiveChoicesCanGrowBeyondTheirBaselineWidth()
-    {
-        return AvaloniaTestDispatcher.RunAsync(() =>
-        {
-            var application = DesktopTestResources.EnsureProductThemeResources();
-            var originalTheme = application.RequestedThemeVariant;
-            var fluentTheme = new FluentTheme();
-            application.Styles.Insert(0, fluentTheme);
-
-            try
-            {
-                foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
-                {
-                    application.RequestedThemeVariant = theme;
-                    AssertChoiceGrows(
-                        CreateVisibleAriaSettings(),
-                        "NameAriaFileAllocations",
-                        AriaFileAllocations,
-                        180);
+                    AssertBuiltinNetworkHierarchy(application, theme);
                 }
             }
             finally
@@ -578,98 +543,17 @@ public sealed class SettingsComboBoxLayoutTests
         }
     }
 
-    private static void AssertAriaNetworkHierarchy(
+    private static void AssertBuiltinNetworkHierarchy(
         Avalonia.Application application,
         ThemeVariant theme)
     {
-        var view = CreateVisibleAriaSettings();
+        var view = new BuiltinDownloaderSettingsView();
         var parametersTitle = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameAriaParametersTitle"));
-        var speedSection = Assert.IsType<Border>(
-            view.FindControl<Border>("NameAriaSpeedLimitSection"));
-        var speedContent = Assert.IsType<StackPanel>(speedSection.Child);
-        var speedHeader = Assert.IsType<Grid>(speedContent.Children[0]);
-        var speedTitle = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameAriaSpeedLimitTitle"));
-        var speedHint = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameAriaSpeedLimitHint"));
-        var speedRows = speedContent.Children.OfType<Border>().ToArray();
-        var overallRow = Assert.IsType<Grid>(speedRows[0].Child);
-        var taskRow = Assert.IsType<Grid>(speedRows[1].Child);
-        var overallText = Assert.IsType<StackPanel>(overallRow.Children[0]);
-        var taskText = Assert.IsType<StackPanel>(taskRow.Children[0]);
-        var overallDescription = Assert.IsType<TextBlock>(overallText.Children[1]);
-        var taskDescription = Assert.IsType<TextBlock>(taskText.Children[1]);
-        var overallLimit = Assert.IsType<TextBox>(
-            view.FindControl<TextBox>("NameAriaMaxOverallDownloadLimit"));
-        var taskLimit = Assert.IsType<TextBox>(
-            view.FindControl<TextBox>("NameAriaMaxDownloadLimit"));
-        var window = new Window
-        {
-            Content = view,
-            Width = 760,
-            Height = 680
-        };
-
-        try
-        {
-            window.Show();
-            window.UpdateLayout();
-
-            var parametersOrigin = Assert.NotNull(parametersTitle.TranslatePoint(default, window));
-            var speedOrigin = Assert.NotNull(speedTitle.TranslatePoint(default, window));
-            var overallTextOrigin = Assert.NotNull(overallText.TranslatePoint(default, window));
-            var taskTextOrigin = Assert.NotNull(taskText.TranslatePoint(default, window));
-            var overallOrigin = Assert.NotNull(overallLimit.TranslatePoint(default, window));
-            var taskOrigin = Assert.NotNull(taskLimit.TranslatePoint(default, window));
-
-            Assert.Same(speedTitle, speedHeader.Children[0]);
-            Assert.True(speedOrigin.Y > parametersOrigin.Y + parametersTitle.Bounds.Height);
-            Assert.Equal(new Thickness(0, 1, 0, 1), speedSection.BorderThickness);
-            Assert.Null(speedSection.Background);
-            Assert.Equal(overallOrigin.X, taskOrigin.X, 0.5);
-            Assert.Equal(1, Grid.GetColumn(overallLimit));
-            Assert.Equal(1, Grid.GetColumn(taskLimit));
-            Assert.True(overallOrigin.X > overallTextOrigin.X + 200);
-            Assert.True(taskOrigin.X > taskTextOrigin.X + 200);
-            Assert.True(taskOrigin.Y > overallOrigin.Y + overallLimit.Bounds.Height);
-            Assert.True(overallLimit.Bounds.Width >= 180);
-            Assert.True(taskLimit.Bounds.Width >= 180);
-            Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
-                SolidColor(speedTitle.Foreground));
-            Assert.Equal(
-                ResourceColor(application, "BrushTextSecondary", theme),
-                SolidColor(speedHint.Foreground));
-            Assert.Equal(
-                ResourceColor(application, "BrushTextSecondary", theme),
-                SolidColor(overallDescription.Foreground));
-            Assert.Equal(
-                ResourceColor(application, "BrushTextSecondary", theme),
-                SolidColor(taskDescription.Foreground));
-        }
-        finally
-        {
-            window.Close();
-        }
-    }
-
-    private static void AssertCustomAriaHierarchy(
-        Avalonia.Application application,
-        ThemeVariant theme)
-    {
-        var view = new CustomAriaSettingsView();
-        var content = Assert.IsType<StackPanel>(
-            view.FindControl<StackPanel>("NameCustomAria"));
-        content.IsVisible = true;
-        var title = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameCustomAriaTitle"));
-        var requirementTitle = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameCompatibilityRequirementTitle"));
-        var requirementText = Assert.IsType<TextBlock>(
-            view.FindControl<TextBlock>("NameCompatibilityRequirementText"));
-        var host = Assert.IsType<TextBox>(view.FindControl<TextBox>("NameAriaHost"));
-        var port = Assert.IsType<TextBox>(view.FindControl<TextBox>("NameAriaPort"));
+            view.FindControl<TextBlock>("NameBuiltinParametersTitle"));
+        var maxCurrentDownloads = Assert.IsType<ComboBox>(
+            view.FindControl<ComboBox>("NameMaxCurrentDownloads"));
+        var splits = Assert.IsType<ComboBox>(view.FindControl<ComboBox>("NameSplits"));
+        var proxy = Assert.IsType<CheckBox>(view.FindControl<CheckBox>("NameIsHttpProxy"));
         var window = new Window
         {
             Content = view,
@@ -682,123 +566,19 @@ public sealed class SettingsComboBoxLayoutTests
             window.Show();
             window.UpdateLayout();
 
-            var titleOrigin = Assert.NotNull(title.TranslatePoint(default, window));
-            var requirementOrigin = Assert.NotNull(
-                requirementTitle.TranslatePoint(default, window));
-            var requirementTextOrigin = Assert.NotNull(
-                requirementText.TranslatePoint(default, window));
-            var hostOrigin = Assert.NotNull(host.TranslatePoint(default, window));
-            var portOrigin = Assert.NotNull(port.TranslatePoint(default, window));
+            var parametersOrigin = Assert.NotNull(parametersTitle.TranslatePoint(default, window));
+            var maxOrigin = Assert.NotNull(maxCurrentDownloads.TranslatePoint(default, window));
+            var splitOrigin = Assert.NotNull(splits.TranslatePoint(default, window));
+            var proxyOrigin = Assert.NotNull(proxy.TranslatePoint(default, window));
 
-            Assert.True(requirementOrigin.Y > titleOrigin.Y + title.Bounds.Height);
-            Assert.True(
-                requirementTextOrigin.Y > requirementOrigin.Y + requirementTitle.Bounds.Height);
-            Assert.True(hostOrigin.Y > requirementTextOrigin.Y + requirementText.Bounds.Height);
-            Assert.Equal(hostOrigin.Y, portOrigin.Y, 0.5);
+            Assert.Equal(maxOrigin.Y, splitOrigin.Y, 0.5);
+            Assert.True(maxOrigin.Y > parametersOrigin.Y + parametersTitle.Bounds.Height);
+            Assert.True(proxyOrigin.Y > maxOrigin.Y + maxCurrentDownloads.Bounds.Height);
+            Assert.True(maxCurrentDownloads.Bounds.Width >= 180);
+            Assert.True(splits.Bounds.Width >= 180);
             Assert.Equal(
                 ResourceColor(application, "BrushTextPrimary", theme),
-                SolidColor(requirementTitle.Foreground));
-            Assert.Equal(
-                ResourceColor(application, "BrushTextSecondary", theme),
-                SolidColor(requirementText.Foreground));
-        }
-        finally
-        {
-            window.Close();
-        }
-    }
-
-    [AvaloniaFact]
-    public Task ExpandedAriaLogLevelUsesProductSelectionBackgroundAcrossThemes()
-    {
-        return AvaloniaTestDispatcher.RunAsync(() =>
-        {
-            var application = DesktopTestResources.EnsureProductThemeResources();
-            var originalTheme = application.RequestedThemeVariant;
-            var fluentTheme = new FluentTheme();
-            application.Styles.Insert(0, fluentTheme);
-
-            try
-            {
-                foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
-                {
-                    application.RequestedThemeVariant = theme;
-                    var view = CreateVisibleAriaSettings();
-                    var comboBox = Assert.IsType<ComboBox>(
-                        view.FindControl<ComboBox>("NameAriaLogLevels"));
-                    comboBox.ItemsSource = AriaLogLevels;
-                    comboBox.SelectedIndex = 1;
-                    var window = new Window
-                    {
-                        Content = view,
-                        Width = 840,
-                        Height = 620
-                    };
-
-                    try
-                    {
-                        window.Show();
-                        window.UpdateLayout();
-                        comboBox.IsDropDownOpen = true;
-                        window.UpdateLayout();
-
-                        var selected = Assert.IsType<ComboBoxItem>(comboBox.ContainerFromIndex(1));
-                        var presenter = Assert.Single(
-                            selected.GetVisualDescendants().OfType<ContentPresenter>(),
-                            candidate => candidate.Name == "PART_ContentPresenter");
-
-                        Assert.True(comboBox.IsDropDownOpen);
-                        Assert.True(selected.IsSelected);
-                        Assert.Equal(
-                            ResourceColor(application, "BrushSelectionFill", theme),
-                            SolidColor(presenter.Background));
-                    }
-                    finally
-                    {
-                        window.Close();
-                    }
-                }
-            }
-            finally
-            {
-                application.RequestedThemeVariant = originalTheme;
-                application.Styles.Remove(fluentTheme);
-            }
-        });
-    }
-
-    private static AriaDownloaderSettingsView CreateVisibleAriaSettings()
-    {
-        var view = new AriaDownloaderSettingsView();
-        var content = Assert.IsType<StackPanel>(view.FindControl<StackPanel>("NameAria"));
-        content.IsVisible = true;
-        return view;
-    }
-
-    private static void AssertChoiceGrows(
-        UserControl view,
-        string controlName,
-        object itemsSource,
-        double baselineWidth)
-    {
-        var comboBox = Assert.IsType<ComboBox>(view.FindControl<ComboBox>(controlName));
-        comboBox.ItemsSource = (System.Collections.IEnumerable)itemsSource;
-        comboBox.SelectedIndex = 0;
-        var window = new Window
-        {
-            Content = view,
-            Width = 840,
-            Height = 620
-        };
-
-        try
-        {
-            window.Show();
-            window.UpdateLayout();
-
-            Assert.True(double.IsNaN(comboBox.Width));
-            Assert.Equal(baselineWidth, comboBox.MinWidth);
-            Assert.True(comboBox.Bounds.Width > baselineWidth);
+                SolidColor(parametersTitle.Foreground));
         }
         finally
         {

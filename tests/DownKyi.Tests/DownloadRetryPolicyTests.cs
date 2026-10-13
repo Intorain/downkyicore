@@ -115,23 +115,7 @@ public sealed class DownloadRetryPolicyTests
     }
 
     [Fact]
-    public async Task CoordinatorCarriesLatestBackendIdentityAcrossRetry()
-    {
-        using var backend = new IdentityPublishingBackend();
-        var coordinator = CreateCoordinator(backend, maximumAttempts: 5);
-
-        var result = await coordinator.TransferAsync(
-            CreateRequest("https://primary.invalid/media"),
-            static _ => Task.FromResult<IReadOnlyList<string>>([]),
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(DownloadTransferOutcome.Succeeded, result.Outcome);
-        Assert.Equal([null, "test-backend-id"], backend.ObservedIdentities);
-        Assert.Equal(0, backend.ResetCount);
-    }
-
-    [Fact]
-    public async Task CoordinatorClearsBackendIdentityAfterTerminalInvalidMedia()
+    public async Task CoordinatorDeletesInvalidMediaAfterTerminalFailure()
     {
         var directory = CreateTemporaryDirectory("terminal-invalid-media");
         const string fileName = "media.tmp";
@@ -140,11 +124,6 @@ public sealed class DownloadRetryPolicyTests
             target,
             "invalid",
             TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(
-            $"{target}.aria2",
-            "resume",
-            TestContext.Current.CancellationToken);
-        var identityUpdates = new List<string?>();
         using var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.InvalidMedia,
@@ -156,22 +135,14 @@ public sealed class DownloadRetryPolicyTests
                 CreateRequestAt(
                     directory,
                     fileName,
-                    "persisted-gid",
-                    (value, _) =>
-                    {
-                        identityUpdates.Add(value);
-                        return Task.CompletedTask;
-                    },
                     "https://primary.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>([]),
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
             Assert.Equal(DownloadTransferFailureKind.InvalidMedia, result.FailureKind);
-            Assert.Equal(["persisted-gid"], backend.ResetIdentities);
-            Assert.Equal([null], identityUpdates);
+            Assert.Equal(0, backend.ResetCount);
             Assert.False(File.Exists(target));
-            Assert.False(File.Exists($"{target}.aria2"));
         }
         finally
         {
@@ -190,30 +161,22 @@ public sealed class DownloadRetryPolicyTests
             "partial",
             TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(
-            $"{target}.aria2",
-            "resume",
-            TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(
             $"{target}.download",
             "resume",
             TestContext.Current.CancellationToken);
-        var identityUpdates = new List<string?>();
         using var backend = new InspectingBackend(
             (attempt, request) =>
             {
                 if (attempt <= 2)
                 {
                     Assert.True(File.Exists(target));
-                    Assert.Equal("persisted-gid", request.BackendIdentity);
                     return DownloadTransferResult.Failed(
                         DownloadTransferFailureKind.TransientNetwork,
                         "download.transfer.timeout");
                 }
 
                 Assert.False(File.Exists(target));
-                Assert.False(File.Exists($"{target}.aria2"));
                 Assert.False(File.Exists($"{target}.download"));
-                Assert.Null(request.BackendIdentity);
                 return DownloadTransferResult.Succeeded();
             });
 
@@ -223,20 +186,13 @@ public sealed class DownloadRetryPolicyTests
                 CreateRequestAt(
                     directory,
                     fileName,
-                    "persisted-gid",
-                    (value, _) =>
-                    {
-                        identityUpdates.Add(value);
-                        return Task.CompletedTask;
-                    },
                     "https://primary.invalid/media",
                     "https://backup.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>([]),
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(DownloadTransferOutcome.Succeeded, result.Outcome);
-            Assert.Equal(["persisted-gid"], backend.ResetIdentities);
-            Assert.Equal([null], identityUpdates);
+            Assert.Equal(1, backend.ResetCount);
             Assert.Equal(3, backend.Requests.Count);
         }
         finally
@@ -271,15 +227,13 @@ public sealed class DownloadRetryPolicyTests
                 CreateRequestAt(
                     directory,
                     fileName,
-                    "persisted-id",
-                    static (_, _) => Task.CompletedTask,
                     "https://primary.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>(
                     ["  https://primary.invalid/media  "]),
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(DownloadTransferOutcome.Succeeded, result.Outcome);
-            Assert.Empty(backend.ResetIdentities);
+            Assert.Equal(0, backend.ResetCount);
             Assert.True(File.Exists(target));
             Assert.True(File.Exists($"{target}.download"));
         }
@@ -300,20 +254,12 @@ public sealed class DownloadRetryPolicyTests
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
                 "download.transfer.timeout"));
-        var identityUpdates = new List<string?>();
-
         try
         {
             var result = await CreateCoordinator(backend, maximumAttempts: 5).TransferAsync(
                 CreateRequestAt(
                     directory,
                     fileName,
-                    "persisted-id",
-                    (identity, _) =>
-                    {
-                        identityUpdates.Add(identity);
-                        return Task.CompletedTask;
-                    },
                     "https://primary.invalid/media",
                     "https://backup.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>([]),
@@ -322,8 +268,7 @@ public sealed class DownloadRetryPolicyTests
             Assert.Equal(DownloadTransferFailureKind.Disk, result.FailureKind);
             Assert.Equal("download.transfer.source-change-cleanup", result.ErrorCode);
             Assert.Equal(2, backend.Requests.Count);
-            Assert.Equal(["persisted-id"], backend.ResetIdentities);
-            Assert.Empty(identityUpdates);
+            Assert.Equal(1, backend.ResetCount);
         }
         finally
         {
@@ -341,7 +286,6 @@ public sealed class DownloadRetryPolicyTests
             target,
             "partial",
             TestContext.Current.CancellationToken);
-        var identityUpdates = new List<string?>();
         using var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
@@ -358,12 +302,6 @@ public sealed class DownloadRetryPolicyTests
                 CreateRequestAt(
                     directory,
                     fileName,
-                    "persisted-id",
-                    (value, _) =>
-                    {
-                        identityUpdates.Add(value);
-                        return Task.CompletedTask;
-                    },
                     "https://primary.invalid/media",
                     "https://backup.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>([]),
@@ -372,8 +310,7 @@ public sealed class DownloadRetryPolicyTests
             Assert.Equal(DownloadTransferFailureKind.TransientNetwork, result.FailureKind);
             Assert.Equal("download.transfer.backend-reset", result.ErrorCode);
             Assert.Equal(2, backend.Requests.Count);
-            Assert.Equal(["persisted-id"], backend.ResetIdentities);
-            Assert.Empty(identityUpdates);
+            Assert.Equal(1, backend.ResetCount);
             Assert.True(File.Exists(target));
         }
         finally
@@ -417,8 +354,6 @@ public sealed class DownloadRetryPolicyTests
             var result = await backend.TransferAsync(CreateRequestAt(
                 directory,
                 "media.tmp",
-                backendIdentity: null,
-                static (_, _) => Task.CompletedTask,
                 "http://download.invalid/media"));
 
             Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
@@ -453,8 +388,6 @@ public sealed class DownloadRetryPolicyTests
             var request = CreateRequestAt(
                 directory,
                 fileName,
-                backendIdentity: null,
-                static (_, _) => Task.CompletedTask,
                 "https://unresolvable.invalid/media") with
             {
                 ExpectedBytes = payload.Length,
@@ -509,8 +442,6 @@ public sealed class DownloadRetryPolicyTests
             var request = CreateRequestAt(
                 directory,
                 fileName,
-                backendIdentity: null,
-                static (_, _) => Task.CompletedTask,
                 "https://unresolvable.invalid/media") with
             {
                 ExpectedBytes = payload.Length,
@@ -647,10 +578,10 @@ public sealed class DownloadRetryPolicyTests
         using var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ResumeRejected,
-                "download.transfer.aria2-8"),
+                "download.transfer.resume-rejected"),
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ResumeRejected,
-                "download.transfer.aria2-8"),
+                "download.transfer.resume-rejected"),
             DownloadTransferResult.Succeeded());
         var coordinator = CreateCoordinator(backend, maximumAttempts: 5);
 
@@ -689,8 +620,6 @@ public sealed class DownloadRetryPolicyTests
                 CreateRequestAt(
                     directory,
                     fileName,
-                    backendIdentity: null,
-                    static (_, _) => Task.CompletedTask,
                     "https://primary.invalid/media"),
                 static _ => Task.FromResult<IReadOnlyList<string>>([]),
                 TestContext.Current.CancellationToken);
@@ -901,133 +830,6 @@ public sealed class DownloadRetryPolicyTests
         Assert.Equal(DownloadRetryAction.RetrySameAddress, decision.Action);
     }
 
-    [Theory]
-    [InlineData("SSL/TLS handshake failure: unknown CA", "download.transfer.tls.untrusted")]
-    [InlineData("The server certificate is not trusted.", "download.transfer.tls.untrusted")]
-    [InlineData("certificate has expired", "download.transfer.tls.expired")]
-    [InlineData("certificate is not yet valid", "download.transfer.tls.not-yet-valid")]
-    [InlineData("certificate hostname does not match", "download.transfer.tls.hostname")]
-    [InlineData("certificate chain building failed", "download.transfer.tls.chain")]
-    [InlineData("The remote certificate is invalid.", "download.transfer.tls.handshake")]
-    [InlineData("SSL/TLS handshake failure (80090325)", "download.transfer.tls.untrusted")]
-    [InlineData("SSL/TLS handshake failure (80090322)", "download.transfer.tls.hostname")]
-    [InlineData("SSL/TLS handshake failure", "download.transfer.tls.handshake")]
-    public void AriaBackendClassifiesTlsFailuresWithoutExposingRawMessages(
-        string errorMessage,
-        string expectedCode)
-    {
-        var result = Aria2TransferFailureClassifier.Classify("1", errorMessage);
-
-        Assert.Equal(DownloadTransferFailureKind.Tls, result.FailureKind);
-        Assert.Equal(expectedCode, result.ErrorCode);
-        Assert.DoesNotContain(errorMessage, result.ErrorCode, StringComparison.Ordinal);
-        var decision = new DownloadRetryPolicy().Decide(
-            result,
-            attempt: 1,
-            attemptsForAddress: 1,
-            hasNextAddress: true,
-            canRefreshAddresses: true);
-        Assert.Equal(DownloadRetryAction.Stop, decision.Action);
-    }
-
-    [Theory]
-    [InlineData("The secure connection failed because the transport stream ended.")]
-    public void AriaBackendTreatsSecureConnectionInterruptionAsRetryable(
-        string errorMessage)
-    {
-        var result = Aria2TransferFailureClassifier.Classify("1", errorMessage);
-
-        Assert.Equal(DownloadTransferFailureKind.TransientNetwork, result.FailureKind);
-        var decision = new DownloadRetryPolicy().Decide(
-            result,
-            attempt: 1,
-            attemptsForAddress: 1,
-            hasNextAddress: true,
-            canRefreshAddresses: true);
-        Assert.Equal(DownloadRetryAction.RetrySameAddress, decision.Action);
-    }
-
-    [Fact]
-    public void BackendsDoNotTreatUnqualifiedNotTrustedAsCertificateEvidence()
-    {
-        const string errorMessage = "HTTP response status was 503: upstream is not trusted";
-
-        var ariaResult = Aria2TransferFailureClassifier.Classify("22", errorMessage);
-        var builtinResult = BuiltinTransferBackend.ClassifyFailure(
-            new HttpRequestException(
-                errorMessage,
-                inner: null,
-                HttpStatusCode.ServiceUnavailable),
-            reportedCanceled: false);
-
-        Assert.Equal(DownloadTransferFailureKind.TransientNetwork, ariaResult.FailureKind);
-        Assert.Equal(DownloadTransferFailureKind.TransientNetwork, builtinResult.FailureKind);
-    }
-
-    [Theory]
-    [InlineData("22", "HTTP response status was 403", (int)DownloadTransferFailureKind.ExpiredAddress)]
-    [InlineData("22", "HTTP response status was 429", (int)DownloadTransferFailureKind.RateLimited)]
-    [InlineData("22", "HTTP response status was 503", (int)DownloadTransferFailureKind.TransientNetwork)]
-    [InlineData("2", "timeout", (int)DownloadTransferFailureKind.TransientNetwork)]
-    [InlineData("8", "resume unsupported", (int)DownloadTransferFailureKind.ResumeRejected)]
-    [InlineData("9", "disk full", (int)DownloadTransferFailureKind.Disk)]
-    [InlineData("18", "create directory failed", (int)DownloadTransferFailureKind.Disk)]
-    [InlineData("19", "name resolution failed", (int)DownloadTransferFailureKind.TransientNetwork)]
-    [InlineData("32", "checksum failed", (int)DownloadTransferFailureKind.InvalidMedia)]
-    [InlineData("24", "authorization failed", (int)DownloadTransferFailureKind.Permanent)]
-    public void AriaBackendClassifiesMachineReadableFailures(
-        string errorCode,
-        string errorMessage,
-        int expectedValue)
-    {
-        var result = Aria2TransferFailureClassifier.Classify(errorCode, errorMessage);
-
-        Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
-        Assert.Equal((DownloadTransferFailureKind)expectedValue, result.FailureKind);
-        Assert.Equal($"download.transfer.aria2-{errorCode}", result.ErrorCode);
-    }
-
-    [Theory]
-    [InlineData("33", "No URI available.", "download.transfer.insecure-redirect")]
-    [InlineData("34", "No URI available.", "download.transfer.credentialed-redirect")]
-    public void AriaBackendPreservesSecureRedirectRejectionCodes(
-        string errorCode,
-        string errorMessage,
-        string expectedDiagnostic)
-    {
-        var result = Aria2TransferFailureClassifier.Classify(errorCode, errorMessage);
-
-        Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
-        Assert.Equal(DownloadTransferFailureKind.Permanent, result.FailureKind);
-        Assert.Equal(expectedDiagnostic, result.ErrorCode);
-        Assert.DoesNotContain(errorMessage, result.ErrorCode, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AriaBackendDoesNotTreatDigitsInsideAnotherNumberAsHttpStatus()
-    {
-        var result = Aria2TransferFailureClassifier.Classify(
-            "1",
-            "Downloaded 1403 bytes before an unknown failure.");
-
-        Assert.Equal(DownloadTransferFailureKind.Permanent, result.FailureKind);
-    }
-
-    [Theory]
-    [InlineData("rpc-1", false)]
-    [InlineData("rpc-empty", false)]
-    [InlineData("not-found", true)]
-    [InlineData("6", true)]
-    [InlineData(null, false)]
-    public void AriaBackendClearsIdentityOnlyAfterTaskLevelFailure(
-        string? errorCode,
-        bool expected)
-    {
-        Assert.Equal(
-            expected,
-            Aria2TransferBackend.ShouldClearBackendIdentity(errorCode));
-    }
-
     [Fact]
     public void InvalidArtifactCleanupRemovesMediaAndResumeSidecars()
     {
@@ -1037,7 +839,6 @@ public sealed class DownloadRetryPolicyTests
         Directory.CreateDirectory(directory);
         var media = Path.Combine(directory, "media.tmp");
         File.WriteAllText(media, "invalid");
-        File.WriteAllText($"{media}.aria2", "resume");
         File.WriteAllText($"{media}.download", "resume");
 
         try
@@ -1048,9 +849,8 @@ public sealed class DownloadRetryPolicyTests
                 NullLogger.Instance);
 
             Assert.True(result.Succeeded);
-            Assert.Equal(3, result.AttemptedCount);
+            Assert.Equal(2, result.AttemptedCount);
             Assert.False(File.Exists(media));
-            Assert.False(File.Exists($"{media}.aria2"));
             Assert.False(File.Exists($"{media}.download"));
         }
         finally
@@ -1067,7 +867,7 @@ public sealed class DownloadRetryPolicyTests
         Directory.CreateDirectory(staging);
         var published = Path.Combine(directory, "output.mp4");
         File.WriteAllBytes(published, [91, 0, 255, 17]);
-        File.WriteAllBytes(published + ".aria2", [4]);
+        File.WriteAllBytes(published + ".legacy-partial", [4]);
         try
         {
             var result = DownloadTransferFileCleanup.DeleteInvalidArtifacts(
@@ -1075,7 +875,7 @@ public sealed class DownloadRetryPolicyTests
 
             Assert.False(result.Succeeded);
             Assert.Equal(new byte[] { 91, 0, 255, 17 }, File.ReadAllBytes(published));
-            Assert.True(File.Exists(published + ".aria2"));
+            Assert.True(File.Exists(published + ".legacy-partial"));
         }
         finally
         {
@@ -1099,7 +899,7 @@ public sealed class DownloadRetryPolicyTests
         var target = Path.Combine(directory, "blocked-target");
         Directory.CreateDirectory(target);
         await File.WriteAllTextAsync(
-            $"{target}.aria2",
+            $"{target}.legacy-partial",
             "resume",
             TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(
@@ -1126,7 +926,7 @@ public sealed class DownloadRetryPolicyTests
             Assert.Equal("download.transfer.cleanup-failed", result.ErrorCode);
             Assert.Single(backend.Requests);
             Assert.True(Directory.Exists(target));
-            Assert.True(File.Exists($"{target}.aria2"));
+            Assert.True(File.Exists($"{target}.legacy-partial"));
             Assert.True(File.Exists($"{target}.download"));
         }
         finally
@@ -1151,21 +951,16 @@ public sealed class DownloadRetryPolicyTests
         return CreateRequestAt(
             Path.GetTempPath(),
             "retry-test.tmp",
-            backendIdentity: null,
-            static (_, _) => Task.CompletedTask,
             addresses);
     }
 
     private static DownloadTransferRequest CreateRequestAt(
         string directory,
         string fileName,
-        string? backendIdentity,
-        Func<string?, CancellationToken, Task> setBackendIdentityAsync,
         params string[] addresses)
     {
         return new DownloadTransferRequest(
             new DownKyi.Domain.Downloads.DownloadTaskId("retry-test"),
-            backendIdentity,
             addresses,
             Directory: directory,
             FileName: fileName,
@@ -1176,7 +971,6 @@ public sealed class DownloadRetryPolicyTests
                 Task.Delay(Timeout.InfiniteTimeSpan, token),
             PublishProgress: static _ => { },
             PersistProgressAsync: static (_, _) => Task.CompletedTask,
-            SetBackendIdentityAsync: setBackendIdentityAsync,
             CancellationToken.None,
             directory);
     }
@@ -1197,7 +991,7 @@ public sealed class DownloadRetryPolicyTests
 
         public List<DownloadTransferRequest> Requests { get; } = [];
 
-        public List<string?> ResetIdentities { get; } = [];
+        public int ResetCount { get; private set; }
 
         public DownloadTransferResult ResetResult { get; init; } =
             DownloadTransferResult.Succeeded();
@@ -1216,12 +1010,10 @@ public sealed class DownloadRetryPolicyTests
             return Task.CompletedTask;
         }
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken)
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ResetIdentities.Add(backendIdentity);
+            ResetCount++;
             return Task.FromResult(ResetResult);
         }
 
@@ -1249,9 +1041,7 @@ public sealed class DownloadRetryPolicyTests
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken) =>
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
             Task.FromResult(DownloadTransferResult.Succeeded());
 
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
@@ -1280,9 +1070,7 @@ public sealed class DownloadRetryPolicyTests
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken) =>
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
             Task.FromResult(DownloadTransferResult.Succeeded());
 
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
@@ -1300,48 +1088,6 @@ public sealed class DownloadRetryPolicyTests
         }
     }
 
-    private sealed class IdentityPublishingBackend : ITransferBackend
-    {
-        public List<string?> ObservedIdentities { get; } = [];
-
-        public int ResetCount { get; private set; }
-
-        public string Name => "identity-publishing";
-
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken)
-        {
-            ResetCount++;
-            return Task.FromResult(DownloadTransferResult.Succeeded());
-        }
-
-        public async Task<DownloadTransferResult> TransferAsync(
-            DownloadTransferRequest request)
-        {
-            ObservedIdentities.Add(request.BackendIdentity);
-            if (ObservedIdentities.Count == 1)
-            {
-                await request.SetBackendIdentityAsync(
-                    "test-backend-id",
-                    request.CancellationToken).ConfigureAwait(true);
-                return DownloadTransferResult.Failed(
-                    DownloadTransferFailureKind.TransientNetwork,
-                    "download.transfer.aria2-rpc");
-            }
-
-            return DownloadTransferResult.Succeeded();
-        }
-
-        public void Dispose()
-        {
-        }
-    }
-
     private sealed class InspectingBackend(
         Func<int, DownloadTransferRequest, DownloadTransferResult> transfer) : ITransferBackend
     {
@@ -1349,7 +1095,7 @@ public sealed class DownloadRetryPolicyTests
 
         public List<DownloadTransferRequest> Requests { get; } = [];
 
-        public List<string?> ResetIdentities { get; } = [];
+        public int ResetCount { get; private set; }
 
         public string Name => "inspecting";
 
@@ -1357,12 +1103,10 @@ public sealed class DownloadRetryPolicyTests
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken)
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ResetIdentities.Add(backendIdentity);
+            ResetCount++;
             return Task.FromResult(DownloadTransferResult.Succeeded());
         }
 

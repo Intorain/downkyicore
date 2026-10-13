@@ -45,9 +45,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
         return Task.CompletedTask;
     }
 
-    public Task<DownloadTransferResult> ResetAsync(
-        string? backendIdentity,
-        CancellationToken cancellationToken)
+    public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(DownloadTransferResult.Succeeded());
@@ -111,7 +109,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
             }
 
             var proxyAddress = ResolveProxyAddress(network);
-            using var resolver = AriaDownloadAddressResolver.Create(proxyAddress);
+            using var resolver = DownloadAddressResolver.Create(proxyAddress);
             var resolution = await resolver.ResolveAsync(
                 request.Urls[0],
                 network.UserAgent,

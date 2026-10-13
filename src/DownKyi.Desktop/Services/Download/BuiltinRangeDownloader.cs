@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 namespace DownKyi.Services.Download;
 
 /// <summary>
-/// Downloads one resolved address as bounded HTTP ranges. The fixed-size range queue,
+/// Downloads one resolved address as bounded HTTP ranges. The distributed range queue,
 /// resumable per-range state and read-stall watchdog are adapted from BBDown's MIT-licensed
 /// download pipeline. See THIRD-PARTY-NOTICES.md.
 /// </summary>
@@ -37,7 +37,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
 
     private readonly Uri _address;
     private readonly HttpMessageInvoker _http;
-    private readonly AriaTaskHeaders _headers;
+    private readonly DownloadRequestHeaders _headers;
     private readonly ILogger _logger;
     private readonly int _parallelCount;
     private readonly Action<long, long> _progress;
@@ -50,7 +50,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     public BuiltinRangeDownloader(
         HttpMessageHandler handler,
         Uri address,
-        AriaTaskHeaders headers,
+        DownloadRequestHeaders headers,
         int parallelCount,
         Action<long, long> progress,
         ILogger logger,
@@ -178,6 +178,45 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         return chunks;
     }
 
+    internal static IReadOnlyList<BuiltinRangeChunk> OrderChunksForDistributedStart(
+        IEnumerable<BuiltinRangeChunk> chunks)
+    {
+        ArgumentNullException.ThrowIfNull(chunks);
+        var pending = chunks.Where(static chunk => !chunk.IsComplete).ToArray();
+        if (pending.Length <= 2)
+        {
+            return pending;
+        }
+
+        var ordered = new List<BuiltinRangeChunk>(pending.Length);
+        var scheduled = new bool[pending.Length];
+        var queue = new Queue<(int Start, int End)>();
+        queue.Enqueue((0, pending.Length - 1));
+        while (queue.TryDequeue(out var interval))
+        {
+            var index = interval.Start == 0
+                ? 0
+                : interval.Start + (interval.End - interval.Start + 1) / 2;
+            if (!scheduled[index])
+            {
+                scheduled[index] = true;
+                ordered.Add(pending[index]);
+            }
+
+            if (interval.Start <= index - 1)
+            {
+                queue.Enqueue((interval.Start, index - 1));
+            }
+
+            if (index + 1 <= interval.End)
+            {
+                queue.Enqueue((index + 1, interval.End));
+            }
+        }
+
+        return ordered;
+    }
+
     private async Task<BuiltinRangeProbe> ProbeAsync(
         long expectedBytes,
         CancellationToken cancellationToken)
@@ -294,7 +333,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         }
 
         var hasResumedBytes = chunks.Any(static chunk => chunk.Position > 0);
-        if (!supportsRanges && hasResumedBytes)
+        if (!supportsRanges && (hasResumedBytes || chunks.Length != 1))
         {
             throw new BuiltinResumeRejectedException(
                 "The server no longer supports resuming the partial media file.");
@@ -344,8 +383,11 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             Directory.CreateDirectory(directory);
         }
 
+        var adaptiveSegmentSize = Math.Min(
+            _segmentSize,
+            Math.Max(1, ((totalBytes - 1) / _parallelCount) + 1));
         var chunks = supportsRanges
-            ? CreateChunks(totalBytes, _segmentSize).ToArray()
+            ? CreateChunks(totalBytes, adaptiveSegmentSize).ToArray()
             : [new BuiltinRangeChunk(0, totalBytes - 1, position: 0)];
         var stream = new FileStream(
             partialFile,
@@ -445,7 +487,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         CancellationToken cancellationToken)
     {
         var queue = new ConcurrentQueue<BuiltinRangeChunk>(
-            state.Chunks.Where(static chunk => !chunk.IsComplete));
+            OrderChunksForDistributedStart(state.Chunks));
         if (queue.IsEmpty)
         {
             return initialReceivedBytes;
@@ -708,6 +750,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                 metadata,
                 state.TotalBytes,
                 cancellationToken).ConfigureAwait(false);
+            storage.SetLength(checked(state.TotalBytes + metadata.Length));
             await storage.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally

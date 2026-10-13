@@ -83,6 +83,23 @@ internal sealed class DownloadTaskStateWriter
             CreateRuntimeUnavailableFailure(),
             cancellationToken));
 
+    public async Task<DownloadTask> FailLegacyBackendAsync(
+        DownloadTaskId taskId,
+        CancellationToken cancellationToken = default)
+    {
+        var failed = await FailAsync(
+            taskId,
+            new DownloadFailure(
+                "download.transfer.legacy-backend-removed",
+                "The unfinished download used a removed legacy backend. Retry to start it with the built-in downloader.",
+                true),
+            cancellationToken).ConfigureAwait(false);
+
+        return string.IsNullOrWhiteSpace(failed.Transfer.BackendIdentity)
+            ? failed
+            : await SetBackendIdentityAsync(taskId, null, cancellationToken).ConfigureAwait(false);
+    }
+
     public Task<DownloadTask> CompleteAsync(
         DownloadTaskId taskId,
         DownloadCompletion completion,

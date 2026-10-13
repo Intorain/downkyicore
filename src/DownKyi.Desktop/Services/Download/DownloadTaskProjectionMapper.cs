@@ -78,7 +78,6 @@ internal static class DownloadTaskProjectionMapper
         item.Downloading = new Downloading
         {
             Id = task.Id.Value,
-            Gid = task.Transfer.BackendIdentity,
             DownloadFiles = task.Plan.TransferFiles.ToDictionary(entry => entry.Key, entry => entry.Value),
             DownloadedFiles = task.Transfer.CompletedFileKeys.ToList(),
             PlayStreamType = (PlayStreamType)task.Plan.StreamType,

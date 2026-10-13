@@ -33,26 +33,13 @@ public sealed class TlsSecurityArchitectureTests
     [Fact]
     public void DownloadRuntimeCannotDowngradeHttpsToHttp()
     {
-        var mediaStage = File.ReadAllText(Path.Combine(
-            RepositoryRoot,
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "DownloadMediaStage.cs"));
-        var settingsView = File.ReadAllText(Path.Combine(
-            RepositoryRoot,
-            "src",
-            "DownKyi.Desktop",
-            "Views",
-            "Settings",
-            "NetworkGeneralSettingsView.axaml"));
+        var mediaStage = ReadProductionSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "DownloadMediaStage.cs");
+        var settingsView = ReadProductionSource(
+            "src", "DownKyi.Desktop", "Views", "Settings", "NetworkGeneralSettingsView.axaml");
 
         Assert.Contains("RequireSecureTransferSchemes", mediaStage, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "http://\" + url[\"https://",
-            mediaStage,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("http://\" + url[\"https://", mediaStage, StringComparison.Ordinal);
         Assert.DoesNotContain("UseSslCommand", settingsView, StringComparison.Ordinal);
         Assert.DoesNotContain("NameUseSsl", settingsView, StringComparison.Ordinal);
     }
@@ -78,293 +65,21 @@ public sealed class TlsSecurityArchitectureTests
     }
 
     [Fact]
-    public void AriaControlPlaneKeepsSecretsOutOfProcessArgumentsAndGlobalHeaders()
+    public void BuiltinDownloaderOwnsSecureAddressAndRangeValidation()
     {
-        var server = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Server",
-            "AriaServer.cs");
-        var config = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Server",
-            "AriaConfig.cs");
-        var client = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Client",
-            "AriaClient.cs");
-        var backend = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2TransferBackend.cs");
-        var addressResolver = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "AriaDownloadAddressResolver.cs");
-        var factory = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "DownloadRuntimeFactory.cs");
-        var customSettings = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Views",
-            "Settings",
-            "CustomAriaSettingsView.axaml");
+        var resolver = ReadProductionSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "DownloadAddressResolver.cs");
+        var headers = ReadProductionSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "DownloadRequestHeaderPolicy.cs");
+        var downloader = ReadProductionSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "BuiltinRangeDownloader.cs");
 
-        Assert.Contains("ArgumentList.Add", server, StringComparison.Ordinal);
-        Assert.DoesNotContain("StartInfo.Arguments", server, StringComparison.Ordinal);
-        Assert.DoesNotContain("--rpc-secret=", server, StringComparison.Ordinal);
-        Assert.DoesNotContain("--header=", server, StringComparison.Ordinal);
-        Assert.DoesNotContain("Headers", config, StringComparison.Ordinal);
-        Assert.Contains("AriaRpcSecretFile.Create", server, StringComparison.Ordinal);
-        Assert.Contains("AllowAutoRedirect = false", client, StringComparison.Ordinal);
-        Assert.Contains("!hostUri.IsLoopback", client, StringComparison.Ordinal);
-        Assert.Contains("AriaTaskHeaderPolicy.Create", addressResolver, StringComparison.Ordinal);
-        Assert.Contains("LocalAriaRpcEndpoint.Create", factory, StringComparison.Ordinal);
-        Assert.DoesNotContain("\"downkyi\"", factory, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("PasswordChar=\"*\"", customSettings, StringComparison.Ordinal);
-        Assert.Contains("CustomAriaCompatibilityRequirement", customSettings, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AriaHttpsProxyAndPreflightCannotBroadenTheTransferScope()
-    {
-        var sendOption = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Client",
-            "Entity",
-            "AriaSendData.cs");
-        var addressResolver = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "AriaDownloadAddressResolver.cs");
-        var backend = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2TransferBackend.cs");
-        var runtimeLifecycle = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2RuntimeLifecycle.cs");
-        var proxyPolicy = ReadProductionSource(
-            "DownKyi.Core",
-            "Settings",
-            "AriaHttpsProxyPolicy.cs");
-        var redirectRuntimeTests = File.ReadAllText(Path.Combine(
-            RepositoryRoot,
-            "tests",
-            "DownKyi.Tests",
-            "Aria2TlsRedirectIntegrationTests.cs"));
-        var tlsRuntime = File.ReadAllText(Path.Combine(
-            RepositoryRoot,
-            "tests",
-            "DownKyi.Tests",
-            "Aria2TlsTestRuntime.cs"));
-
-        Assert.Contains("[JsonProperty(\"https-proxy\")]", sendOption, StringComparison.Ordinal);
-        Assert.DoesNotContain("all-proxy", sendOption, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("max-redirect", sendOption, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("AllowAutoRedirect = false", addressResolver, StringComparison.Ordinal);
-        Assert.Contains("download.transfer.insecure-redirect", addressResolver, StringComparison.Ordinal);
-        Assert.Contains("MaximumRedirects", addressResolver, StringComparison.Ordinal);
-        Assert.Contains("IsSameOrigin(current, next)", addressResolver, StringComparison.Ordinal);
-        Assert.True(
-            backend.IndexOf("_addressResolver.ResolveAsync", StringComparison.Ordinal)
-            < backend.IndexOf("_ariaClient.AddUriAsync", StringComparison.Ordinal),
-            "The defense-in-depth redirect preflight must run before aria2 receives the address.");
-        Assert.Contains(
-            "downkyi-secure-redirect-v2",
-            runtimeLifecycle,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "downkyi-secure-redirect-v2",
-            tlsRuntime,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("--ca-certificate=", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("RunPreflightThenActualDowngradeRejectedAsync", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("RunHeadSafeGetDowngradeRejectedAsync", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("RunRangeDowngradeRejectedAsync", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("RunSecondRoundDowngradeRejectedAsync", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("Assert.Equal(0, target.RequestCount)", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("Assert.Equal(0, target.ConnectionCount)", redirectRuntimeTests, StringComparison.Ordinal);
-        Assert.Contains("127.0.0.1", proxyPolicy, StringComparison.Ordinal);
-        Assert.Contains("localhost", proxyPolicy, StringComparison.Ordinal);
-        Assert.Contains("::1", proxyPolicy, StringComparison.Ordinal);
-        Assert.DoesNotContain("NetworkCredential", proxyPolicy, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void WindowsTrustedRootNativeBoundaryContractIsStable()
-    {
-        var tlsRuntime = ReadProductionSource(
-            "tests",
-            "DownKyi.Tests",
-            "Aria2TlsTestRuntime.cs");
-
-        Assert.Equal(
-            4,
-            tlsRuntime.Split("[DllImport(\"crypt32.dll\"", StringSplitOptions.None).Length - 1);
-        Assert.Equal(
-            4,
-            tlsRuntime.Split("[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]", StringSplitOptions.None).Length - 1);
-        Assert.Equal(
-            3,
-            tlsRuntime.Split("[return: MarshalAs(UnmanagedType.Bool)]", StringSplitOptions.None).Length - 1);
-        Assert.Contains("private static class NativeMethods", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("internal static extern IntPtr CertOpenStore(", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("internal static extern bool CertAddEncodedCertificateToStore(", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("internal static extern bool CertDeleteCertificateFromStore(IntPtr certificateContext);", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("internal static extern bool CertCloseStore(IntPtr certificateStore, uint flags);", tlsRuntime, StringComparison.Ordinal);
-
-        var disposeStart = tlsRuntime.IndexOf("public void Dispose()", StringComparison.Ordinal);
-        var nativeDeclarationsStart = tlsRuntime.IndexOf("[DllImport(\"crypt32.dll\"", disposeStart, StringComparison.Ordinal);
-        Assert.True(disposeStart >= 0 && nativeDeclarationsStart > disposeStart);
-        var dispose = tlsRuntime[disposeStart..nativeDeclarationsStart];
-        Assert.True(
-            dispose.IndexOf("Interlocked.Exchange(ref _certificateContext", StringComparison.Ordinal)
-            < dispose.IndexOf("Interlocked.Exchange(ref _store", StringComparison.Ordinal));
-        Assert.True(
-            dispose.IndexOf("CertDeleteCertificateFromStore(context)", StringComparison.Ordinal)
-            < dispose.IndexOf("CertCloseStore(store, flags: 0)", StringComparison.Ordinal));
-    }
-    [Fact]
-    public void AriaStartupAndResumeSecurityContractsRemainFailClosed()
-    {
-        var applicationSettings = ReadProductionSource(
-            "DownKyi.Core",
-            "Settings",
-            "ApplicationSettings.cs");
-        var processSupervisor = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Server",
-            "AriaProcessSupervisor.cs");
-        var runtimeLifecycle = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2RuntimeLifecycle.cs");
-        var backend = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2TransferBackend.cs");
-        var tlsRuntime = ReadProductionSource(
-            "tests",
-            "DownKyi.Tests",
-            "Aria2TlsTestRuntime.cs");
-        var tlsIntegration = ReadProductionSource(
-            "tests",
-            "DownKyi.Tests",
-            "Aria2TlsIntegrationTests.cs");
-
-        Assert.Contains("uri.UserInfo", applicationSettings, StringComparison.Ordinal);
-        Assert.Contains(
-            "GetAriaVersionAsync(cancellationToken)",
-            runtimeLifecycle,
-            StringComparison.Ordinal);
-        Assert.Contains("WaitForExit(KillWaitMilliseconds)", processSupervisor, StringComparison.Ordinal);
-        Assert.True(
-            backend.IndexOf("ChangeOptionAsync(gid, options)", StringComparison.Ordinal)
-            < backend.IndexOf("UnpauseAsync(gid)", StringComparison.Ordinal),
-            "Existing aria2 task headers must be replaced before the task is resumed.");
-        Assert.Contains("windows-local-machine-root-store", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("windows-current-user-root-store", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("linux-system-ca-store", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("macos-system-keychain", tlsRuntime, StringComparison.Ordinal);
-        Assert.Contains("return \"WinTLS\"", tlsIntegration, StringComparison.Ordinal);
-        Assert.Contains("return \"OpenSSL\"", tlsIntegration, StringComparison.Ordinal);
-        Assert.Contains("return \"AppleTLS\"", tlsIntegration, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void PackagedAria2IsVerifiedBeforeProcessStartAndCustomAriaRequiresTheFeature()
-    {
-        var server = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Server",
-            "AriaServer.cs");
-        var verifier = ReadProductionSource(
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Server",
-            "AriaBinaryIntegrityVerifier.cs");
-        var backend = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2TransferBackend.cs");
-        var runtimeLifecycle = ReadProductionSource(
-            "src",
-            "DownKyi.Desktop",
-            "Services",
-            "Download",
-            "Aria2RuntimeLifecycle.cs");
-        var powerShellInstaller = ReadProductionSource("script", "aria2.ps1");
-        var shellInstaller = ReadProductionSource("script", "aria2.sh");
-        var qualityWorkflow = ReadProductionSource(".github", "workflows", "quality.yml");
-        var aria2TlsWorkflow = ReadProductionSource(
-            ".github",
-            "workflows",
-            "aria2-tls-security.yml");
-
-        Assert.Contains("AppContext.BaseDirectory", server, StringComparison.Ordinal);
-        Assert.True(
-            server.IndexOf("AriaBinaryIntegrityVerifier.Verify", StringComparison.Ordinal)
-            < server.IndexOf("ExecuteProcess(executablePath", StringComparison.Ordinal),
-            "The packaged binary digest must be verified before Process.Start can be reached.");
-        Assert.Contains("CryptographicOperations.FixedTimeEquals", verifier, StringComparison.Ordinal);
-        Assert.Contains("ChecksumSidecarSuffix", verifier, StringComparison.Ordinal);
-        Assert.Contains("_runtimeLifecycle.StartAsync", backend, StringComparison.Ordinal);
-        Assert.Contains("EnsureSecureRedirectFeatureAsync", runtimeLifecycle, StringComparison.Ordinal);
-        Assert.Contains("EnsureSecureRedirectFeature(versionResult.EnabledFeatures)", runtimeLifecycle, StringComparison.Ordinal);
-        Assert.Contains("binarySha256", powerShellInstaller, StringComparison.Ordinal);
-        Assert.Contains("aria2c.exe.sha256", powerShellInstaller, StringComparison.Ordinal);
-        Assert.Contains("binarySha256", shellInstaller, StringComparison.Ordinal);
-        Assert.Contains("aria2c.sha256", shellInstaller, StringComparison.Ordinal);
-        Assert.DoesNotContain("aria2-tls-security:", qualityWorkflow, StringComparison.Ordinal);
-        Assert.Contains("pull_request:", aria2TlsWorkflow, StringComparison.Ordinal);
-        Assert.Contains("paths:", aria2TlsWorkflow, StringComparison.Ordinal);
-        Assert.Contains("'script/assets/external-assets.json'", aria2TlsWorkflow, StringComparison.Ordinal);
-        Assert.Equal(
-            2,
-            aria2TlsWorkflow.Split("'script/download-external-asset.ps1'", StringSplitOptions.None).Length - 1);
-        Assert.Equal(
-            2,
-            aria2TlsWorkflow.Split("'DownKyi.Core/DownKyi.Core.csproj'", StringSplitOptions.None).Length - 1);
-        Assert.Contains("'DownKyi.Core/Aria2cNet/**'", aria2TlsWorkflow, StringComparison.Ordinal);
-        Assert.Equal(
-            2,
-            aria2TlsWorkflow.Split("'src/DownKyi.Desktop/DownKyi.Desktop.csproj'", StringSplitOptions.None).Length - 1);
-        Assert.Contains("'src/DownKyi.Desktop/Services/Download/**'", aria2TlsWorkflow, StringComparison.Ordinal);
-        Assert.Contains(
-            "run: bash ./script/aria2.sh '${{ matrix.asset-argument }}'",
-            aria2TlsWorkflow,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "- name: Upload sanitized aria2 TLS report\n        if: always()\n        continue-on-error: true",
-            aria2TlsWorkflow.Replace("\r\n", "\n", StringComparison.Ordinal),
-            StringComparison.Ordinal);
+        Assert.Contains("DownloadRequestHeaderPolicy.Create", resolver, StringComparison.Ordinal);
+        Assert.Contains("Uri.UriSchemeHttps", resolver, StringComparison.Ordinal);
+        Assert.Contains("CarriesCredentials", headers, StringComparison.Ordinal);
+        Assert.Contains("ContentRange", downloader, StringComparison.Ordinal);
+        Assert.Contains("PartialContent", downloader, StringComparison.Ordinal);
+        Assert.DoesNotContain("ServerCertificateCustomValidationCallback", downloader, StringComparison.Ordinal);
     }
 
     private static string ReadProductionSource(params string[] segments)
@@ -384,13 +99,7 @@ public sealed class TlsSecurityArchitectureTests
         };
         var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ".cs",
-            ".axaml",
-            ".json",
-            ".ps1",
-            ".sh",
-            ".yml",
-            ".yaml"
+            ".cs", ".axaml", ".json", ".ps1", ".sh", ".yml", ".yaml"
         };
 
         return roots

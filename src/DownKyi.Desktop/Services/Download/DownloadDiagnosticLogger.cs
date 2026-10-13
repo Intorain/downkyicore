@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Aria2cNet.Server;
 using DownKyi.Core.Settings;
 using DownKyi.Core.Utils;
 using Microsoft.Extensions.Logging;
@@ -19,45 +18,6 @@ internal sealed class DownloadDiagnosticLogger
     public DownloadDiagnosticLogger(ILogger<DownloadDiagnosticLogger> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public void LogAriaServerConfig(
-        string source,
-        AriaConfig config,
-        NetworkApplicationSettings settings)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-        _logger.LogInformationMessage(
-            $"source={source}; Aria config " +
-            $"highSpeed={IsHighSpeedEnabled(settings)}; " +
-            $"maxTasks={config.MaxConcurrentDownloads}; " +
-            $"split={config.Split}; " +
-            $"maxConnectionPerServer={config.MaxConnectionPerServer}; " +
-            $"minSplitSize={config.MinSplitSize}MB; " +
-            $"globalLimit={FormatLimit(config.MaxOverallDownloadLimit)}; " +
-            $"taskLimit={FormatLimit(config.MaxDownloadLimit)}; " +
-            $"fileAllocation={config.FileAllocation}");
-    }
-
-    public void LogAriaTaskStart(
-        string source,
-        string? gid,
-        int urlCount,
-        NetworkApplicationSettings settings)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-        var taskId = ShortId(gid);
-        using var scope = _logger.BeginOperationScope(taskId, taskId);
-        _logger.LogInformationMessage(
-            $"source={source}; Aria task started " +
-            $"task={taskId}; " +
-            $"highSpeed={IsHighSpeedEnabled(settings)}; " +
-            $"urlCount={urlCount}; " +
-            $"split={settings.AriaSplit}; " +
-            $"maxConnectionPerServer={settings.AriaMaxConnectionPerServer}; " +
-            $"minSplitSize={settings.AriaMinSplitSize}MB; " +
-            $"globalLimit={settings.AriaMaxOverallDownloadLimit}KB/s; " +
-            $"taskLimit={settings.AriaMaxDownloadLimit}KB/s");
     }
 
     public void LogBuiltInTaskStart(
@@ -103,11 +63,6 @@ internal sealed class DownloadDiagnosticLogger
     private static bool IsHighSpeedEnabled(NetworkApplicationSettings settings)
     {
         return settings.HighSpeedDownloadMode == AllowStatus.Yes;
-    }
-
-    private static string FormatLimit(long bytesPerSecond)
-    {
-        return bytesPerSecond <= 0 ? "unlimited" : Format.FormatSpeedWithBandwidth(bytesPerSecond);
     }
 
     private static string ShortId(string? value)

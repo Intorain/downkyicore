@@ -12,6 +12,19 @@ namespace DownKyi.Tests;
 public sealed class BuiltinRangeDownloaderTests
 {
     [Fact]
+    public void PendingChunksAreScheduledAcrossTheWholeFile()
+    {
+        var chunks = BuiltinRangeDownloader.CreateChunks(totalBytes: 32, segmentSize: 4);
+
+        var starts = BuiltinRangeDownloader
+            .OrderChunksForDistributedStart(chunks)
+            .Select(static chunk => chunk.Start)
+            .ToArray();
+
+        Assert.Equal([0L, 16L, 8L, 24L, 4L, 12L, 20L, 28L], starts);
+    }
+
+    [Fact]
     public async Task ExistingCompletedTargetIsRecoveredWithoutAnotherRequest()
     {
         var payload = CreatePayload(12);
@@ -88,6 +101,56 @@ public sealed class BuiltinRangeDownloaderTests
     }
 
     [Fact]
+    public async Task MultiRangeCheckpointIsRejectedWhenServerStopsSupportingRanges()
+    {
+        var payload = CreatePayload(12);
+        var directory = CreateTemporaryDirectory("range-support-removed");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            var metadata = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                TotalFileSize = payload.Length,
+                Chunks = new[]
+                {
+                    new { Start = 0, End = 3, Position = 0 },
+                    new { Start = 4, End = 7, Position = 0 },
+                    new { Start = 8, End = 11, Position = 0 }
+                },
+                ResourceIdentity = ResourceIdentity(strongETag: null)
+            });
+            var stream = new FileStream(
+                $"{target}.download",
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                FileOptions.Asynchronous);
+            await using (stream.ConfigureAwait(true))
+            {
+                stream.SetLength(payload.Length);
+                stream.Position = payload.Length;
+                await stream.WriteAsync(metadata, TestContext.Current.CancellationToken)
+                    .ConfigureAwait(true);
+            }
+
+            using var handler = new NonRangePayloadHandler(payload);
+            using var downloader = CreateDownloader(handler, parallelCount: 2, segmentSize: 4);
+
+            await Assert.ThrowsAsync<BuiltinResumeRejectedException>(() => downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken));
+
+            Assert.Equal(1, handler.Requests);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ResumeWithMatchingStrongEntityTagRequestsOnlyMissingRangeBytes()
     {
         var payload = CreatePayload(12);
@@ -122,9 +185,8 @@ public sealed class BuiltinRangeDownloaderTests
                 payload.Length,
                 TestContext.Current.CancellationToken);
 
-            Assert.DoesNotContain(secondHandler.ChunkRanges, range => range.Start is 0 or 4);
+            Assert.DoesNotContain(secondHandler.ChunkRanges, range => range.Start is 0 or 4 or 8);
             Assert.Contains(secondHandler.ChunkRanges, range => range == (6L, 7L));
-            Assert.Contains(secondHandler.ChunkRanges, range => range == (8L, 11L));
             Assert.Equal(payload, await File.ReadAllBytesAsync(
                 target,
                 TestContext.Current.CancellationToken));
@@ -653,7 +715,7 @@ public sealed class BuiltinRangeDownloaderTests
         return new BuiltinRangeDownloader(
             handler,
             address ?? MediaAddress,
-            new AriaTaskHeaders(
+            new DownloadRequestHeaders(
                 ["Origin: https://www.bilibili.com", "Referer: https://www.bilibili.com"],
                 "DownKyi-Test",
                 CarriesCredentials: false),
@@ -887,6 +949,28 @@ public sealed class BuiltinRangeDownloaderTests
             Interlocked.Increment(ref _requests);
             return Task.FromException<HttpResponseMessage>(
                 new InvalidOperationException("The completed target must not be downloaded again."));
+        }
+    }
+
+    private sealed class NonRangePayloadHandler(byte[] payload) : HttpMessageHandler
+    {
+        private int _requests;
+
+        public int Requests => Volatile.Read(ref _requests);
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Interlocked.Increment(ref _requests);
+            var content = new ByteArrayContent(payload);
+            content.Headers.ContentLength = payload.LongLength;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content,
+                RequestMessage = request
+            });
         }
     }
 

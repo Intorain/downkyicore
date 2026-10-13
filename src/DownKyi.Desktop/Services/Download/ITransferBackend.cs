@@ -8,7 +8,6 @@ namespace DownKyi.Services.Download;
 
 internal sealed record DownloadTransferRequest(
     DownloadTaskId TaskId,
-    string? BackendIdentity,
     IReadOnlyList<string> Urls,
     string Directory,
     string FileName,
@@ -18,7 +17,6 @@ internal sealed record DownloadTransferRequest(
     Func<CancellationToken, Task> WaitForPauseRequestedAsync,
     Action<DownloadProgress> PublishProgress,
     Func<DownloadProgress, CancellationToken, Task> PersistProgressAsync,
-    Func<string?, CancellationToken, Task> SetBackendIdentityAsync,
     CancellationToken CancellationToken,
     string? StagingDirectory = null);
 
@@ -30,9 +28,7 @@ internal interface ITransferBackend : IDisposable
 
     Task StopAsync(CancellationToken cancellationToken);
 
-    Task<DownloadTransferResult> ResetAsync(
-        string? backendIdentity,
-        CancellationToken cancellationToken);
+    Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken);
 
     Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request);
 }

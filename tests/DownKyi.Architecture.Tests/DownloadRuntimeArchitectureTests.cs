@@ -7,20 +7,10 @@ public sealed class DownloadRuntimeArchitectureTests
     [Fact]
     public void DownloadRuntimeDoesNotUseSynchronousAsyncWaits()
     {
-        var ariaClientDirectory = Path.Combine(
-            RepositoryRoot,
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Client");
         var files = Directory.EnumerateFiles(
             Path.Combine(RepositoryRoot, "src", "DownKyi.Desktop", "Services", "Download"),
             "*.cs",
-            SearchOption.TopDirectoryOnly).Append(
-            Path.Combine(RepositoryRoot, "DownKyi.Core", "Aria2cNet", "AriaManager.cs")).Concat(
-            Directory.EnumerateFiles(
-                ariaClientDirectory,
-                "AriaClient*.cs",
-                SearchOption.TopDirectoryOnly));
+            SearchOption.TopDirectoryOnly);
         var forbidden = new[]
         {
             ".GetAwaiter().GetResult()",
@@ -40,7 +30,7 @@ public sealed class DownloadRuntimeArchitectureTests
     }
 
     [Fact]
-    public void LocalAndCustomAriaUseOneTransferBackend()
+    public void DownloadRuntimeUsesOnlyTheBuiltinTransferBackend()
     {
         var directory = Path.Combine(
             RepositoryRoot,
@@ -49,70 +39,11 @@ public sealed class DownloadRuntimeArchitectureTests
             "Download");
         var factorySource = File.ReadAllText(Path.Combine(directory, "DownloadRuntimeFactory.cs"));
 
+        Assert.Contains("new BuiltinTransferBackend(", factorySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Aria2TransferBackend", factorySource, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(directory, "Aria2TransferBackend.cs")));
         Assert.False(File.Exists(Path.Combine(directory, "CustomAriaDownloadService.cs")));
-        Assert.Equal(
-            2,
-            factorySource.Split("new Aria2TransferBackend(", StringSplitOptions.None).Length - 1);
-        Assert.Contains("ownsAriaServer: true", factorySource, StringComparison.Ordinal);
-        Assert.Contains("ownsAriaServer: false", factorySource, StringComparison.Ordinal);
     }
-
-    [Fact]
-    public void AriaRpcConfigurationIsOwnedByEachDownloadRuntime()
-    {
-        var clientSource = File.ReadAllText(Path.Combine(
-            RepositoryRoot,
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Client",
-            "AriaClient.cs"));
-        var runtimeDirectory = Path.Combine(RepositoryRoot, "src", "DownKyi.Desktop", "Services", "Download");
-        var factorySource = File.ReadAllText(Path.Combine(runtimeDirectory, "DownloadRuntimeFactory.cs"));
-        var backendSource = File.ReadAllText(Path.Combine(runtimeDirectory, "Aria2TransferBackend.cs"));
-
-        Assert.Contains("public sealed partial class AriaClient", clientSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("public static class AriaClient", clientSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetToken(", clientSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetHost(", clientSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetListenPort(", clientSource, StringComparison.Ordinal);
-        Assert.Equal(
-            2,
-            factorySource.Split("new AriaClient(", StringSplitOptions.None).Length - 1);
-        Assert.Contains("private readonly AriaClient _ariaClient", backendSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AriaClient.", backendSource, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void AriaRpcClientKeepsProtocolResponsibilitiesSeparated()
-    {
-        var directory = Path.Combine(
-            RepositoryRoot,
-            "DownKyi.Core",
-            "Aria2cNet",
-            "Client");
-        string[] expectedFiles =
-        [
-            "AriaClient.cs",
-            "AriaClient.Downloads.cs",
-            "AriaClient.Lifecycle.cs",
-            "AriaClient.Options.cs",
-            "AriaClient.Status.cs"
-        ];
-
-        var actualFiles = Directory
-            .EnumerateFiles(directory, "AriaClient*.cs", SearchOption.TopDirectoryOnly)
-            .Select(Path.GetFileName)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-
-        Assert.Equal(expectedFiles.Order(StringComparer.Ordinal), actualFiles);
-
-        var coreSource = File.ReadAllText(Path.Combine(directory, "AriaClient.cs"));
-        Assert.Contains("GetRpcResponseAsync", coreSource, StringComparison.Ordinal);
-        Assert.Contains("RequestAsync", coreSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AddUriAsync", coreSource, StringComparison.Ordinal);
-    }
-
     [Fact]
     public void OrchestratorUsesBoundedWorkersAndHasNoSynchronousPersistenceBridge()
     {
@@ -276,7 +207,6 @@ public sealed class DownloadRuntimeArchitectureTests
             "DownloadArtifactWriter.cs",
             "DownloadTaskStateWriter.cs",
             "BuiltinTransferBackend.cs",
-            "Aria2TransferBackend.cs",
             "DownloadDiagnosticLogger.cs"
         ];
         var violations = runtimeOwners
@@ -369,15 +299,8 @@ public sealed class DownloadRuntimeArchitectureTests
     }
 
     [Fact]
-    public void AriaRuntimeUsesOneInjectedServerAndTypedLogging()
+    public void BuiltinRuntimeUsesTypedLoggingAndNoopEmergencyCleanup()
     {
-        var ariaDirectory = Path.Combine(RepositoryRoot, "DownKyi.Core", "Aria2cNet");
-        var violations = Directory
-            .EnumerateFiles(ariaDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(path => File.ReadAllText(path).Contains("LogManager.", StringComparison.Ordinal))
-            .Select(path => Path.GetRelativePath(RepositoryRoot, path))
-            .ToArray();
-        var serverSource = File.ReadAllText(Path.Combine(ariaDirectory, "Server", "AriaServer.cs"));
         var compositionSource = File.ReadAllText(Path.Combine(
             RepositoryRoot,
             "src", "DownKyi.Desktop",
@@ -389,16 +312,10 @@ public sealed class DownloadRuntimeArchitectureTests
             "Platform",
             "AvaloniaApplicationLifecycle.cs"));
 
-        Assert.True(violations.Length == 0, string.Join(Environment.NewLine, violations));
-        Assert.Contains("sealed class AriaServer", serverSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("static class AriaServer", serverSource, StringComparison.Ordinal);
-        Assert.Contains("ILoggerFactory loggerFactory", serverSource, StringComparison.Ordinal);
-        Assert.Contains("AddSingleton<AriaServer>()", compositionSource, StringComparison.Ordinal);
+        Assert.Contains("BuiltinDownloadEmergencyCleanup", compositionSource, StringComparison.Ordinal);
         Assert.Contains("IDownloadEmergencyCleanup", lifecycleSource, StringComparison.Ordinal);
         Assert.Contains("_downloadEmergencyCleanup.KillTrackedRuntime", lifecycleSource,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("GetService<AriaServer>()", lifecycleSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AriaServer.KillTrackedServer", lifecycleSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -609,33 +526,15 @@ public sealed class DownloadRuntimeArchitectureTests
         var orchestratorSource = File.ReadAllText(Path.Combine(directory, "DownloadOrchestrator.cs"));
         var mediaStageSource = File.ReadAllText(Path.Combine(directory, "DownloadMediaStage.cs"));
         var builtinSource = File.ReadAllText(Path.Combine(directory, "BuiltinTransferBackend.cs"));
-        var ariaSource = File.ReadAllText(Path.Combine(directory, "Aria2TransferBackend.cs"));
-        var ariaLifecycleSource = File.ReadAllText(Path.Combine(
-            directory,
-            "Aria2RuntimeLifecycle.cs"));
 
         Assert.DoesNotContain("paused.Phase == DownloadPhase.Pausing", stateSource, StringComparison.Ordinal);
         Assert.Contains("ConfirmPauseAfterWorkerStopsAsync", orchestratorSource, StringComparison.Ordinal);
         Assert.Contains("_stateWriter.ConfirmPausedAsync", orchestratorSource, StringComparison.Ordinal);
         Assert.Contains("result.Outcome == DownloadTransferOutcome.Paused", mediaStageSource, StringComparison.Ordinal);
         Assert.Contains("return DownloadTransferResult.Paused()", builtinSource, StringComparison.Ordinal);
-        Assert.Contains("return DownloadTransferResult.Paused()", ariaSource, StringComparison.Ordinal);
         Assert.True(
             builtinSource.IndexOf("if (request.IsPauseRequested())", StringComparison.Ordinal) <
             builtinSource.IndexOf("request.EnsureActive();", StringComparison.Ordinal));
-        Assert.Contains("request.WaitForPauseRequestedAsync(", ariaSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("PauseStatusPollInterval", ariaSource, StringComparison.Ordinal);
-        Assert.Contains(
-            "if (!_runtimeLifecycle.UsesPauseNotifications)",
-            ariaSource,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "internal bool UsesPauseNotifications => _ownsAriaServer;",
-            ariaLifecycleSource,
-            StringComparison.Ordinal);
-        Assert.True(
-            ariaSource.IndexOf("_runtimeLifecycle.RegisterPauseWaiter(gid)", StringComparison.Ordinal) <
-            ariaSource.IndexOf("_ariaClient.PauseAsync(gid", StringComparison.Ordinal));
     }
 
     [Fact]

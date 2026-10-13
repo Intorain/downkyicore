@@ -118,7 +118,7 @@ $details = foreach ($diagnostic in $diagnostics) {
         DatabaseRisk = Test-PathPattern $paths '(?i)(Storage[\\/]Database|DownloadStorage)'
         SerializationRisk = Test-PathPattern $paths '(?i)(Models|Settings|Json|Nfo|Cookie|Serialization|DownloadStorage)'
         UiBindingRisk = Test-PathPattern $paths '(?i)(ViewModels|Views|CustomControl|Converter|App\.axaml)'
-        ExternalProtocolRisk = Test-PathPattern $paths '(?i)(BiliApi|Aria2cNet|FFMpeg)'
+        ExternalProtocolRisk = Test-PathPattern $paths '(?i)(BiliApi|FFMpeg)'
     }
 }
 

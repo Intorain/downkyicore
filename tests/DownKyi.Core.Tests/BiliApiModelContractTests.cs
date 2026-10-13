@@ -1,4 +1,3 @@
-using DownKyi.Core.Aria2cNet.Client.Entity;
 using DownKyi.Core.BiliApi.Bangumi.Models;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.Favorites.Models;
@@ -102,7 +101,7 @@ public sealed class BiliApiModelContractTests
     }
 
     [Fact]
-    public void LoginAndAriaAddressesPreserveWireNames()
+    public void LoginAddressesPreserveWireNames()
     {
         var loginUrl = JsonConvert.DeserializeObject<LoginUrl>("""
             { "qrcode_key": "key", "url": "https://example.invalid/qr" }
@@ -110,12 +109,8 @@ public sealed class BiliApiModelContractTests
         var loginStatus = JsonConvert.DeserializeObject<LoginStatusData>("""
             { "url": "https://example.invalid/callback", "refresh_token": "token" }
             """);
-        var ariaUri = JsonConvert.DeserializeObject<AriaUri>("""
-            { "status": "used", "uri": "https://example.invalid/file" }
-            """);
         Assert.Equal("https://example.invalid/qr", loginUrl?.QrCodeAddress);
         Assert.Equal("https://example.invalid/callback", loginStatus?.RedirectAddress);
-        Assert.Equal("https://example.invalid/file", ariaUri?.Address);
     }
 
     [Fact]

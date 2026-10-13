@@ -48,7 +48,7 @@ Release，會 fail closed 而不修改它。
 1. `Ensure-HistoricalDraftReleases.ps1` 只建立缺少的 Draft Release。
 2. `New-HistoricalBuildPlan.ps1` 依現有 assets 建立缺項 matrix。
 3. `Prepare-HistoricalRuntimeAssets.ps1` 依目前受控的
-   `script/assets/external-assets.json` 下載並驗證 aria2、FFmpeg 與
+   `script/historical-rebuild/runtime-assets.json` 下載並驗證歷史版本所需的 aria2、FFmpeg 與
    appimagetool；不執行舊版未固定版本或未驗 checksum 的下載腳本。
 4. `Invoke-HistoricalBuild.ps1` 在臨時 detached worktree 建置指定 tag，注入上述
    已驗證依賴、檢查版本與封裝內容並做基本啟動測試，最後移除 worktree。

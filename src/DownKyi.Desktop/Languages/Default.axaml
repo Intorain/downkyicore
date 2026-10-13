@@ -165,8 +165,6 @@
     <system:String x:Key="TipAddDownloadingFinished2">项~</system:String>
     <system:String x:Key="TipAddDownloadingFinishedWithSkipped">成功添加了 {0} 项，跳过了 {1} 个不可用项目。</system:String>
     <system:String x:Key="TipAddDownloadingSkipped">跳过了 {1} 个不可用项目，没有添加下载项。</system:String>
-    <system:String x:Key="LegacyDownloadAdmissionBlocked">升级时发现部分旧的未完成任务保存位置不安全或已经变化。程序无法确认这些任务是否由原来的自定义远端 aria2 负责；旧的远端 aria2 可能仍在写入文件。为避免两个 aria2 同时写入，现已暂时阻止新增下载。&#10;&#10;请先到原来的远端 aria2 停止这些旧任务。确认已经停止后，点击“确定”恢复新增下载；取消或关闭不会解除阻止。</system:String>
-    <system:String x:Key="LegacyDownloadAdmissionConfirmationFailed">无法保存确认，新增下载仍被阻止。</system:String>
     
     <!--  DownloadManager  -->
     <system:String x:Key="Downloading">正在下载</system:String>
@@ -239,35 +237,12 @@
     <system:String x:Key="NetworkConnectionSection">连接</system:String>
     <system:String x:Key="DownloaderSection">下载器</system:String>
     <system:String x:Key="BuiltinParametersSection">内建参数</system:String>
-    <system:String x:Key="AriaParametersSection">Aria 参数</system:String>
-    <system:String x:Key="CustomAriaSection">自定义 Aria</system:String>
-    <system:String x:Key="CompatibilityRequirementTitle">兼容要求</system:String>
     <system:String x:Key="ZeroMeansUnlimited">单位：KB/s；0 表示不限制</system:String>
     <system:String x:Key="SelectDownloader">选择下载器（重启生效）：</system:String>
     <system:String x:Key="BuiltinDownloader">内建下载器</system:String>
-    <system:String x:Key="Aria2cDownloader">Aria2下载器</system:String>
-    <system:String x:Key="CustomAria2cDownloader">自定义Aria2下载器</system:String>
-    <system:String x:Key="CustomAriaCompatibilityRequirement">仅支持 aria2.getVersion().enabledFeatures 包含 downkyi-secure-redirect-v2 的 DownKyi 兼容端点；标准 aria2 与 Motrix 不受支持。</system:String>
     <system:String x:Key="HighSpeedDownloadMode">高速下载模式（套用推荐分片/连接参数）</system:String>
-    <system:String x:Key="HighSpeedDownloadModeTip">开启时会将内建线程数设为16，Aria最大线程数设为16，同服务器连接数设为16，最小分片设为1MB。</system:String>
-    <system:String x:Key="AriaServerHost">Aria服务器地址：</system:String>
-    <system:String x:Key="AriaServerPort">Aria服务器端口：</system:String>
-    <system:String x:Key="AriaServerToken">Aria服务器Token：</system:String>
-    <system:String x:Key="AriaLogLevel">Aria日志等级：</system:String>
-    <system:String x:Key="AriaMaxConcurrentDownloads">Aria同时下载数：</system:String>
-    <system:String x:Key="AriaSplit">Aria最大线程数：</system:String>
-    <system:String x:Key="AriaMaxConnectionPerServer">Aria同服务器连接数：</system:String>
-    <system:String x:Key="AriaMinSplitSize">Aria最小分片大小(MB)：</system:String>
-    <system:String x:Key="AriaDownloadLimit">速度限制</system:String>
-    <system:String x:Key="AriaMaxOverallDownloadLimit">全局下载速度限制</system:String>
-    <system:String x:Key="AriaMaxOverallDownloadLimitDescription">限制所有下载任务的合计速度</system:String>
-    <system:String x:Key="AriaMaxDownloadLimit">单任务下载速度限制</system:String>
-    <system:String x:Key="AriaMaxDownloadLimitDescription">限制每一个下载任务的速度</system:String>
-    <system:String x:Key="AriaFileAllocation">Aria文件预分配：</system:String>
+    <system:String x:Key="HighSpeedDownloadModeTip">开启时会将单任务并行连接数设为16。</system:String>
     <system:String x:Key="IsHttpProxy">使用Http代理</system:String>
-    <system:String x:Key="IsAriaHttpsDownloadProxy">使用本机 HTTPS 下载代理（HTTP CONNECT）</system:String>
-    <system:String x:Key="AriaHttpsDownloadProxyHost">本机代理地址：</system:String>
-    <system:String x:Key="AriaHttpsDownloadProxyTip">仅允许 127.0.0.1、localhost 或 ::1。代理本身使用 HTTP CONNECT；aria2 仍会验证 HTTPS 证书与主机名。</system:String>
     <system:String x:Key="HttpProxy">代理地址：</system:String>
     <system:String x:Key="HttpProxyPort">端口：</system:String>
     <system:String x:Key="MaxCurrentDownloads">同时下载数：</system:String>
@@ -400,7 +375,7 @@
     <system:String x:Key="StartupDiagnosticsMessage">以下问题已分别记录，部分功能可能无法正常使用。技术详情默认收起，可按需展开。</system:String>
     <system:String x:Key="StartupDiagnosticsImpactFormat">影响范围：{0}</system:String>
     <system:String x:Key="StartupDownloadFailureTitle">下载系统无法启动</system:String>
-    <system:String x:Key="StartupDownloadMissingDescription">缺少必要的 aria2 执行文件，或程序文件不完整。</system:String>
+    <system:String x:Key="StartupDownloadMissingDescription">缺少必要的程序文件，或安装内容不完整。</system:String>
     <system:String x:Key="StartupDownloadFailureDescription">下载系统初始化时发生错误。</system:String>
     <system:String x:Key="StartupDownloadFailureImpact">下载功能无法使用，其他功能仍可继续使用。</system:String>
     <system:String x:Key="StartupDownloadStoreFailureTitle">下载资料库结构不兼容</system:String>

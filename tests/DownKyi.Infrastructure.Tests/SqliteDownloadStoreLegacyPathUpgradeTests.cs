@@ -45,8 +45,6 @@ public sealed class SqliteDownloadStoreLegacyPathUpgradeTests : IDisposable
             "equivalent",
             Assert.Single(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken)).Id.Value);
         Assert.Empty(await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
-        Assert.False(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(originalPath, (await _fixture.ReadStoredStateAsync("equivalent")).Path);
     }
 
@@ -73,8 +71,6 @@ public sealed class SqliteDownloadStoreLegacyPathUpgradeTests : IDisposable
         Assert.Equal("downloading", quarantine.SourceTable);
         Assert.Equal("file_path", quarantine.FieldName);
         Assert.Equal("legacy-output-path-unverified", quarantine.Reason);
-        Assert.True(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(before, await _fixture.ReadStoredStateAsync("changed"));
         Assert.True(File.Exists(partialPath));
         Assert.True(File.Exists(ariaPath));
@@ -111,8 +107,6 @@ public sealed class SqliteDownloadStoreLegacyPathUpgradeTests : IDisposable
             ["alias", "physical"],
             (await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken))
                 .Select(record => record.RecordId));
-        Assert.True(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(physicalBefore, await _fixture.ReadStoredStateAsync("physical"));
         Assert.Equal(aliasBefore, await _fixture.ReadStoredStateAsync("alias"));
         Assert.Equal(otherBefore, await _fixture.ReadStoredStateAsync("other"));
@@ -141,8 +135,6 @@ public sealed class SqliteDownloadStoreLegacyPathUpgradeTests : IDisposable
             "unresolved",
             Assert.Single(
                 await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken)).RecordId);
-        Assert.True(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(before, await _fixture.ReadStoredStateAsync("unresolved"));
     }
 
@@ -180,8 +172,6 @@ public sealed class SqliteDownloadStoreLegacyPathUpgradeTests : IDisposable
             await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
         Assert.Equal("already-quarantined", quarantine.RecordId);
         Assert.Equal("preexisting-corrupt-record", quarantine.Reason);
-        Assert.True(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(completed.Metadata.Name, Assert.Single((await store.GetHistoryPageAsync(
             null,
             10,

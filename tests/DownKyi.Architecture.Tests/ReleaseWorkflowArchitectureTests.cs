@@ -256,7 +256,6 @@ public sealed class ReleaseWorkflowArchitectureTests
             ["dependency"] = ReadWorkflow("dependency-audit.yml"),
             ["build"] = ReadWorkflow("build.yml"),
             ["macos"] = ReadWorkflow("macos-adhoc-package.yml"),
-            ["aria2"] = ReadWorkflow("aria2-tls-security.yml"),
             ["infrastructure"] = ReadWorkflow("ci-infrastructure.yml")
         };
 
@@ -272,10 +271,9 @@ public sealed class ReleaseWorkflowArchitectureTests
             ("script/pupnet/stage-canonical-publish.sh", []),
             ("script/validate-publish-output.ps1", ["macos"]),
             ("script/macos/validate-dmg-package.sh", ["macos"]),
-            ("script/aria2.sh", ["macos", "aria2"]),
-            ("script/download-external-asset.ps1", ["build", "aria2"]),
+            ("script/download-external-asset.ps1", ["build"]),
             ("script/ffmpeg-assets.py", ["build", "macos"]),
-            ("script/assets/external-assets.json", ["build", "macos", "aria2"]),
+            ("script/assets/external-assets.json", ["build", "macos"]),
             (".github/workflows/build.yml", ["build"]),
             (".github/workflows/quality.yml", ["infrastructure"])
         };
@@ -293,7 +291,6 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.True(WorkflowRuns(workflows["codeql"], "push-main", "docs/maintenance.md"));
         Assert.False(WorkflowRuns(workflows["dependency"], "push-main", "docs/maintenance.md"));
         Assert.False(WorkflowRuns(workflows["build"], "push-main", "script/assets/external-assets.json"));
-        Assert.True(WorkflowRuns(workflows["aria2"], "push-main", "script/assets/external-assets.json"));
         Assert.True(WorkflowRuns(workflows["build"], "push-tag", "docs/maintenance.md"));
         Assert.False(WorkflowRuns(workflows["quality"], "push-tag", "docs/maintenance.md"));
         Assert.True(WorkflowRuns(workflows["build"], "workflow_dispatch", ""));
@@ -453,19 +450,18 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void PublishValidatorRequiresBothMediaToolsAndThePackagedDownloader()
+    public void PublishValidatorRequiresBothMediaTools()
     {
         var validator = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "validate-publish-output.ps1"));
 
         Assert.Contains("ffmpeg/ffmpeg", validator, StringComparison.Ordinal);
         Assert.Contains("ffmpeg/ffprobe", validator, StringComparison.Ordinal);
-        Assert.Contains("aria2/aria2c", validator, StringComparison.Ordinal);
         Assert.Contains("Avalonia.Themes.Fluent", validator, StringComparison.Ordinal);
         Assert.Contains("Get-FileHash", validator, StringComparison.Ordinal);
         Assert.Contains("ExpectedManifestPath", validator, StringComparison.Ordinal);
         Assert.Contains("Published output contains user data paths", validator, StringComparison.Ordinal);
-        Assert.Contains("'Aria', 'Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media'", validator, StringComparison.Ordinal);
+        Assert.Contains("'Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media'", validator, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -502,10 +498,6 @@ public sealed class ReleaseWorkflowArchitectureTests
             StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation", executable, StringComparison.Ordinal);
         Assert.Contains(
-            @"..\DownKyi.Core\Binary\$(DownKyiAssetRuntimeIdentifier)\aria2\*",
-            executable,
-            StringComparison.Ordinal);
-        Assert.Contains(
             @"..\DownKyi.Core\Binary\$(DownKyiAssetRuntimeIdentifier)\ffmpeg\*",
             executable,
             StringComparison.Ordinal);
@@ -533,30 +525,11 @@ public sealed class ReleaseWorkflowArchitectureTests
             "external-assets.json");
         using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
 
-        var aria2 = manifest.RootElement.GetProperty("aria2");
-        var sourceCommit = Assert.IsType<string>(
-            aria2.GetProperty("sourceCommit").GetString());
-        var sourceTag = Assert.IsType<string>(
-            aria2.GetProperty("sourceTag").GetString());
-        var version = Assert.IsType<string>(
-            aria2.GetProperty("version").GetString());
-        Assert.Matches(
-            "^[0-9a-f]{40}$",
-            sourceCommit);
-        Assert.Equal(version, sourceTag);
-
         foreach (var tool in manifest.RootElement.EnumerateObject())
         {
             foreach (var asset in tool.Value.GetProperty("assets").EnumerateObject())
             {
                 AssertPinnedAsset(asset.Value, "url", "sha256");
-
-                if (string.Equals(tool.Name, "aria2", StringComparison.Ordinal))
-                {
-                    var binaryChecksum = asset.Value.GetProperty("binarySha256").GetString();
-                    Assert.NotNull(binaryChecksum);
-                    Assert.Matches("^[a-f0-9]{64}$", binaryChecksum);
-                }
 
                 if (asset.Value.TryGetProperty("ffprobeUrl", out _))
                 {
@@ -572,9 +545,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         var scripts = new[]
         {
             File.ReadAllText(Path.Combine(RepositoryRoot, "script", "ffmpeg.ps1")),
-            File.ReadAllText(Path.Combine(RepositoryRoot, "script", "aria2.ps1")),
             File.ReadAllText(Path.Combine(RepositoryRoot, "script", "ffmpeg.sh")),
-            File.ReadAllText(Path.Combine(RepositoryRoot, "script", "aria2.sh")),
         };
 
         Assert.All(scripts, source =>
@@ -592,23 +563,17 @@ public sealed class ReleaseWorkflowArchitectureTests
             Assert.DoesNotContain("curl --insecure", source, StringComparison.Ordinal);
         });
         Assert.Contains("$PSScriptRoot", scripts[0], StringComparison.Ordinal);
-        Assert.Contains("$PSScriptRoot", scripts[1], StringComparison.Ordinal);
-        Assert.Contains("BASH_SOURCE[0]", scripts[2], StringComparison.Ordinal);
-        Assert.Contains("BASH_SOURCE[0]", scripts[3], StringComparison.Ordinal);
+        Assert.Contains("BASH_SOURCE[0]", scripts[1], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void WindowsExternalAssetInstallersUseTheSharedBoundedRetryOwner()
+    public void WindowsExternalAssetInstallerUsesTheSharedBoundedRetryOwner()
     {
-        var aria2Installer = File.ReadAllText(Path.Combine(RepositoryRoot, "script", "aria2.ps1"));
         var ffmpegInstaller = File.ReadAllText(Path.Combine(RepositoryRoot, "script", "ffmpeg.ps1"));
 
-        Assert.All(new[] { aria2Installer, ffmpegInstaller }, source =>
-        {
-            Assert.Contains("download-external-asset.ps1", source, StringComparison.Ordinal);
-            Assert.Contains("Invoke-ExternalAssetDownload", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("Start-BitsTransfer", source, StringComparison.Ordinal);
-        });
+        Assert.Contains("download-external-asset.ps1", ffmpegInstaller, StringComparison.Ordinal);
+        Assert.Contains("Invoke-ExternalAssetDownload", ffmpegInstaller, StringComparison.Ordinal);
+        Assert.DoesNotContain("Start-BitsTransfer", ffmpegInstaller, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -741,11 +706,6 @@ public sealed class ReleaseWorkflowArchitectureTests
             Path.Combine(RepositoryRoot, "script", "macos", "verify-dmg.sh"));
         var validateDmgPackageScript = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "macos", "validate-dmg-package.sh"));
-        var ariaIntegrityScript = File.ReadAllText(
-            Path.Combine(RepositoryRoot, "script", "macos", "aria2-runtime-integrity.sh"));
-        var ariaReadinessScript = File.ReadAllText(
-            Path.Combine(RepositoryRoot, "script", "macos", "verify-aria2-rpc-readiness.sh"));
-
         Assert.DoesNotContain(
             "MACOS_SIGNING_REQUIRED",
             workflow,
@@ -764,15 +724,12 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("os: macos-15", workflow, StringComparison.Ordinal);
         Assert.Contains("Run macOS packaging regressions", workflow, StringComparison.Ordinal);
         Assert.Contains("Validate mounted and installed macOS package contracts", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("Verify pre-sign aria2 supply-chain boundary", workflow, StringComparison.Ordinal);
-
         AssertInOrder(
             workflow,
             "Package app",
             "Validate packaged runtime",
             "Sign app",
             "Verify signed app trust",
-            "Verify signed aria2 integrity",
             "Notarize app",
             "Verify notarized app trust",
             "Seal final signed app manifest",
@@ -793,9 +750,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("codesign_app_path \"$file\"", signScript, StringComparison.Ordinal);
         AssertInOrder(
             signScript,
-            "aria2-runtime-integrity.sh\" verify \"$APP_NAME\"",
             "codesign_app_path \"$file\"",
-            "aria2-runtime-integrity.sh\" refresh \"$APP_NAME\"",
             "codesign_app_path \"$MAIN_EXECUTABLE\"",
             "codesign_app_path \"$APP_NAME\"");
         Assert.Contains("Print :CFBundleExecutable", signScript, StringComparison.Ordinal);
@@ -853,27 +808,9 @@ public sealed class ReleaseWorkflowArchitectureTests
             StringComparison.Ordinal);
         Assert.Contains("/usr/bin/ditto \"$APP_PATH\" \"$COPIED_APP_PATH\"", validateDmgPackageScript, StringComparison.Ordinal);
         Assert.Equal(1, CountOccurrences(validateDmgPackageScript, "verify-app-signature.sh"));
-        Assert.Equal(1, CountOccurrences(validateDmgPackageScript, "aria2-runtime-integrity.sh\" verify"));
         Assert.Equal(1, CountOccurrences(validateDmgPackageScript, "verify-app-loader.sh"));
         Assert.Equal(1, CountOccurrences(validateDmgPackageScript, "verify-app-bundle-launch.swift"));
-        Assert.Equal(1, CountOccurrences(validateDmgPackageScript, "verify-aria2-rpc-readiness.sh"));
         Assert.Equal(2, CountOccurrences(validateDmgPackageScript, "validate_app_boundary \"$"));
-
-        Assert.Contains("runtime checksum path must remain a symlink", ariaIntegrityScript, StringComparison.Ordinal);
-        Assert.Contains("Contents/_CodeSignature/CodeResources", ariaIntegrityScript, StringComparison.Ordinal);
-        Assert.Contains("refusing to modify the runtime checksum after the outer app signature is sealed", ariaIntegrityScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("lipo -archs", ariaIntegrityScript, StringComparison.Ordinal);
-        Assert.Contains("aria2.getVersion", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("downkyi-secure-redirect-v2", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("isinstance(features, list)", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("--help=#all", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("\"$PROBE_ROOT/dht.dat\"", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("\"$PROBE_ROOT/dht6.dat\"", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.Contains("aria2.shutdown", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("aria2-runtime-integrity.sh", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("--connect-timeout", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("--max-time", ariaReadinessScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("bounded deadline", ariaReadinessScript, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -891,7 +828,6 @@ public sealed class ReleaseWorkflowArchitectureTests
                      "Package app",
                      "Sign app",
                      "Verify signed app trust",
-                     "Verify signed aria2 integrity",
                      "Seal final signed app manifest",
                      "Create DMG",
                      "Validate mounted and installed macOS package contracts"
@@ -942,7 +878,6 @@ public sealed class ReleaseWorkflowArchitectureTests
                      "src/**/*.csproj",
                      "src/DownKyi.Desktop/Resources/favicon.ico",
                      "THIRD-PARTY-NOTICES.md",
-                     "script/aria2.sh",
                      "script/ffmpeg.sh",
                      "script/ffmpeg-assets.py",
                      "script/validate-publish-output.ps1",
@@ -971,7 +906,6 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("dotnet publish", workflow, StringComparison.Ordinal);
         Assert.Contains("./sign.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("./verify-app-signature.sh", workflow, StringComparison.Ordinal);
-        Assert.Contains("./aria2-runtime-integrity.sh verify", workflow, StringComparison.Ordinal);
         Assert.Contains("flags=.*runtime", workflow, StringComparison.Ordinal);
         Assert.Contains("create-dmg", workflow, StringComparison.Ordinal);
         Assert.Contains("./validate-dmg-package.sh", workflow, StringComparison.Ordinal);
@@ -979,7 +913,6 @@ public sealed class ReleaseWorkflowArchitectureTests
             "- name: Upload verified DMG\n        continue-on-error: ${{ github.event_name == 'pull_request' }}",
             workflow.Replace("\r\n", "\n", StringComparison.Ordinal),
             StringComparison.Ordinal);
-        Assert.DoesNotContain("Verify pre-sign aria2 supply-chain boundary", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("Run macOS packaging regressions", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("Upload macOS test evidence", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("script/test-project.ps1", workflow, StringComparison.Ordinal);

@@ -56,7 +56,6 @@ public partial class SettingsManager
             new NetworkApplicationSettings(
                 GetIsLiftingOfRegion(),
                 GetUserAgent(),
-                GetDownloader(),
                 GetHighSpeedDownloadMode(),
                 GetNetworkProxy(),
                 GetCustomProxy(),
@@ -64,20 +63,7 @@ public partial class SettingsManager
                 GetSplit(),
                 GetIsHttpProxy(),
                 GetHttpProxy(),
-                GetHttpProxyListenPort(),
-                GetAriaToken(),
-                GetAriaHost(),
-                GetAriaListenPort(),
-                GetAriaLogLevel(),
-                GetAriaSplit(),
-                GetAriaMaxConnectionPerServer(),
-                GetAriaMinSplitSize(),
-                GetAriaMaxOverallDownloadLimit(),
-                GetAriaMaxDownloadLimit(),
-                GetAriaFileAllocation(),
-                GetIsAriaHttpProxy(),
-                GetAriaHttpProxy(),
-                GetAriaHttpProxyListenPort()),
+                GetHttpProxyListenPort()),
             new VideoApplicationSettings(
                 GetVideoCodecs(),
                 GetQuality(),
@@ -151,7 +137,6 @@ public partial class SettingsManager
 
                 SetIsLiftingOfRegion(validated.Network.IsLiftingOfRegion);
                 SetUserAgent(validated.Network.UserAgent);
-                SetDownloader(validated.Network.Downloader);
                 SetHighSpeedDownloadMode(validated.Network.HighSpeedDownloadMode);
                 SetNetworkProxy(validated.Network.NetworkProxy);
                 SetProperty(
@@ -163,19 +148,6 @@ public partial class SettingsManager
                 SetIsHttpProxy(validated.Network.IsHttpProxy);
                 SetHttpProxy(validated.Network.HttpProxy);
                 SetHttpProxyListenPort(validated.Network.HttpProxyListenPort);
-                SetAriaToken(validated.Network.AriaToken);
-                SetAriaHost(validated.Network.AriaHost);
-                SetAriaListenPort(validated.Network.AriaListenPort);
-                SetAriaLogLevel(validated.Network.AriaLogLevel);
-                SetAriaSplit(validated.Network.AriaSplit);
-                SetAriaMaxConnectionPerServer(validated.Network.AriaMaxConnectionPerServer);
-                SetAriaMinSplitSize(validated.Network.AriaMinSplitSize);
-                SetAriaMaxOverallDownloadLimit(validated.Network.AriaMaxOverallDownloadLimit);
-                SetAriaMaxDownloadLimit(validated.Network.AriaMaxDownloadLimit);
-                SetAriaFileAllocation(validated.Network.AriaFileAllocation);
-                SetIsAriaHttpProxy(validated.Network.IsAriaHttpProxy);
-                SetAriaHttpProxy(validated.Network.AriaHttpProxy);
-                SetAriaHttpProxyListenPort(validated.Network.AriaHttpProxyListenPort);
 
                 SetVideoCodecs(validated.Video.VideoCodecs);
                 SetQuality(validated.Video.Quality);

@@ -1133,10 +1133,8 @@ public sealed class DownloadArtifactStageTests
             return true;
         }
 
-        return (path.EndsWith(".aria2", StringComparison.OrdinalIgnoreCase) &&
-                owners.Contains(path[..^".aria2".Length])) ||
-               (path.EndsWith(".download", StringComparison.OrdinalIgnoreCase) &&
-                owners.Contains(path[..^".download".Length]));
+        return path.EndsWith(".download", StringComparison.OrdinalIgnoreCase) &&
+               owners.Contains(path[..^".download".Length]);
     }
 
     private static TestBilibiliApiClient CreateCoverFailureClient(CoverFailureMode failureMode)

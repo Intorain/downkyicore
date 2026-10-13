@@ -3,7 +3,7 @@
              xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
              x:Class="DownKyi.Views.Settings.BuiltinDownloaderSettingsView"
              x:DataType="vms:ViewNetworkViewModel">
-    <StackPanel x:Name="NameBuiltin" IsVisible="{Binding Builtin}">
+    <StackPanel x:Name="NameBuiltin">
         <TextBlock
             Name="NameBuiltinParametersTitle"
             Margin="0,28,0,0"

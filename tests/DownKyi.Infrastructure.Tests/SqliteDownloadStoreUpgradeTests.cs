@@ -38,8 +38,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(5));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(8));
         Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
-        Assert.False(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -389,8 +387,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 ["unsafe-a", "unsafe-b"],
                 (await first.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken))
                     .Select(record => record.RecordId));
-            Assert.True(await first.IsLegacyUpgradeAdmissionBlockedAsync(
-                TestContext.Current.CancellationToken));
         }
 
         using var reopened = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
@@ -404,41 +400,8 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(
             "safe",
             Assert.Single(await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken)).Id.Value);
-        Assert.True(await reopened.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
     }
-
-    [Fact]
-    public async Task ConfirmationOnlyReleasesAdmissionGateAndPersistsAcrossRestart()
-    {
-        var originalPath = Path.Combine(_fixture.TempDirectory, "confirm-logical", "video");
-        await _fixture.CreateVersionThreeDatabaseAsync(_fixture.CreatePausedTask("confirm", originalPath));
-        var before = await _fixture.ReadStoredStateAsync("confirm");
-        using (var store = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(path => path + "-physical")))
-        {
-            await store.InitializeAsync(TestContext.Current.CancellationToken);
-            Assert.True((await store.ConfirmLegacyRemoteTasksStoppedAsync(
-                TestContext.Current.CancellationToken)).IsSuccess);
-            Assert.False(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-                TestContext.Current.CancellationToken));
-            Assert.Empty(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-            Assert.Single(await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
-            Assert.Equal(before, await _fixture.ReadStoredStateAsync("confirm"));
-        }
-
-        using var reopened = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
-            _ => throw new InvalidOperationException("Version four must not rescan.")));
-        Assert.False(await reopened.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
-        Assert.Empty(await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(
-            "confirm",
-            Assert.Single(
-                await reopened.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken)).RecordId);
-        Assert.Equal(before, await _fixture.ReadStoredStateAsync("confirm"));
-    }
-
     [Fact]
     public async Task VersionFourFailureRollsBackQuarantineGateLedgerAndUserVersion()
     {

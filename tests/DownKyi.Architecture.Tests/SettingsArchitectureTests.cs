@@ -101,12 +101,7 @@ public sealed class SettingsArchitectureTests
             "ViewModels",
             "Settings",
             "ViewNetworkViewModel.State.cs");
-        var ariaCommandsSource = ReadSource(
-            "src", "DownKyi.Desktop",
-            "ViewModels",
-            "Settings",
-            "ViewNetworkViewModel.AriaCommands.cs");
-        var allViewModelSources = string.Concat(viewModelSource, stateSource, ariaCommandsSource);
+        var allViewModelSources = string.Concat(viewModelSource, stateSource);
         var coordinatorSource = ReadSource(
             "src", "DownKyi.Desktop",
             "Services",
@@ -121,10 +116,8 @@ public sealed class SettingsArchitectureTests
         Assert.DoesNotContain("Enumerable.Range", allViewModelSources, StringComparison.Ordinal);
         Assert.DoesNotContain("DictionaryResource", allViewModelSources, StringComparison.Ordinal);
         Assert.Contains("#region 页面属性申明", stateSource, StringComparison.Ordinal);
-        Assert.Contains("ExecuteAriaHostCommand", ariaCommandsSource, StringComparison.Ordinal);
-        Assert.Contains("ExecuteAriaFileAllocationsCommand", ariaCommandsSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("ExecuteAriaHostCommand", viewModelSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AriaConfigLogLevel", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("ExecuteMaxCurrentDownloadsCommand", viewModelSource, StringComparison.Ordinal);
+        Assert.Contains("ExecuteSplitsCommand", viewModelSource, StringComparison.Ordinal);
         Assert.Contains("ISettingsStore", coordinatorSource, StringComparison.Ordinal);
         Assert.Contains("ApplyWithRestartPromptAsync", coordinatorSource, StringComparison.Ordinal);
         Assert.Contains("INetworkSettingsCoordinator, NetworkSettingsCoordinator", composition,

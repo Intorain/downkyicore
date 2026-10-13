@@ -29,12 +29,6 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         var options = _coordinator.Options;
         MaxCurrentDownloads = options.MaxCurrentDownloads;
         Splits = options.Splits;
-        AriaLogLevels = options.AriaLogLevels;
-        AriaMaxConcurrentDownloads = options.AriaMaxConcurrentDownloads;
-        AriaSplits = options.AriaSplits;
-        AriaMaxConnectionPerServers = options.AriaMaxConnectionsPerServer;
-        AriaMinSplitSizes = options.AriaMinSplitSizes;
-        AriaFileAllocations = options.AriaFileAllocations;
     }
 
     /// <summary>
@@ -51,23 +45,6 @@ internal partial class ViewNetworkViewModel : ViewModelBase
 
         // UserAgent
         UserAgent = network.UserAgent;
-
-        // 选择下载器
-        var downloader = network.Downloader;
-        switch (downloader)
-        {
-            case Core.Settings.Downloader.NotSet:
-                break;
-            case Core.Settings.Downloader.BuiltIn:
-                Builtin = true;
-                break;
-            case Core.Settings.Downloader.Aria:
-                Aria2C = true;
-                break;
-            case Core.Settings.Downloader.CustomAria:
-                CustomAria2C = true;
-                break;
-        }
 
         NetworkProxy = network.NetworkProxy;
 
@@ -91,49 +68,6 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         // builtin的http代理的端口
         HttpProxyPort = network.HttpProxyListenPort;
 
-        // Aria服务器host
-        AriaHost = network.AriaHost;
-
-        // Aria服务器端口
-        AriaListenPort = network.AriaListenPort;
-
-        // Aria服务器Token
-        AriaToken = network.AriaToken;
-
-        // Aria的日志等级
-        var ariaLogLevel = network.AriaLogLevel;
-        SelectedAriaLogLevel = ariaLogLevel.ToString("G");
-
-        // Aria同时下载数
-        SelectedAriaMaxConcurrentDownload = network.MaxCurrentDownloads;
-
-        // Aria最大线程数
-        SelectedAriaSplit = network.AriaSplit;
-
-        SelectedAriaMaxConnectionPerServer = network.AriaMaxConnectionPerServer;
-
-        SelectedAriaMinSplitSize = network.AriaMinSplitSize;
-
-        // Aria下载速度限制
-        AriaMaxOverallDownloadLimit = network.AriaMaxOverallDownloadLimit;
-
-        // Aria下载单文件速度限制
-        AriaMaxDownloadLimit = network.AriaMaxDownloadLimit;
-
-        // Whether to use a local HTTP CONNECT proxy for aria2 HTTPS downloads.
-        var isAriaHttpProxy = network.IsAriaHttpProxy;
-        IsAriaHttpProxy = isAriaHttpProxy == AllowStatus.Yes;
-
-        // Local aria2 HTTPS-download proxy host.
-        AriaHttpProxy = network.AriaHttpProxy;
-
-        // Local aria2 HTTPS-download proxy port.
-        AriaHttpProxyPort = network.AriaHttpProxyListenPort;
-
-        // Aria文件预分配
-        var ariaFileAllocation = network.AriaFileAllocation;
-        SelectedAriaFileAllocation = ariaFileAllocation.ToString("G");
-
         _isOnNavigatedTo = false;
     }
 
@@ -154,39 +88,6 @@ internal partial class ViewNetworkViewModel : ViewModelBase
             settings => settings.UserAgent == UserAgent);
     }
 
-    // 下载器选择事件
-    private DownKyiAsyncDelegateCommand<string>? _selectDownloaderCommand;
-
-    public DownKyiAsyncDelegateCommand<string> SelectDownloaderCommand => _selectDownloaderCommand ??= new DownKyiAsyncDelegateCommand<string>(ExecuteSelectDownloaderCommand, _logger);
-
-    /// <summary>
-    /// 下载器选择事件
-    /// </summary>
-    /// <param name="parameter"></param>
-    private async Task ExecuteSelectDownloaderCommand(string? parameter)
-    {
-        Core.Settings.Downloader downloader;
-        switch (parameter)
-        {
-            case "Builtin":
-                downloader = Core.Settings.Downloader.BuiltIn;
-                break;
-            case "Aria2c":
-                downloader = Core.Settings.Downloader.Aria;
-                break;
-            case "CustomAria2c":
-                downloader = Core.Settings.Downloader.CustomAria;
-                break;
-            default:
-                downloader = _coordinator.Current.Downloader;
-                break;
-        }
-
-        await ApplyNetworkWithRestartPromptAsync(
-            settings => settings with { Downloader = downloader },
-            settings => settings.Downloader == downloader).ConfigureAwait(true);
-    }
-
     private RelayCommand? _highSpeedDownloadModeCommand;
 
     public RelayCommand HighSpeedDownloadModeCommand =>
@@ -199,30 +100,17 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         if (HighSpeedDownloadMode)
         {
             SelectedSplit = ApplicationSettingsDefaults.HighSpeedBuiltInSplit;
-            SelectedAriaSplit = ApplicationSettingsDefaults.HighSpeedAriaSplit;
-            SelectedAriaMaxConnectionPerServer = ApplicationSettingsDefaults.HighSpeedAriaMaxConnectionPerServer;
-            SelectedAriaMinSplitSize = ApplicationSettingsDefaults.HighSpeedAriaMinSplitSize;
         }
 
         ApplyNetwork(
             settings => settings with
             {
                 HighSpeedDownloadMode = highSpeedDownloadMode,
-                Split = HighSpeedDownloadMode ? SelectedSplit : settings.Split,
-                AriaSplit = HighSpeedDownloadMode ? SelectedAriaSplit : settings.AriaSplit,
-                AriaMaxConnectionPerServer = HighSpeedDownloadMode
-                    ? SelectedAriaMaxConnectionPerServer
-                    : settings.AriaMaxConnectionPerServer,
-                AriaMinSplitSize = HighSpeedDownloadMode
-                    ? SelectedAriaMinSplitSize
-                    : settings.AriaMinSplitSize
+                Split = HighSpeedDownloadMode ? SelectedSplit : settings.Split
             },
             settings => settings.HighSpeedDownloadMode == highSpeedDownloadMode
                         && (!HighSpeedDownloadMode
-                            || settings.Split == SelectedSplit
-                            && settings.AriaSplit == SelectedAriaSplit
-                            && settings.AriaMaxConnectionPerServer == SelectedAriaMaxConnectionPerServer
-                            && settings.AriaMinSplitSize == SelectedAriaMinSplitSize));
+                            || settings.Split == SelectedSplit));
     }
 
     private DownKyiAsyncDelegateCommand<object>? _networkProxyCommand;

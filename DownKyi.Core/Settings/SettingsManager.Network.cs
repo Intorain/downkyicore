@@ -10,9 +10,6 @@ namespace DownKyi.Core.Settings
         // UserAgent
         private const string UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-        // 下载器
-        private const Downloader Downloader = Settings.Downloader.Aria;
-
         private const NetworkProxy NetworkProxy = Settings.NetworkProxy.None;
         private readonly string _customNetworkProxy = string.Empty;
 
@@ -83,31 +80,6 @@ namespace DownKyi.Core.Settings
                 _appSettings.Network.UserAgent,
                 userAgent,
                 v => _appSettings.Network.UserAgent = v);
-        }
-
-        /// <summary>
-        /// 获取下载器
-        /// </summary>
-        /// <returns></returns>
-        public Downloader GetDownloader()
-        {
-            if (_appSettings.Network.Downloader != Downloader.NotSet) return _appSettings.Network.Downloader;
-            // 第一次获取，先设置默认值
-            SetDownloader(Downloader);
-            return Downloader;
-        }
-
-        /// <summary>
-        /// 设置下载器
-        /// </summary>
-        /// <param name="downloader"></param>
-        /// <returns></returns>
-        public bool SetDownloader(Downloader downloader)
-        {
-            return SetProperty(
-                _appSettings.Network.Downloader,
-                downloader,
-                v => _appSettings.Network.Downloader = v);
         }
 
         /// <summary>

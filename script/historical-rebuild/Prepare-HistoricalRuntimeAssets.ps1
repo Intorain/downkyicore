@@ -23,7 +23,7 @@ if ($OutputRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) -eq $RepositoryRoot.T
     throw 'Runtime output must not be the repository root.'
 }
 
-$manifestPath = Join-Path $RepositoryRoot 'script/assets/external-assets.json'
+$manifestPath = Join-Path $RepositoryRoot 'script/historical-rebuild/runtime-assets.json'
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $downloadRoot = Join-Path $OutputRoot '.downloads'
 New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
@@ -163,7 +163,7 @@ if ($Rid -ne 'win-x64') {
     schemaVersion = 1
     rid = $Rid
     preparedAtUtc = [DateTime]::UtcNow.ToString('o')
-    sourceManifest = 'script/assets/external-assets.json'
+    sourceManifest = 'script/historical-rebuild/runtime-assets.json'
     assets = $records
 } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $OutputRoot 'runtime-assets.json') -Encoding utf8
 

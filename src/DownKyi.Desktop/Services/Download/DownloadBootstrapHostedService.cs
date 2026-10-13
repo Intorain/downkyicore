@@ -91,6 +91,21 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                 state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            foreach (var task in state.UnfinishedTasks.Where(task =>
+                         !string.IsNullOrWhiteSpace(task.Transfer.BackendIdentity)
+                         && task.Phase != DownloadPhase.Failed))
+            {
+                await _stateWriter
+                    .FailLegacyBackendAsync(task.Id, cancellationToken)
+                    .ConfigureAwait(false);
+                blocked.Add(task.Id);
+            }
+
+            if (blocked.Count > 0)
+            {
+                state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             startupTasks = state.UnfinishedTasks.Where(task => !blocked.Contains(task.Id)).ToArray();
             await _uiDispatcher.InvokeAsync(() =>
             {

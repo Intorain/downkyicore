@@ -32,13 +32,11 @@ public sealed class DownloadFileIntegrityTests : IDisposable
         Assert.False(DownloadFileIntegrity.IsUsable(file));
     }
 
-    [Theory]
-    [InlineData(".aria2")]
-    [InlineData(".download")]
-    public void IsUsableRejectsUnfinishedSidecars(string sidecarExtension)
+    [Fact]
+    public void IsUsableRejectsBuiltinCheckpointSidecar()
     {
         var file = CreateFile("video.mp4", new byte[] { 0, 1, 2, 3 });
-        File.WriteAllText($"{file}{sidecarExtension}", "unfinished");
+        File.WriteAllText($"{file}.download", "unfinished");
 
         Assert.False(DownloadFileIntegrity.IsUsable(file));
     }

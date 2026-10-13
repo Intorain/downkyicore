@@ -207,34 +207,10 @@
       "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
     },
     {
-      "identity": "CA1501|src/DownKyi.Desktop/Views/Settings/AriaDownloaderSettingsView.axaml.cs|AriaDownloaderSettingsView",
-      "rule": "CA1501",
-      "path": "src/DownKyi.Desktop/Views/Settings/AriaDownloaderSettingsView.axaml.cs",
-      "symbol": "AriaDownloaderSettingsView",
-      "observedMetric": 11,
-      "groupId": "ca1501-framework-9be27076938f8461",
-      "groupTitle": "Avalonia framework inheritance rooted at UserControl",
-      "classification": "framework-inheritance",
-      "reviewStatus": "reviewed-reasonable",
-      "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
-    },
-    {
       "identity": "CA1501|src/DownKyi.Desktop/Views/Settings/BuiltinDownloaderSettingsView.axaml.cs|BuiltinDownloaderSettingsView",
       "rule": "CA1501",
       "path": "src/DownKyi.Desktop/Views/Settings/BuiltinDownloaderSettingsView.axaml.cs",
       "symbol": "BuiltinDownloaderSettingsView",
-      "observedMetric": 11,
-      "groupId": "ca1501-framework-9be27076938f8461",
-      "groupTitle": "Avalonia framework inheritance rooted at UserControl",
-      "classification": "framework-inheritance",
-      "reviewStatus": "reviewed-reasonable",
-      "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
-    },
-    {
-      "identity": "CA1501|src/DownKyi.Desktop/Views/Settings/CustomAriaSettingsView.axaml.cs|CustomAriaSettingsView",
-      "rule": "CA1501",
-      "path": "src/DownKyi.Desktop/Views/Settings/CustomAriaSettingsView.axaml.cs",
-      "symbol": "CustomAriaSettingsView",
       "observedMetric": 11,
       "groupId": "ca1501-framework-9be27076938f8461",
       "groupTitle": "Avalonia framework inheritance rooted at UserControl",
@@ -661,18 +637,6 @@
       "classification": "settings-aggregation",
       "reviewStatus": "reviewed-reasonable",
       "rationale": "The metric aggregates a partial settings owner across settings categories."
-    },
-    {
-      "identity": "CA1506|src/DownKyi.Desktop/Services/Download/Aria2TransferBackend.cs|TransferAsync",
-      "rule": "CA1506",
-      "path": "src/DownKyi.Desktop/Services/Download/Aria2TransferBackend.cs",
-      "symbol": "TransferAsync",
-      "observedMetric": 43,
-      "groupId": "ca1506-reviewed-90316d90e4ecf3c2",
-      "groupTitle": "operation-owner: src/DownKyi.Desktop/Services/Download/Aria2TransferBackend.cs::TransferAsync",
-      "classification": "operation-owner",
-      "reviewStatus": "reviewed-reasonable",
-      "rationale": "The method owns one Aria transfer attempt, including pause, progress, and result translation."
     },
     {
       "identity": "CA1506|src/DownKyi.Desktop/Services/Download/BuiltinTransferBackend.cs|TransferAsync",

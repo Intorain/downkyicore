@@ -1760,9 +1760,7 @@ public sealed class DownloadPipelineStageTests
             return Task.CompletedTask;
         }
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken)
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(DownloadTransferResult.Succeeded());

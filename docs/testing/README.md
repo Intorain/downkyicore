@@ -5,7 +5,7 @@
 - `DownKyi.Domain.Tests`：state transitions 與 value objects。
 - `DownKyi.Application.Tests`：commands、queries、coordinators 與 ports。
 - `DownKyi.Infrastructure.Tests`：SQLite、migration、write-behind 與 adapters。
-- `DownKyi.Core.Tests`：Bilibili contracts、HTTP、settings、logging、FFmpeg、aria2。
+- `DownKyi.Core.Tests`：Bilibili contracts、HTTP、settings、logging 與 FFmpeg。
 - `DownKyi.Desktop.Tests`：real Host、XAML 與 typed navigation smoke tests。
 - `DownKyi.Tests`：executable compatibility 與 end-to-end service tests。
 - `DownKyi.Architecture.Tests`：重要 dependency direction 與 repository wiring。
@@ -78,7 +78,7 @@ dispatcher 與 per-assembly application isolation。Assembly fixture 在全部�
 上游提供相容版本後可移除此適配層，仍須驗證 constructor、async test 與 dispose
 都在 UI thread，以及原有 UI assertions 與 TRX 非空驗證。
 
-測試不得讀取使用者真實 settings、cookie、下載 DB 或 aria2 session。網路
+測試不得讀取使用者真實 settings、cookie 或下載 DB。網路
 contract tests 使用 fixture 或 loopback server。OS-specific behavioral tests
 必須位於對應 platform project；Architecture tests 不模擬另一個作業系統。
 

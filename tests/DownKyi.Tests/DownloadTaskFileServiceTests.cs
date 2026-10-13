@@ -1,5 +1,4 @@
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Aria2cNet.Client;
 using DownKyi.Domain.Downloads;
 using DownKyi.Infrastructure.Downloads;
 using DownKyi.Infrastructure.Time;
@@ -8,7 +7,6 @@ using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
-using Newtonsoft.Json.Linq;
 
 namespace DownKyi.Tests;
 
@@ -16,62 +14,6 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
 {
     private readonly string _directory = Path.Combine(
         Path.GetTempPath(), "downkyi-file-lifecycle-tests", Guid.NewGuid().ToString("N"));
-
-    [Fact]
-    public async Task CancelActiveDownloadTreatsMissingTaskAndResultAsAlreadyRemoved()
-    {
-        var methods = new List<string>();
-        var client = new AriaClient(
-            "http://localhost",
-            6800,
-            string.Empty,
-            (_, parameters, _) =>
-            {
-                methods.Add(JObject.Parse(parameters)["method"]!.Value<string>()!);
-                return Task.FromResult<string?>(
-                    """{"jsonrpc":"2.0","id":"test","error":{"code":1,"message":"GID stale-gid is not found"}}""");
-            });
-        var registry = new AriaRuntimeClientRegistry();
-        using var registration = registry.Activate(client);
-        var service = new DownloadTaskFileService(
-            registry,
-            NullLogger<DownloadTaskFileService>.Instance);
-        var item = CreateDownloadingItem("stale-gid");
-
-        await service.CancelActiveDownloadAsync(item);
-
-        Assert.Equal(
-            ["aria2.remove", "aria2.removeDownloadResult"],
-            methods);
-    }
-
-    [Fact]
-    public async Task CancelActiveDownloadPropagatesUnexpectedRpcRejection()
-    {
-        var methods = new List<string>();
-        var client = new AriaClient(
-            "http://localhost",
-            6800,
-            string.Empty,
-            (_, parameters, _) =>
-            {
-                methods.Add(JObject.Parse(parameters)["method"]!.Value<string>()!);
-                return Task.FromResult<string?>(
-                    """{"jsonrpc":"2.0","id":"test","error":{"code":1,"message":"Permission denied"}}""");
-            });
-        var registry = new AriaRuntimeClientRegistry();
-        using var registration = registry.Activate(client);
-        var service = new DownloadTaskFileService(
-            registry,
-            NullLogger<DownloadTaskFileService>.Instance);
-        var item = CreateDownloadingItem("rejected-gid");
-
-        var exception = await Assert.ThrowsAsync<AriaRpcException>(
-            () => service.CancelActiveDownloadAsync(item));
-
-        Assert.False(exception.IsNotFound);
-        Assert.Equal(["aria2.remove"], methods);
-    }
 
     [Theory]
     [InlineData(false)]
@@ -130,7 +72,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
                     """;
                 await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
             }
-            var service = new DownloadTaskFileService(new AriaRuntimeClientRegistry(),
+            var service = new DownloadTaskFileService(
                 NullLogger<DownloadTaskFileService>.Instance, staging, writer);
 
             await Assert.ThrowsAnyAsync<Exception>(() => service.PublishAsync(
@@ -168,7 +110,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
         using var reopenedTasks = new DownloadTaskApplicationService(reopenedStore, DownloadHistoryService.CreateForSharedStore(reopenedStore), new SystemClock());
         var reopenedWriter = new DownloadTaskStateWriter(reopenedTasks);
         var reopenedStaging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
-        var reopenedService = new DownloadTaskFileService(new AriaRuntimeClientRegistry(),
+        var reopenedService = new DownloadTaskFileService(
             NullLogger<DownloadTaskFileService>.Instance, reopenedStaging, reopenedWriter);
         var restored = Assert.IsType<DownloadTask>(
             await reopenedTasks.FindAsync(taskId, TestContext.Current.CancellationToken));
@@ -218,7 +160,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
         Directory.CreateDirectory(stagedDirectory);
         var staged = Path.Combine(stagedDirectory, "partial.m4s");
         var published = Path.Combine(_directory, "output.mp4");
-        var foreignSidecar = published + ".aria2";
+        var foreignSidecar = published + ".legacy-partial";
         await File.WriteAllBytesAsync(staged, [1], TestContext.Current.CancellationToken);
         await File.WriteAllBytesAsync(published, [91, 0, 255, 17], TestContext.Current.CancellationToken);
         await File.WriteAllBytesAsync(foreignSidecar, [4], TestContext.Current.CancellationToken);
@@ -234,7 +176,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
             }
         };
         var service = new DownloadTaskFileService(
-            new AriaRuntimeClientRegistry(), NullLogger<DownloadTaskFileService>.Instance, staging);
+            NullLogger<DownloadTaskFileService>.Instance, staging);
 
         var task = CreateTask(taskId, downloadBase.FilePath, stagingToken);
         var result = await service.DeleteGeneratedFilesAsync(item, task,
@@ -269,7 +211,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
             DownloadBase = downloadBase,
             Downloading = new Downloading { Id = taskId.Value, DownloadBase = downloadBase }
         };
-        var service = new DownloadTaskFileService(new AriaRuntimeClientRegistry(),
+        var service = new DownloadTaskFileService(
             NullLogger<DownloadTaskFileService>.Instance,
             new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance));
 
@@ -294,21 +236,6 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
             new DownloadPlan(DownloadContentSelection.None, [], 0, nfoRequest: null),
             new DownloadOutput(outputBase, null, stagingToken: stagingToken),
             DateTimeOffset.UnixEpoch);
-
-    private static DownloadingItem CreateDownloadingItem(string gid)
-    {
-        var downloadBase = new DownloadBase { Id = gid, FilePath = gid };
-        return new DownloadingItem
-        {
-            DownloadBase = downloadBase,
-            Downloading = new Downloading
-            {
-                Id = gid,
-                DownloadBase = downloadBase,
-                Gid = gid
-            }
-        };
-    }
 
     public void Dispose()
     {

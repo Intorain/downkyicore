@@ -1,11 +1,9 @@
 using System;
 using System.IO;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Aria2cNet.Client;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.ViewModels.DownloadManager;
@@ -15,75 +13,18 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadTaskFileService
 {
-    private readonly AriaRuntimeClientRegistry _ariaClientRegistry;
     private readonly ILogger<DownloadTaskFileService> _logger;
     private readonly DownloadTaskStaging? _staging;
     private readonly DownloadTaskStateWriter? _stateWriter;
 
     public DownloadTaskFileService(
-        AriaRuntimeClientRegistry ariaClientRegistry,
         ILogger<DownloadTaskFileService> logger,
         DownloadTaskStaging? staging = null,
         DownloadTaskStateWriter? stateWriter = null)
     {
-        _ariaClientRegistry = ariaClientRegistry
-            ?? throw new ArgumentNullException(nameof(ariaClientRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _staging = staging;
         _stateWriter = stateWriter;
-    }
-
-    public async Task CancelActiveDownloadAsync(DownloadingItem downloading)
-    {
-        ArgumentNullException.ThrowIfNull(downloading);
-
-        var gid = downloading.Downloading.Gid;
-        if (string.IsNullOrWhiteSpace(gid))
-        {
-            return;
-        }
-
-        var ariaClient = _ariaClientRegistry.Current;
-        if (ariaClient == null)
-        {
-            _logger.LogDebugMessage("Cancel aria downloader skipped because no aria2 runtime is active.");
-            return;
-        }
-
-        try
-        {
-            try
-            {
-                await ariaClient.RemoveAsync(gid)
-                    .WaitAsync(TimeSpan.FromSeconds(3))
-                    .ConfigureAwait(false);
-            }
-            catch (AriaRpcException exception) when (exception.IsNotFound)
-            {
-                _logger.LogDebugMessage(
-                    "Cancel aria downloader found no active task for the persisted GID.");
-            }
-
-            try
-            {
-                await ariaClient.RemoveDownloadResultAsync(gid)
-                    .WaitAsync(TimeSpan.FromSeconds(3))
-                    .ConfigureAwait(false);
-            }
-            catch (AriaRpcException exception) when (exception.IsNotFound)
-            {
-                _logger.LogDebugMessage(
-                    "Cancel aria downloader found no retained result for the persisted GID.");
-            }
-        }
-        catch (TimeoutException e)
-        {
-            _logger.LogDebugMessage($"Cancel aria downloader failed: {e.Message}");
-        }
-        catch (HttpRequestException e)
-        {
-            _logger.LogDebugMessage($"Cancel aria downloader failed: {e.Message}");
-        }
     }
 
     public Task<DownloadFileDeletionResult> DeleteGeneratedFilesAsync(

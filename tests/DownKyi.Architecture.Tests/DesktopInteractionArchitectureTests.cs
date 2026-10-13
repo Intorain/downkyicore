@@ -176,7 +176,6 @@ public sealed class DesktopInteractionArchitectureTests
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadRuntimeFactory.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadOrchestrator.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadPipeline.cs"),
-                ReadSource("src", "DownKyi.Desktop", "Services", "Download", "Aria2TransferBackend.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "BuiltinTransferBackend.cs")
             });
 

@@ -12,23 +12,11 @@ namespace DownKyi.Services.Settings;
 
 internal sealed record NetworkSettingsOptions(
     ImmutableArray<int> MaxCurrentDownloads,
-    ImmutableArray<int> Splits,
-    ImmutableArray<string> AriaLogLevels,
-    ImmutableArray<int> AriaMaxConcurrentDownloads,
-    ImmutableArray<int> AriaSplits,
-    ImmutableArray<int> AriaMaxConnectionsPerServer,
-    ImmutableArray<int> AriaMinSplitSizes,
-    ImmutableArray<string> AriaFileAllocations)
+    ImmutableArray<int> Splits)
 {
     public static NetworkSettingsOptions Default { get; } = new(
         Enumerable.Range(1, 10).ToImmutableArray(),
-        Enumerable.Range(1, 16).ToImmutableArray(),
-        ["DEBUG", "INFO", "NOTICE", "WARN", "ERROR"],
-        Enumerable.Range(1, 10).ToImmutableArray(),
-        Enumerable.Range(1, 16).ToImmutableArray(),
-        Enumerable.Range(1, 16).ToImmutableArray(),
-        [1, 2, 4, 8, 10, 16, 32, 64],
-        ["NONE", "PREALLOC", "FALLOC"]);
+        Enumerable.Range(1, 32).ToImmutableArray());
 }
 
 internal interface INetworkSettingsCoordinator

@@ -43,16 +43,6 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
                 OperationErrorKind.Validation));
         }
 
-        if (task.Phase == DownloadPhase.Queued)
-        {
-            var admission = await CheckNewDownloadAdmissionAsync(cancellationToken)
-                .ConfigureAwait(false);
-            if (!admission.IsSuccess)
-            {
-                return OperationResult.Failure<DownloadTask>(RequireError(admission));
-            }
-        }
-
         var result = await _store.AddAsync(task, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess)
         {
@@ -63,14 +53,12 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
         return OperationResult.Success(task);
     }
 
-    public async Task<OperationResult> CheckNewDownloadAdmissionAsync(
+    public Task<OperationResult> CheckNewDownloadAdmissionAsync(
         CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return await _store.IsLegacyUpgradeAdmissionBlockedAsync(cancellationToken)
-            .ConfigureAwait(false)
-            ? OperationResult.Failure(DownloadAdmissionErrors.LegacyUpgradeBlocked())
-            : OperationResult.Success();
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(OperationResult.Success());
     }
 
     public Task<DownloadTask?> FindAsync(
@@ -86,19 +74,6 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return _store.GetUnfinishedAsync(cancellationToken);
-    }
-
-    public Task<bool> IsLegacyUpgradeAdmissionBlockedAsync(CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return _store.IsLegacyUpgradeAdmissionBlockedAsync(cancellationToken);
-    }
-
-    public Task<OperationResult> ConfirmLegacyRemoteTasksStoppedAsync(
-        CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return _store.ConfirmLegacyRemoteTasksStoppedAsync(cancellationToken);
     }
 
     public Task<OperationResult<DownloadTask>> StartAsync(

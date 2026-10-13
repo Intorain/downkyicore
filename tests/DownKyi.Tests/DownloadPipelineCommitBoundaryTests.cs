@@ -261,7 +261,6 @@ public sealed class DownloadPipelineCommitBoundaryTests
             context.OutputMedia = output;
             context.MediaSucceeded = true;
             var fileService = new DownloadTaskFileService(
-                new AriaRuntimeClientRegistry(),
                 NullLogger<DownloadTaskFileService>.Instance,
                 staging,
                 stateWriter);
@@ -316,7 +315,6 @@ public sealed class DownloadPipelineCommitBoundaryTests
             foreach (var source in new[] { Audio, Video })
             {
                 yield return source;
-                yield return $"{source}.aria2";
                 yield return $"{source}.download";
             }
         }
@@ -325,7 +323,6 @@ public sealed class DownloadPipelineCommitBoundaryTests
         {
             var path = Path.Combine(directory, name);
             File.WriteAllBytes(path, [1, 2, 3]);
-            File.WriteAllBytes($"{path}.aria2", [4]);
             File.WriteAllBytes($"{path}.download", [5]);
             return path;
         }

@@ -28,7 +28,6 @@ namespace DownKyi.Services.Download;
 internal sealed class AddToDownloadService : IAddToDownloadSession
 {
     private readonly DownloadTaskAdmissionService _admission;
-    private readonly LegacyDownloadAdmissionPresenter _admissionPresenter;
     private readonly DownloadDuplicatePolicy _duplicatePolicy;
     private readonly DownloadMovieMetadataBuilder _metadataBuilder;
     private readonly ISettingsStore _settingsStore;
@@ -40,7 +39,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
     public AddToDownloadService(
         PlayStreamType streamType,
         DownloadTaskAdmissionService admission,
-        LegacyDownloadAdmissionPresenter admissionPresenter,
         DownloadDuplicatePolicy duplicatePolicy,
         DownloadMovieMetadataBuilder metadataBuilder,
         ISettingsStore settingsStore,
@@ -51,8 +49,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         ILogger<AddToDownloadService> logger)
     {
         _admission = admission ?? throw new ArgumentNullException(nameof(admission));
-        _admissionPresenter = admissionPresenter
-            ?? throw new ArgumentNullException(nameof(admissionPresenter));
         _duplicatePolicy = duplicatePolicy ?? throw new ArgumentNullException(nameof(duplicatePolicy));
         _metadataBuilder = metadataBuilder ?? throw new ArgumentNullException(nameof(metadataBuilder));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
@@ -71,7 +67,8 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
     }
     public Task<DownloadAdmissionOutcome> EnsureAdmissionAsync(CancellationToken cancellationToken = default)
     {
-        return _admissionPresenter.EnsureAdmissionAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(DownloadAdmissionOutcome.Allowed);
     }
     public Task<PreparedDownload> PrepareAsync(
         VideoInfoView videoInfoView,

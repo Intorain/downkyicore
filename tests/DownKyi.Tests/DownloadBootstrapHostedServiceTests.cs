@@ -76,7 +76,7 @@ public sealed class DownloadBootstrapHostedServiceTests
                 new SystemClock());
             var writer = new DownloadTaskStateWriter(tasks);
             var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
-            var fileService = new DownloadTaskFileService(new AriaRuntimeClientRegistry(),
+            var fileService = new DownloadTaskFileService(
                 NullLogger<DownloadTaskFileService>.Instance, staging, writer);
             using var runtime = new RecordingDownloadRuntime();
             var gateway = new DownloadTaskQueueGateway();
@@ -171,7 +171,7 @@ public sealed class DownloadBootstrapHostedServiceTests
                 new SystemClock());
             var writer = new DownloadTaskStateWriter(reopenedTasks);
             var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
-            var fileService = new DownloadTaskFileService(new AriaRuntimeClientRegistry(),
+            var fileService = new DownloadTaskFileService(
                 NullLogger<DownloadTaskFileService>.Instance, staging, writer);
             using var runtime = new RecordingDownloadRuntime();
             using var bootstrap = new DownloadBootstrapHostedService(
@@ -332,6 +332,76 @@ public sealed class DownloadBootstrapHostedServiceTests
             var recovered = Assert.IsType<DownloadTask>(
                 await tasks.FindAsync(interrupted.Id, TestContext.Current.CancellationToken));
             Assert.Equal(DownloadPhase.Queued, recovered.Phase);
+            await service.StopAsync(TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            ClearOwnedSqlitePool(databasePath);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task StartupFailsLegacyBackendTaskWithoutTouchingItsPartialFile()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "downkyi-legacy-backend-startup",
+            Guid.NewGuid().ToString("N"));
+        var databasePath = Path.Combine(directory, "download.db");
+        var partialFile = Path.Combine(directory, "legacy.partial");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllBytesAsync(
+            partialFile,
+            [1, 2, 3, 4],
+            TestContext.Current.CancellationToken);
+        try
+        {
+            using var store = new SqliteDownloadTaskStore(
+                new SqliteDownloadTaskStoreOptions(databasePath),
+                new SystemClock());
+            var historyService = DownloadHistoryService.CreateForSharedStore(store);
+            using var tasks = new DownloadTaskApplicationService(
+                store,
+                historyService,
+                new SystemClock());
+            using var projections = new DownloadTaskProjectionStore(
+                tasks,
+                historyService,
+                new SystemClock());
+            var task = CreateTask("legacy-backend", Path.Combine(directory, "output"));
+            Assert.True((await tasks.AddAsync(
+                task,
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.StartAsync(
+                task.Id,
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.SetBackendIdentityAsync(
+                task.Id,
+                "legacy-execution-id",
+                TestContext.Current.CancellationToken)).IsSuccess);
+            using var runtime = new RecordingDownloadRuntime();
+            using var service = new DownloadBootstrapHostedService(
+                new DownloadListState(),
+                projections,
+                new DownloadTaskStateWriter(tasks),
+                new RecordingRuntimeFactory(runtime),
+                new DownloadTaskQueueGateway(),
+                new ImmediateUiDispatcher(),
+                NullLogger<DownloadBootstrapHostedService>.Instance);
+
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+            var failed = Assert.IsType<DownloadTask>(await tasks.FindAsync(
+                task.Id,
+                TestContext.Current.CancellationToken));
+            Assert.Equal(DownloadPhase.Failed, failed.Phase);
+            Assert.Equal("download.transfer.legacy-backend-removed", failed.Failure?.Code);
+            Assert.Null(failed.Transfer.BackendIdentity);
+            Assert.Empty(runtime.Enqueued);
+            Assert.Equal([1, 2, 3, 4], await File.ReadAllBytesAsync(
+                partialFile,
+                TestContext.Current.CancellationToken));
             await service.StopAsync(TestContext.Current.CancellationToken);
         }
         finally

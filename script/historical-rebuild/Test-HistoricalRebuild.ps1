@@ -30,7 +30,7 @@ foreach ($version in $versions) {
 }
 Assert-True ($commitCount -eq 25) 'Not all historical tags were validated.'
 
-$runtimeManifest = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'script/assets/external-assets.json') -Raw | ConvertFrom-Json
+$runtimeManifest = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'script/historical-rebuild/runtime-assets.json') -Raw | ConvertFrom-Json
 foreach ($rid in $platforms.Rid) {
     Assert-True ($null -ne $runtimeManifest.aria2.assets.$rid) "Missing pinned aria2 asset for $rid."
     Assert-True ($null -ne $runtimeManifest.ffmpeg.assets.$rid) "Missing pinned FFmpeg asset for $rid."

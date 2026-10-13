@@ -8,7 +8,6 @@ internal class Downloading
     public string Id { get; set; } = null!;
 
     // Aria相关
-    public string? Gid { get; set; }
 
     // 下载的文件
     public IDictionary<string, string> DownloadFiles { get; internal set; } = new Dictionary<string, string>();

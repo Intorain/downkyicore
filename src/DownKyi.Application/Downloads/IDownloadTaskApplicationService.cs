@@ -46,11 +46,6 @@ public interface IDownloadTaskApplicationService
                 || task.Plan.ActionClaims.Overlaps(requestedClaims)));
     }
 
-    Task<bool> IsLegacyUpgradeAdmissionBlockedAsync(CancellationToken cancellationToken);
-
-    Task<OperationResult> ConfirmLegacyRemoteTasksStoppedAsync(
-        CancellationToken cancellationToken);
-
     Task<OperationResult<DownloadTask>> StartAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken);

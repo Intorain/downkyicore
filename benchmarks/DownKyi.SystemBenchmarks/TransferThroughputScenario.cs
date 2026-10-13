@@ -81,7 +81,7 @@ internal static class TransferThroughputScenario
         using var downloader = new BuiltinRangeDownloader(
             handler,
             source,
-            new AriaTaskHeaders([], "DownKyi-SystemBenchmark", CarriesCredentials: false),
+            new DownloadRequestHeaders([], "DownKyi-SystemBenchmark", CarriesCredentials: false),
             parallelCount: 8,
             static (_, _) => { },
             NullLogger.Instance,

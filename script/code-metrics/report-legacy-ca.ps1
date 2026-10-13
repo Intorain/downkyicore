@@ -198,7 +198,6 @@ function Get-DefaultMetadata {
         $known = @{
             'DownKyi.Core/FFmpeg/FfmpegConcatRuntime.cs|ConcatAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one complete FFmpeg concat operation and its validation and cleanup invariants.')
             'DownKyi.Core/Settings/SettingsManager.About.cs|SettingsManager' = @('settings-aggregation', 'reviewed-reasonable', 'The metric aggregates a partial settings owner across settings categories.')
-            'src/DownKyi.Desktop/Services/Download/Aria2TransferBackend.cs|TransferAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one Aria transfer attempt, including pause, progress, and result translation.')
             'src/DownKyi.Desktop/Services/Download/BuiltinTransferBackend.cs|TransferAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one built-in transfer attempt and its lifecycle invariants.')
             'src/DownKyi.Desktop/Services/Download/DownloadRuntimeFactory.cs|Create' = @('composition-root', 'reviewed-reasonable', 'The coupling belongs to the explicit download runtime composition root.')
         }

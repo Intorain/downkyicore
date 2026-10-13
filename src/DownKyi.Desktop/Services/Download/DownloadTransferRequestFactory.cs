@@ -23,10 +23,8 @@ internal static class DownloadTransferRequestFactory
         ArgumentNullException.ThrowIfNull(projections);
         ArgumentNullException.ThrowIfNull(stateWriter);
         ArgumentNullException.ThrowIfNull(ensureActive);
-        var snapshot = projections.GetRequiredSnapshot(taskId);
         return new DownloadTransferRequest(
             taskId,
-            snapshot.Transfer.BackendIdentity,
             urls,
             path,
             localFileName,
@@ -37,10 +35,6 @@ internal static class DownloadTransferRequestFactory
             token => projections.WaitForPauseRequestAsync(taskId, token),
             progress => projections.PublishLiveProgress(taskId, progress),
             (progress, token) => stateWriter.UpdateProgressAsync(taskId, progress, token),
-            (backendIdentity, token) => stateWriter.SetBackendIdentityAsync(
-                taskId,
-                backendIdentity,
-                token),
             cancellationToken,
             stagingDirectory);
     }
