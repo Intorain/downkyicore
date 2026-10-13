@@ -45,6 +45,7 @@ public sealed class StartupDialogOrderingTests
             clipboard,
             new SearchService(settings.Store, navigation),
             new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(),
             CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
@@ -95,6 +96,7 @@ public sealed class StartupDialogOrderingTests
             clipboard,
             new SearchService(settings.Store, navigation),
             new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(),
             CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
@@ -141,6 +143,7 @@ public sealed class StartupDialogOrderingTests
             clipboard,
             new SearchService(settings.Store, navigation),
             new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(DownloadRuntimeStartupOutcome.Faulted(failure)),
             CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
@@ -198,6 +201,7 @@ public sealed class StartupDialogOrderingTests
             clipboard,
             new SearchService(settings.Store, navigation),
             new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(),
             availability,
             CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
@@ -228,6 +232,44 @@ public sealed class StartupDialogOrderingTests
                 Assert.Equal(StartupDiagnosticSource.DownloadBootstrap, download.Source);
                 Assert.Same(downloadFailure, download.Failure);
             });
+    }
+
+    [Fact]
+    public async Task StartupWithoutLegacyDataSkipsMigrationDialog()
+    {
+        using var settings = new TestSettingsStore();
+        settings.Store.Update(current => current with
+        {
+            About = current.About with
+            {
+                AutoUpdateWhenLaunch = AllowStatus.No
+            }
+        });
+        var navigation = new NavigationStub();
+        var dialogs = new OrderedDialogService();
+        using var handler = new ReleaseHandler();
+        using var httpClient = new HttpClient(handler, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://api.github.test/")
+        };
+        using var clipboard = new ClipboardMonitorStub();
+        using var viewModel = new MainWindowViewModel(
+            navigation,
+            new NotificationStub(),
+            dialogs,
+            settings.Store,
+            clipboard,
+            new SearchService(settings.Store, navigation),
+            new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(required: false),
+            new RuntimeAvailabilityStub(),
+            CreateRecoveryPresenter(dialogs),
+            NullLogger<MainWindowViewModel>.Instance);
+
+        await viewModel.RunStartupDialogsAsync().ConfigureAwait(true);
+
+        Assert.Empty(dialogs.Requests);
+        Assert.Equal(0, handler.RequestCount);
     }
 
     private static DownloadStoreRecoveryPresenter CreateRecoveryPresenter(
@@ -369,6 +411,17 @@ public sealed class StartupDialogOrderingTests
             WaitCallCount++;
             return Task.FromResult(_outcome);
         }
+    }
+
+    private sealed class LegacyUpgradeCoordinatorStub(bool required = true)
+        : ILegacyUpgradeCoordinator
+    {
+        public bool IsUpgradeRequired() => required;
+
+        public Task<LegacyUpgradeResult> UpgradeAsync(
+            IProgress<LegacyUpgradeProgress> progress,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 
     private sealed class DownloadStoreRecoveryStub : IDownloadStoreRecovery

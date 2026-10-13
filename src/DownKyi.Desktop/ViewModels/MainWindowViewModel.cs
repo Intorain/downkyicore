@@ -31,6 +31,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IClipboardMonitor _clipboardMonitor;
     private readonly SearchService _searchService;
     private readonly VersionCheckerService _versionChecker;
+    private readonly ILegacyUpgradeCoordinator _legacyUpgradeCoordinator;
     private readonly IDownloadRuntimeAvailability _downloadRuntimeAvailability;
     private readonly DownloadStoreRecoveryPresenter _downloadStoreRecoveryPresenter;
     private readonly ILogger<MainWindowViewModel> _logger;
@@ -137,6 +138,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         IClipboardMonitor clipboardMonitor,
         SearchService searchService,
         VersionCheckerService versionChecker,
+        ILegacyUpgradeCoordinator legacyUpgradeCoordinator,
         IDownloadRuntimeAvailability downloadRuntimeAvailability,
         DownloadStoreRecoveryPresenter downloadStoreRecoveryPresenter,
         ILogger<MainWindowViewModel> logger)
@@ -148,6 +150,8 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         _clipboardMonitor = clipboardMonitor ?? throw new ArgumentNullException(nameof(clipboardMonitor));
         _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
         _versionChecker = versionChecker ?? throw new ArgumentNullException(nameof(versionChecker));
+        _legacyUpgradeCoordinator = legacyUpgradeCoordinator
+            ?? throw new ArgumentNullException(nameof(legacyUpgradeCoordinator));
         _downloadRuntimeAvailability = downloadRuntimeAvailability
             ?? throw new ArgumentNullException(nameof(downloadRuntimeAvailability));
         _downloadStoreRecoveryPresenter = downloadStoreRecoveryPresenter
@@ -171,12 +175,12 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
             {
                 return;
             }
-            StartStartupDialogs();
             _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
             _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
             _navigationService.Navigate(new AppNavigationRequest(
                 AppRoute.Index,
                 Parameter: "start"));
+            Dispatcher.UIThread.Post(StartStartupDialogs, DispatcherPriority.Background);
         });
     }
 
@@ -332,6 +336,11 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task<StartupDiagnostic?> CollectLegacyUpgradeDiagnosticAsync()
     {
+        if (!_legacyUpgradeCoordinator.IsUpgradeRequired())
+        {
+            return null;
+        }
+
         try
         {
             var result = await _dialogService

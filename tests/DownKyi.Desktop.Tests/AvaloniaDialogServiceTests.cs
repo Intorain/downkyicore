@@ -58,6 +58,8 @@ public sealed class AvaloniaDialogServiceTests
     private sealed class FailedMigrationCoordinator(Exception failure)
         : ILegacyUpgradeCoordinator
     {
+        public bool IsUpgradeRequired() => true;
+
         public Task<LegacyUpgradeResult> UpgradeAsync(
             IProgress<LegacyUpgradeProgress> progress,
             CancellationToken cancellationToken)

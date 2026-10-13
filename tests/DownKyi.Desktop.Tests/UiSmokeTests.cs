@@ -32,6 +32,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace DownKyi.Desktop.Tests;
 
@@ -843,6 +844,16 @@ public sealed class UiSmokeTests
         await host.StopAsync(TestContext.Current.CancellationToken);
 
         Assert.True(cancellation.ShutdownToken.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void ProductHostStopsIndependentServicesConcurrently()
+    {
+        using var host = DownKyiHost.Create();
+
+        var options = host.Services.GetRequiredService<IOptions<HostOptions>>().Value;
+
+        Assert.True(options.ServicesStopConcurrently);
     }
 
     [AvaloniaFact]

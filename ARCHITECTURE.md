@@ -37,7 +37,7 @@ Prism、DryIoc、EventAggregator、RegionManager、ContainerLocator、第二個 
 
 ## Composition 與外部協定
 
-Desktop composition root 只選擇模組；Navigation／Dialog／Download 的實作、生命週期和多介面 alias 由各自 local composition 接合。`DownKyiHost` 驗證必要依賴與 lifetime，但不能取代產品組裝與行為測試。
+Desktop composition root 只選擇模組；Navigation／Dialog／Download 的實作、生命週期和多介面 alias 由各自 local composition 接合。`DownKyiHost` 預設仍驗證必要依賴與 lifetime；Release 產品啟動只解析當下路徑所需服務，完整 composition 由測試驗證。這些驗證仍不能取代產品組裝與行為測試。
 
 Bilibili endpoint adapters 留在 `DownKyi.Core/BiliApi` 以維持 DTO 與協定相容。所有 production 呼叫必須使用注入的 async port：普通 API 經 `IBilibiliApiClient`；QR 登入由同一個隔離 `IBilibiliLoginSession` 貫穿 generate、poll 與 trusted callback，以保留 response cookies。Host 是 client、session factory、cookie、buvid 與 network settings 的唯一組合點；不得恢復 static client、global `Configure()` 或同步 HTTP compatibility path。
 
