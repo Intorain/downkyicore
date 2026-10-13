@@ -3,10 +3,12 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
 using DownKyi.Core.Settings;
 using DownKyi.Core.Settings.Models;
+using DownKyi.Platform;
 using DownKyi.ViewModels;
 using Microsoft.Extensions.Logging;
 
@@ -16,24 +18,40 @@ internal partial class MainWindow : Window
 {
     private readonly Lazy<MainWindowViewModel> _viewModel;
     private readonly IApplicationLifecycle _applicationLifecycle;
+    private readonly IClipboardMonitor _clipboardMonitor;
     private readonly ILogger<MainWindow> _logger;
     private readonly ISettingsStore _settingsStore;
     private WindowSettings _windowSettings;
     private bool _closeConfirmed;
     private bool _closeInProgress;
+    private bool _startupWindowCloaked;
+    private bool _startupClipboardSubscribed;
+    private AppNavigationRequest? _pendingStartupNavigation;
+    private string? _pendingStartupInput;
+    private bool _pendingStartupInputFromClipboard;
+
+    internal StartupIndexViewModel StartupIndex { get; }
 
     public MainWindow(
         Lazy<MainWindowViewModel> viewModel,
         ISettingsStore settingsStore,
         IApplicationLifecycle applicationLifecycle,
+        IClipboardMonitor clipboardMonitor,
         ILogger<MainWindow> logger)
     {
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _applicationLifecycle = applicationLifecycle
             ?? throw new ArgumentNullException(nameof(applicationLifecycle));
+        _clipboardMonitor = clipboardMonitor ?? throw new ArgumentNullException(nameof(clipboardMonitor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        StartupIndex = new StartupIndexViewModel(
+            _settingsStore.Current.User,
+            QueueStartupNavigation,
+            QueueStartupSearch);
         InitializeComponent();
+        _startupWindowCloaked = !Design.IsDesignMode
+            && WindowsWindowCloak.TrySetCloaked(this, cloaked: true);
         var window = _settingsStore.Current.Window;
         _windowSettings = new WindowSettings
         {
@@ -43,6 +61,7 @@ internal partial class MainWindow : Window
             Y = window.Y
         };
         ApplyWindowSettings();
+        StartStartupClipboardMonitoring();
     }
 
     private void ApplyWindowSettings()
@@ -55,7 +74,9 @@ internal partial class MainWindow : Window
         }
         else
         {
-            Position = new PixelPoint((int)_windowSettings.X, (int)_windowSettings.Y);
+            Position = new PixelPoint(
+                (int)_windowSettings.X,
+                (int)_windowSettings.Y);
         }
     }
 
@@ -65,7 +86,124 @@ internal partial class MainWindow : Window
         base.OnOpened(e);
         if (!Design.IsDesignMode)
         {
-            Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background);
+            RequestAnimationFrame(WaitForStartupSurfaceFrame);
+        }
+    }
+
+    private void WaitForStartupSurfaceFrame(TimeSpan _)
+    {
+        if (_closeInProgress || _closeConfirmed)
+        {
+            return;
+        }
+
+        RequestAnimationFrame(RevealStartupSurface);
+    }
+
+    private void RevealStartupSurface(TimeSpan _)
+    {
+        if (_closeInProgress || _closeConfirmed)
+        {
+            return;
+        }
+
+        Opacity = 1;
+        RequestAnimationFrame(PresentStartupSurface);
+    }
+
+    private void PresentStartupSurface(TimeSpan _)
+    {
+        if (_closeInProgress || _closeConfirmed)
+        {
+            return;
+        }
+
+        if (_startupWindowCloaked)
+        {
+            WindowsWindowCloak.TrySetCloaked(this, cloaked: false);
+            _startupWindowCloaked = false;
+        }
+
+        RequestAnimationFrame(ScheduleContentActivation);
+    }
+
+    private void ScheduleContentActivation(TimeSpan _)
+    {
+        if (_closeInProgress || _closeConfirmed)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background);
+    }
+
+    private void QueueStartupNavigation(AppNavigationRequest request)
+    {
+        _pendingStartupNavigation = request ?? throw new ArgumentNullException(nameof(request));
+        _pendingStartupInput = null;
+        _pendingStartupInputFromClipboard = false;
+    }
+
+    private void QueueStartupSearch(string input)
+    {
+        QueueStartupSearch(input, fromClipboard: false);
+    }
+
+    private void QueueStartupSearch(string input, bool fromClipboard)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        _pendingStartupNavigation = null;
+        _pendingStartupInput = input;
+        _pendingStartupInputFromClipboard = fromClipboard;
+    }
+
+    private void StartStartupClipboardMonitoring()
+    {
+        _clipboardMonitor.Changed += StartupClipboardMonitorOnChanged;
+        _startupClipboardSubscribed = true;
+    }
+
+    private void StopStartupClipboardMonitoring()
+    {
+        if (!_startupClipboardSubscribed)
+        {
+            return;
+        }
+
+        _clipboardMonitor.Changed -= StartupClipboardMonitorOnChanged;
+        _startupClipboardSubscribed = false;
+    }
+
+    private void StartupClipboardMonitorOnChanged(object? sender, ClipboardTextChangedEventArgs e)
+    {
+        if (_settingsStore.Current.Basic.IsListenClipboard != AllowStatus.Yes
+            || string.IsNullOrWhiteSpace(e.Text))
+        {
+            return;
+        }
+
+        void QueueClipboardInput()
+        {
+            if (DataContext is MainWindowViewModel || _closeInProgress || _closeConfirmed)
+            {
+                return;
+            }
+
+            StartupIndex.InputText = e.Text;
+            QueueStartupSearch(e.Text, fromClipboard: true);
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            QueueClipboardInput();
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(QueueClipboardInput);
         }
     }
 
@@ -80,7 +218,12 @@ internal partial class MainWindow : Window
         DataContext = viewModel;
         MainContentHost.IsVisible = true;
         StartupSurface.IsVisible = false;
-        viewModel.Activate();
+        viewModel.Activate(
+            _pendingStartupNavigation,
+            _pendingStartupInput,
+            _pendingStartupInputFromClipboard);
+        StopStartupClipboardMonitoring();
+        StartupReadinessIndicator.IsVisible = false;
     }
 
     private void EnsureWindowFitsWorkingArea()
@@ -150,6 +293,13 @@ internal partial class MainWindow : Window
         }
 
         _closeInProgress = true;
+        StopStartupClipboardMonitoring();
+        if (_startupWindowCloaked)
+        {
+            _ = WindowsWindowCloak.TrySetCloaked(this, cloaked: false);
+            _startupWindowCloaked = false;
+        }
+
         SaveWindowSettings();
         Hide();
         ObserveCloseCompletion(CompleteCloseAsync());
