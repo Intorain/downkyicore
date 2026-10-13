@@ -57,7 +57,6 @@ internal sealed class DownloadDuplicatePolicy
             hasMatchingOutputOwner |= matchesOutputOwner;
             var reduced = DownloadActionCoverage.RemoveCoveredActions(
                 item,
-                requestedItem,
                 remainingContent,
                 matchesOutputOwner,
                 requireUsableArtifacts: false);
@@ -93,7 +92,6 @@ internal sealed class DownloadDuplicatePolicy
             hasMatchingOutputOwner |= matchesOutputOwner;
             var reduced = DownloadActionCoverage.RemoveCoveredActions(
                 item,
-                requestedItem,
                 remainingContent,
                 matchesOutputOwner,
                 requireUsableArtifacts: true);

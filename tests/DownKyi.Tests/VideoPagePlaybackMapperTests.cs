@@ -358,6 +358,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
         VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
         Assert.Equal(PlaybackQualityMatchKind.Lower, page.VideoQualityMatch!.Kind);
         page.VideoQuality!.SelectedVideoCodec = "H.265/HEVC";
+        Assert.True(page.VideoQuality.HasManualVideoCodecSelection);
 
         VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
             supplemented,
@@ -367,6 +368,136 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
         Assert.Equal(80, page.VideoQuality!.Quality);
         Assert.Equal("H.265/HEVC", page.VideoQuality.SelectedVideoCodec);
         Assert.Equal(PlaybackQualityMatchKind.Exact, page.VideoQualityMatch!.Kind);
+    }
+
+    [Fact]
+    public void SupplementationReappliesPreferredCodecAfterAutomaticFallback()
+    {
+        var baseline = CreateSettings(videoQuality: 80, isVip: true);
+        var settings = baseline with
+        {
+            Video = baseline.Video with
+            {
+                VideoCodecs = 12
+            }
+        };
+        var initial = CreatePlayUrl(80);
+        initial.Dash.Video =
+        [
+            new PlayUrlDashVideo
+            {
+                Id = 80,
+                CodecId = 7,
+                BaseAddress = "https://media.invalid/video-80-avc"
+            }
+        ];
+        var supplemented = CreatePlayUrl(80);
+        supplemented.Dash.Video =
+        [
+            new PlayUrlDashVideo
+            {
+                Id = 80,
+                CodecId = 7,
+                BaseAddress = "https://media.invalid/video-80-avc"
+            },
+            new PlayUrlDashVideo
+            {
+                Id = 80,
+                CodecId = 12,
+                BaseAddress = "https://media.invalid/video-80-hevc"
+            }
+        ];
+        var page = new VideoPage();
+
+        VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
+        Assert.Equal("H.264/AVC", page.VideoQuality!.SelectedVideoCodec);
+        page.VideoQuality.SelectedVideoCodec = page.VideoQuality.SelectedVideoCodec;
+        Assert.False(page.VideoQuality.HasManualVideoCodecSelection);
+
+        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
+            supplemented,
+            page,
+            settings);
+
+        Assert.Equal("H.265/HEVC", page.VideoQuality!.SelectedVideoCodec);
+    }
+
+    [Fact]
+    public void SupplementationReappliesPreferredAudioAfterAutomaticFallback()
+    {
+        var baseline = CreateSettings(videoQuality: 80, isVip: true);
+        var settings = baseline with
+        {
+            Video = baseline.Video with { AudioQuality = 30280 }
+        };
+        var initial = CreatePlayUrl(80);
+        initial.Dash.Audio =
+        [
+            new PlayUrlDashVideo
+            {
+                Id = 30232,
+                BaseAddress = "https://media.invalid/audio-30232"
+            }
+        ];
+        var supplemented = CreatePlayUrl(80);
+        supplemented.Dash.Audio =
+        [
+            new PlayUrlDashVideo
+            {
+                Id = 30280,
+                BaseAddress = "https://media.invalid/audio-30280"
+            },
+            new PlayUrlDashVideo
+            {
+                Id = 30232,
+                BaseAddress = "https://media.invalid/audio-30232"
+            }
+        ];
+        var page = new VideoPage();
+
+        VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
+        Assert.Equal("中质量", page.AudioQualityFormat);
+        page.AudioQualityFormat = page.AudioQualityFormat;
+        Assert.NotNull(page.AudioQualityMatch);
+
+        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
+            supplemented,
+            page,
+            settings);
+
+        Assert.Equal("高质量", page.AudioQualityFormat);
+    }
+
+    [Fact]
+    public void ReparsePreservesManualAudioQualitySelection()
+    {
+        var settings = CreateSettings(videoQuality: 80, isVip: true);
+        var playUrl = CreatePlayUrl(80);
+        playUrl.Dash.Audio =
+        [
+            new PlayUrlDashVideo
+            {
+                Id = 30280,
+                BaseAddress = "https://media.invalid/audio-30280"
+            },
+            new PlayUrlDashVideo
+            {
+                Id = 30232,
+                BaseAddress = "https://media.invalid/audio-30232"
+            }
+        ];
+        var page = new VideoPage();
+
+        VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
+        page.AudioQualityFormat = "中质量";
+        Assert.Null(page.AudioQualityMatch);
+
+        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
+            playUrl,
+            page,
+            settings);
+
+        Assert.Equal("中质量", page.AudioQualityFormat);
     }
 
     [Fact]
