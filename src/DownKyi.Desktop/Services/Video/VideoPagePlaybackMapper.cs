@@ -80,7 +80,9 @@ internal static class VideoPagePlaybackMapper
 
         ArgumentNullException.ThrowIfNull(page);
         var manualVideo = page.VideoQualityMatch == null ? page.VideoQuality : null;
-        var selectedCodec = page.VideoQuality?.SelectedVideoCodec;
+        var selectedCodec = page.VideoQuality is { HasManualVideoCodecSelection: true } selectedVideo
+            ? selectedVideo.SelectedVideoCodec
+            : null;
         var manualAudio = page.AudioQualityMatch == null ? page.AudioQualityFormat : null;
 
         ApplyPlayUrl(playUrl, page, settings, logger);
@@ -210,7 +212,8 @@ internal static class VideoPagePlaybackMapper
             var videoCodecsName = codeIds.FirstOrDefault(t => t.Id == videoCodecs)?.Name ?? string.Empty;
             if (videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].VideoCodecList.Contains(videoCodecsName))
             {
-                videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].SelectedVideoCodec = videoCodecsName;
+                videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)]
+                    .SetAutomaticVideoCodec(videoCodecsName);
             }
             else
             {
@@ -220,8 +223,8 @@ internal static class VideoPagePlaybackMapper
                     if (videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].VideoCodecList
                         .Contains(codec.Name))
                     {
-                        videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].SelectedVideoCodec =
-                            codec.Name;
+                        videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)]
+                            .SetAutomaticVideoCodec(codec.Name);
                     }
 
                     if (codec.Id == videoCodecs)
@@ -236,7 +239,7 @@ internal static class VideoPagePlaybackMapper
                 // 因此这里再判断并设置一次
                 if (string.IsNullOrEmpty(selectedVideoQuality.SelectedVideoCodec) && selectedVideoQuality.VideoCodecList.Count > 0)
                 {
-                    selectedVideoQuality.SelectedVideoCodec = selectedVideoQuality.VideoCodecList[0];
+                    selectedVideoQuality.SetAutomaticVideoCodec(selectedVideoQuality.VideoCodecList[0]);
                 }
             }
         }

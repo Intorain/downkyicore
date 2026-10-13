@@ -126,8 +126,12 @@ public sealed class DownloadAdmissionArchitectureTests
             "DownloadActionCoverage.RemoveCoveredActions",
             duplicatePolicy,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("MediaParametersMatch", duplicatePolicy, StringComparison.Ordinal);
-        Assert.Contains("MediaParametersMatch", actionCoverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaActionMatches", duplicatePolicy, StringComparison.Ordinal);
+        Assert.Contains("MediaActionMatches", actionCoverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaParametersMatch", actionCoverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("VideoCodecName", actionCoverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("AudioCodec.Name", actionCoverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("Resolution.Id", actionCoverage, StringComparison.Ordinal);
         Assert.DoesNotContain("HasPlayback", planner, StringComparison.Ordinal);
         Assert.DoesNotContain("_downloadContent", service, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadContentConflict", service, StringComparison.Ordinal);

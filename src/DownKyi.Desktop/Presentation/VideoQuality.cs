@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -33,15 +34,24 @@ internal class VideoQuality : ObservableObject
 
     private string _selectedVideoCodec = string.Empty;
 
+    internal bool HasManualVideoCodecSelection { get; private set; }
+
     public string SelectedVideoCodec
     {
         get => _selectedVideoCodec;
         set
         {
-            if (value != null)
+            if (value != null && SetProperty(ref _selectedVideoCodec, value))
             {
-                SetProperty(ref _selectedVideoCodec, value);
+                HasManualVideoCodecSelection = true;
             }
         }
+    }
+
+    internal void SetAutomaticVideoCodec(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        SetProperty(ref _selectedVideoCodec, value);
+        HasManualVideoCodecSelection = false;
     }
 }

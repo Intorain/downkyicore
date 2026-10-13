@@ -11,7 +11,6 @@ internal static class DownloadActionCoverage
 {
     public static DownloadContentSelection RemoveCoveredActions(
         DownloadBaseItem existingItem,
-        DownloadingItem requestedItem,
         DownloadContentSelection requestedContent,
         bool matchesOutputOwner,
         bool requireUsableArtifacts)
@@ -24,9 +23,7 @@ internal static class DownloadActionCoverage
         var existingContent = GetRecordedContent(existingItem);
         var coveredClaims = DownloadActionClaims.None;
         if (requestedContent.HasMedia
-            && MediaParametersMatch(
-                existingItem,
-                requestedItem,
+            && MediaActionMatches(
                 existingContent,
                 requestedContent)
             && (!requireUsableArtifacts
@@ -139,38 +136,12 @@ internal static class DownloadActionCoverage
         }
     }
 
-    private static bool MediaParametersMatch(
-        DownloadBaseItem item,
-        DownloadingItem requestedItem,
+    private static bool MediaActionMatches(
         DownloadContentSelection existingContent,
         DownloadContentSelection requestedContent)
     {
-        if (existingContent.Audio != requestedContent.Audio
-            || existingContent.Video != requestedContent.Video)
-        {
-            return false;
-        }
-
-        if (requestedContent.Video)
-        {
-            if (item.Resolution.Id != requestedItem.Resolution.Id
-                || item.VideoCodecName != requestedItem.VideoCodecName)
-            {
-                return false;
-            }
-
-            if (existingContent.MediaKind is { } existingKind
-                && requestedContent.MediaKind is { } requestedKind
-                && existingKind != requestedKind)
-            {
-                return false;
-            }
-        }
-
-        return !requestedContent.Audio
-               || requestedContent.Video
-               && requestedContent.MediaKind == DownloadMediaKind.Durl
-               || item.AudioCodec.Name == requestedItem.AudioCodec.Name;
+        return existingContent.Audio == requestedContent.Audio
+               && existingContent.Video == requestedContent.Video;
     }
 
     private static DownloadDanmakuOutputFormat GetCoveredDanmakuFormats(
