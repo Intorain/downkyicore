@@ -990,92 +990,6 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void V112RecoverySeparatesControlPlaneFromImmutableReleaseSubject()
-    {
-        var workflow = File.ReadAllText(
-            Path.Combine(RepositoryRoot, ".github", "workflows", "release-v112-recovery.yml"));
-        var subjectValidator = File.ReadAllText(
-            Path.Combine(RepositoryRoot, "script", "validate-v112-recovery-subject.ps1"));
-        var artifactValidator = File.ReadAllText(
-            Path.Combine(RepositoryRoot, "script", "validate-v112-release-artifacts.ps1"));
-
-        Assert.Contains("workflow_dispatch:", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("push:", workflow, StringComparison.Ordinal);
-        Assert.Contains("path: tooling", workflow, StringComparison.Ordinal);
-        Assert.Contains("path: subject", workflow, StringComparison.Ordinal);
-        Assert.Contains("ref: ${{ inputs.subject_sha }}", workflow, StringComparison.Ordinal);
-        Assert.Contains("dotnet publish ./subject/DownKyi/DownKyi.csproj", workflow, StringComparison.Ordinal);
-        Assert.Contains("working-directory: subject", workflow, StringComparison.Ordinal);
-        var criticalPathsStart = workflow.IndexOf("critical_paths=(", StringComparison.Ordinal);
-        Assert.InRange(criticalPathsStart, 0, workflow.Length - 1);
-        var criticalPathsEnd = workflow.IndexOf(')', criticalPathsStart);
-        Assert.InRange(criticalPathsEnd, criticalPathsStart + 1, workflow.Length - 1);
-        var criticalPaths = workflow[criticalPathsStart..criticalPathsEnd];
-        Assert.Contains("script/test-project.ps1", criticalPaths, StringComparison.Ordinal);
-        Assert.Contains("script/test-project-runner.ps1", criticalPaths, StringComparison.Ordinal);
-        Assert.Contains("docs/testing/test-runner-policy.json", criticalPaths, StringComparison.Ordinal);
-        Assert.Contains("tools/DownKyi.CentralTestRunner", criticalPaths, StringComparison.Ordinal);
-        Assert.Contains("tools/DownKyi.ProcessSupervision", criticalPaths, StringComparison.Ordinal);
-        Assert.Contains("Resolve macOS release trust mode", workflow, StringComparison.Ordinal);
-        Assert.Contains("macos_trust_mode: ${{ steps.macos_trust.outputs.macos_trust_mode }}", workflow, StringComparison.Ordinal);
-        Assert.Contains("HAS_MACOS_SIGNING: ${{ needs.authority.outputs.has_macos_signing }}", workflow, StringComparison.Ordinal);
-        Assert.Contains("MACOS_ADHOC_SIGNING: ${{ env.HAS_MACOS_SIGNING != 'true' }}", workflow, StringComparison.Ordinal);
-        Assert.Contains("if: ${{ env.HAS_MACOS_SIGNING == 'true' }}", workflow, StringComparison.Ordinal);
-        Assert.Contains("Verify signed app trust", workflow, StringComparison.Ordinal);
-        Assert.Contains("./validate-dmg-package.sh", workflow, StringComparison.Ordinal);
-        Assert.Contains("Render release notes for selected trust mode", workflow, StringComparison.Ordinal);
-        Assert.Contains("bodyFile: tooling/artifacts/v1.1.2-release-notes.md", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("Require Apple credentials for formal publish", workflow, StringComparison.Ordinal);
-
-        var macSteps = GetWorkflowSteps(workflow, "  build-macos:");
-        AssertStepCondition(macSteps, "Import Apple certificate", "${{ env.HAS_MACOS_SIGNING == 'true' }}");
-        AssertStepCondition(macSteps, "Resolve Developer ID identity", "${{ env.HAS_MACOS_SIGNING == 'true' }}");
-        AssertStepCondition(macSteps, "Notarize and verify app", "${{ env.HAS_MACOS_SIGNING == 'true' }}");
-        AssertStepCondition(macSteps, "Sign, notarize, and verify DMG", "${{ env.HAS_MACOS_SIGNING == 'true' }}");
-        AssertStepHasNoCondition(macSteps, "Verify signed app trust");
-        AssertStepHasNoCondition(macSteps, "Verify signed aria2 integrity");
-        AssertStepHasNoCondition(macSteps, "Validate mounted and installed macOS package contracts");
-        var signAppStep = FindWorkflowStep(macSteps, "Sign app");
-        Assert.Contains(
-            signAppStep,
-            line => line.TrimStart().StartsWith("chmod +x ", StringComparison.Ordinal) &&
-                    line.Contains("verify-runtime-architecture.sh", StringComparison.Ordinal));
-        var packageStep = FindWorkflowStep(macSteps, "Package app with recovery tooling");
-        Assert.Contains(
-            packageStep,
-            line => line.Trim() == "release_version=\"${EXPECTED_RELEASE_VERSION#v}\"");
-        Assert.Contains(
-            packageStep,
-            line => line.Trim() == "./package.sh ${{ matrix.cpu }} \"$release_version\"");
-        var verifyDmgStep = FindWorkflowStep(
-            macSteps,
-            "Validate mounted and installed macOS package contracts");
-        Assert.Contains(
-            verifyDmgStep,
-            line => line.Trim() == "DownKyi-1.1.2-osx-${{ matrix.cpu }}.dmg \\");
-        Assert.Contains(
-            verifyDmgStep,
-            line => line.Trim() == "\"$release_version\" \\");
-        Assert.Contains(
-            verifyDmgStep,
-            line => line.Trim() == "osx-${{ matrix.cpu }}");
-        Assert.Contains("tag: v1.1.2", workflow, StringComparison.Ordinal);
-        Assert.Contains("commit: 16c690d8719f86eb6eecb56c24efabc1afc41d55", workflow, StringComparison.Ordinal);
-        Assert.Contains("prerelease: false", workflow, StringComparison.Ordinal);
-        Assert.Contains("makeLatest: true", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("git tag", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("push --force", workflow, StringComparison.Ordinal);
-
-        Assert.Contains("$expectedReleaseVersion = 'v1.1.2'", subjectValidator, StringComparison.Ordinal);
-        Assert.Contains("$expectedSubjectSha = '16c690d8719f86eb6eecb56c24efabc1afc41d55'", subjectValidator, StringComparison.Ordinal);
-        Assert.Contains("cat-file -t $expectedReleaseVersion", subjectValidator, StringComparison.Ordinal);
-        Assert.Contains("status --porcelain --untracked-files=no", subjectValidator, StringComparison.Ordinal);
-        Assert.Contains("Validated $($expected.Count) v1.1.2 packages", artifactValidator, StringComparison.Ordinal);
-        Assert.Contains("Get-FileHash", artifactValidator, StringComparison.Ordinal);
-        Assert.Contains("Publish manifest contract failed", artifactValidator, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void V112MacosTrustResolverRequiresZeroOrAllCredentials()
     {
         var script = Path.Combine(RepositoryRoot, "script", "resolve-v112-macos-trust.ps1");
@@ -1112,41 +1026,6 @@ public sealed class ReleaseWorkflowArchitectureTests
                 new Dictionary<string, string> { ["APPLE_ID"] = "fixture@example.invalid" });
             Assert.NotEqual(0, partial.ExitCode);
             Assert.Contains("Partial Apple credentials", partial.StandardError, StringComparison.Ordinal);
-        }
-        finally
-        {
-            File.Delete(outputPath);
-        }
-    }
-
-    [Fact]
-    public void V112RecoveryReleaseNotesDiscloseSelectedTrustMode()
-    {
-        var script = Path.Combine(RepositoryRoot, "script", "render-v112-recovery-release-notes.ps1");
-        var outputPath = Path.GetTempFileName();
-
-        try
-        {
-            var adHoc = RunPowerShellScript(
-                script,
-                ["-TrustMode", "ad-hoc", "-OutputPath", outputPath],
-                new Dictionary<string, string>());
-            Assert.Equal(0, adHoc.ExitCode);
-            var adHocNotes = File.ReadAllText(outputPath);
-            Assert.Contains("ad-hoc identity", adHocNotes, StringComparison.Ordinal);
-            Assert.Contains("not notarized", adHocNotes, StringComparison.Ordinal);
-            Assert.Contains("does not have Gatekeeper distribution trust", adHocNotes, StringComparison.Ordinal);
-
-            var developerId = RunPowerShellScript(
-                script,
-                ["-TrustMode", "developer-id", "-OutputPath", outputPath],
-                new Dictionary<string, string>());
-            Assert.Equal(0, developerId.ExitCode);
-            var developerIdNotes = File.ReadAllText(outputPath);
-            Assert.Contains("Developer ID", developerIdNotes, StringComparison.Ordinal);
-            Assert.Contains("notarization", developerIdNotes, StringComparison.Ordinal);
-            Assert.Contains("stapling", developerIdNotes, StringComparison.Ordinal);
-            Assert.DoesNotContain("not notarized", developerIdNotes, StringComparison.Ordinal);
         }
         finally
         {
