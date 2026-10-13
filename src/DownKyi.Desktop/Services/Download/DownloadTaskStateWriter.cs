@@ -37,6 +37,12 @@ internal sealed class DownloadTaskStateWriter
         CancellationToken cancellationToken = default)
     {
         var current = await FindRequiredAsync(taskId, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(current.Transfer.BackendIdentity))
+        {
+            throw new InvalidOperationException(
+                "A legacy transfer cannot be retried until its unpublished artifacts are removed.");
+        }
+
         if (current.Phase == DownloadPhase.Queued)
         {
             return current;
@@ -83,22 +89,16 @@ internal sealed class DownloadTaskStateWriter
             CreateRuntimeUnavailableFailure(),
             cancellationToken));
 
-    public async Task<DownloadTask> FailLegacyBackendAsync(
+    public Task<DownloadTask> FailLegacyBackendAsync(
         DownloadTaskId taskId,
-        CancellationToken cancellationToken = default)
-    {
-        var failed = await FailAsync(
+        CancellationToken cancellationToken = default) =>
+        RequireAsync(_tasks.DiscardUnpublishedArtifactsAndFailAsync(
             taskId,
             new DownloadFailure(
                 "download.transfer.legacy-backend-removed",
-                "The unfinished download used a removed legacy backend. Retry to start it with the built-in downloader.",
+                "The unfinished legacy download was removed and marked as failed.",
                 true),
-            cancellationToken).ConfigureAwait(false);
-
-        return string.IsNullOrWhiteSpace(failed.Transfer.BackendIdentity)
-            ? failed
-            : await SetBackendIdentityAsync(taskId, null, cancellationToken).ConfigureAwait(false);
-    }
+            cancellationToken));
 
     public Task<DownloadTask> CompleteAsync(
         DownloadTaskId taskId,

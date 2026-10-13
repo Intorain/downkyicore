@@ -219,6 +219,37 @@ public sealed class DownloadTaskApplicationServiceTests
     }
 
     [Fact]
+    public async Task DiscardingUnpublishedArtifactsAndFailingUsesOneDurableMutation()
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(
+            store,
+            DownloadHistoryService.CreateForSharedStore(store),
+            new AdvancingClock());
+        var task = CreateTask();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        await service.StartAsync(task.Id, TestContext.Current.CancellationToken);
+        await service.SetBackendIdentityAsync(
+            task.Id,
+            "legacy-id",
+            TestContext.Current.CancellationToken);
+        var updatesBeforeFailure = store.ExpectedVersions.Count;
+        var failure = new DownloadFailure("legacy.removed", "Legacy transfer removed.", true);
+
+        var result = await service.DiscardUnpublishedArtifactsAndFailAsync(
+            task.Id,
+            failure,
+            TestContext.Current.CancellationToken);
+
+        var failed = result.RequireValue();
+        Assert.Equal(updatesBeforeFailure + 1, store.ExpectedVersions.Count);
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Same(failure, failed.Failure);
+        Assert.Empty(failed.Plan.TransferFiles);
+        Assert.Same(DownloadTransferState.Empty, failed.Transfer);
+    }
+
+    [Fact]
     public async Task InvalidCommandDoesNotPersistOrPublishAReplacementSnapshot()
     {
         var store = new RecordingStore();

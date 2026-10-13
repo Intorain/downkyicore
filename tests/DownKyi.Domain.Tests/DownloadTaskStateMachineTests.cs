@@ -52,6 +52,47 @@ public sealed class DownloadTaskStateMachineTests
     }
 
     [Fact]
+    public void DiscardingUnpublishedArtifactsFailsWithoutRetainingTransferOwnership()
+    {
+        var pending = new DownloadPublishingArtifact(
+            "media",
+            "pending.mp4",
+            4,
+            new string('A', 64));
+        var queued = DownloadTask.Create(
+            new DownloadTaskId("legacy-task"),
+            CreateTask().Metadata,
+            new DownloadPlan(
+                new DownloadContentSelection(false, true, false, false, false),
+                new Dictionary<string, string> { ["video"] = "legacy.m4s" },
+                streamType: 1,
+                nfoRequest: null),
+            new DownloadOutput(
+                "legacy-output",
+                "100 MB",
+                new Dictionary<string, string> { ["cover"] = "published-cover.jpg" },
+                publishingArtifact: pending),
+            Epoch);
+        var downloading = queued.Start(Epoch.AddSeconds(1)).RequireValue()
+            .UpdateTransferState(
+                new DownloadTransferState("legacy-id", ["video"], "video", "Downloading", 4),
+                Epoch.AddSeconds(2)).RequireValue();
+        var failure = new DownloadFailure("legacy.removed", "Legacy transfer removed.", true);
+
+        var failed = downloading.DiscardUnpublishedArtifactsAndFail(
+            failure,
+            Epoch.AddSeconds(3)).RequireValue();
+
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Same(failure, failed.Failure);
+        Assert.Equal(DownloadProgress.None, failed.Progress);
+        Assert.Empty(failed.Plan.TransferFiles);
+        Assert.Same(DownloadTransferState.Empty, failed.Transfer);
+        Assert.Null(failed.Output.PublishingArtifact);
+        Assert.Equal("published-cover.jpg", failed.Output.PublishedArtifacts["cover"]);
+    }
+
+    [Fact]
     public void InvalidTransitionReturnsTypedConflictAndKeepsOriginalSnapshot()
     {
         var queued = CreateTask();

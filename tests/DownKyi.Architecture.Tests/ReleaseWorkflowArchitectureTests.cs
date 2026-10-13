@@ -931,6 +931,31 @@ public sealed class ReleaseWorkflowArchitectureTests
             Path.Combine(RepositoryRoot, "script", "validate-v112-recovery-subject.ps1"));
         var artifactValidator = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "validate-v112-release-artifacts.ps1"));
+        var historicalValidator = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "script",
+            "historical-rebuild",
+            "v1.1.2",
+            "validate-publish-output.ps1"));
+        var historicalSign = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "script",
+            "historical-rebuild",
+            "v1.1.2",
+            "macos",
+            "sign-app.sh"));
+        var historicalDmgValidator = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "script",
+            "historical-rebuild",
+            "v1.1.2",
+            "macos",
+            "validate-dmg-package.sh"));
+        using var historicalRuntimeAssets = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "script",
+            "historical-rebuild",
+            "runtime-assets.json")));
 
         Assert.Contains("workflow_dispatch:", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("push:", workflow, StringComparison.Ordinal);
@@ -949,13 +974,24 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("docs/testing/test-runner-policy.json", criticalPaths, StringComparison.Ordinal);
         Assert.Contains("tools/DownKyi.CentralTestRunner", criticalPaths, StringComparison.Ordinal);
         Assert.Contains("tools/DownKyi.ProcessSupervision", criticalPaths, StringComparison.Ordinal);
+        Assert.Contains(
+            "script/historical-rebuild/v1.1.2/validate-publish-output.ps1",
+            criticalPaths,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "script/historical-rebuild/v1.1.2/macos/sign-app.sh",
+            criticalPaths,
+            StringComparison.Ordinal);
         Assert.Contains("Resolve macOS release trust mode", workflow, StringComparison.Ordinal);
         Assert.Contains("macos_trust_mode: ${{ steps.macos_trust.outputs.macos_trust_mode }}", workflow, StringComparison.Ordinal);
         Assert.Contains("HAS_MACOS_SIGNING: ${{ needs.authority.outputs.has_macos_signing }}", workflow, StringComparison.Ordinal);
         Assert.Contains("MACOS_ADHOC_SIGNING: ${{ env.HAS_MACOS_SIGNING != 'true' }}", workflow, StringComparison.Ordinal);
         Assert.Contains("if: ${{ env.HAS_MACOS_SIGNING == 'true' }}", workflow, StringComparison.Ordinal);
         Assert.Contains("Verify signed app trust", workflow, StringComparison.Ordinal);
-        Assert.Contains("./validate-dmg-package.sh", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "../historical-rebuild/v1.1.2/macos/validate-dmg-package.sh",
+            workflow,
+            StringComparison.Ordinal);
         Assert.Contains("Render release notes for selected trust mode", workflow, StringComparison.Ordinal);
         Assert.Contains("bodyFile: tooling/artifacts/v1.1.2-release-notes.md", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("Require Apple credentials for formal publish", workflow, StringComparison.Ordinal);
@@ -971,8 +1007,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         var signAppStep = FindWorkflowStep(macSteps, "Sign app");
         Assert.Contains(
             signAppStep,
-            line => line.TrimStart().StartsWith("chmod +x ", StringComparison.Ordinal) &&
-                    line.Contains("verify-runtime-architecture.sh", StringComparison.Ordinal));
+            line => line.Trim() == "../historical-rebuild/v1.1.2/macos/sign-app.sh");
         var packageStep = FindWorkflowStep(macSteps, "Package app with recovery tooling");
         Assert.Contains(
             packageStep,
@@ -980,6 +1015,9 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains(
             packageStep,
             line => line.Trim() == "./package.sh ${{ matrix.cpu }} \"$release_version\"");
+        Assert.Contains(
+            packageStep,
+            line => line.Trim() == "chmod +x 哔哩下载姬.app/Contents/MacOS/aria2/aria2c");
         var verifyDmgStep = FindWorkflowStep(
             macSteps,
             "Validate mounted and installed macOS package contracts");
@@ -992,6 +1030,30 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains(
             verifyDmgStep,
             line => line.Trim() == "osx-${{ matrix.cpu }}");
+        Assert.Contains(
+            verifyDmgStep,
+            line => line.Trim() == "../historical-rebuild/v1.1.2/macos/validate-dmg-package.sh \\");
+        Assert.Equal(
+            4,
+            CountOccurrences(
+                workflow,
+                "script/historical-rebuild/v1.1.2/validate-publish-output.ps1"));
+        Assert.DoesNotContain(
+            "./tooling/script/validate-publish-output.ps1",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "-ManifestPath ./tooling/script/historical-rebuild/runtime-assets.json",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.True(historicalRuntimeAssets.RootElement
+            .GetProperty("appimagetool")
+            .GetProperty("assets")
+            .TryGetProperty("linux-x64", out _));
+        Assert.Contains("aria2 executable", historicalValidator, StringComparison.Ordinal);
+        Assert.Contains("aria2 binary checksum", historicalValidator, StringComparison.Ordinal);
+        Assert.Contains("aria2-runtime-integrity.sh\" refresh", historicalSign, StringComparison.Ordinal);
+        Assert.Contains("verify-aria2-rpc-readiness.sh", historicalDmgValidator, StringComparison.Ordinal);
         Assert.Contains("tag: v1.1.2", workflow, StringComparison.Ordinal);
         Assert.Contains("commit: 16c690d8719f86eb6eecb56c24efabc1afc41d55", workflow, StringComparison.Ordinal);
         Assert.Contains("prerelease: false", workflow, StringComparison.Ordinal);

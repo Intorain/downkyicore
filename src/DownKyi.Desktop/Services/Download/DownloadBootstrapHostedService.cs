@@ -58,10 +58,40 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         {
             var state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             var blocked = new HashSet<DownloadTaskId>();
+            foreach (var task in state.UnfinishedTasks.Where(task =>
+                         !string.IsNullOrWhiteSpace(task.Transfer.BackendIdentity)))
+            {
+                blocked.Add(task.Id);
+                if (_fileService == null)
+                {
+                    await MarkLegacyCleanupFailedAsync(task, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                var cleanup = await _fileService
+                    .DeleteLegacyUnpublishedArtifactsAsync(task, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!cleanup.Succeeded)
+                {
+                    await MarkLegacyCleanupFailedAsync(task, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                await _stateWriter
+                    .FailLegacyBackendAsync(task.Id, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            if (blocked.Count > 0)
+            {
+                state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             if (_fileService != null)
             {
                 foreach (var task in state.UnfinishedTasks.Where(task =>
-                             task.Output.PublishingArtifact != null))
+                             task.Output.PublishingArtifact != null &&
+                             !blocked.Contains(task.Id)))
                 {
                     try
                     {
@@ -89,16 +119,6 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                 }
 
                 state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            foreach (var task in state.UnfinishedTasks.Where(task =>
-                         !string.IsNullOrWhiteSpace(task.Transfer.BackendIdentity)
-                         && task.Phase != DownloadPhase.Failed))
-            {
-                await _stateWriter
-                    .FailLegacyBackendAsync(task.Id, cancellationToken)
-                    .ConfigureAwait(false);
-                blocked.Add(task.Id);
             }
 
             if (blocked.Count > 0)
@@ -161,6 +181,31 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                     "Owned download task could not be failed after bootstrap failure.",
                     exception);
             }
+        }
+    }
+
+    private async Task MarkLegacyCleanupFailedAsync(
+        DownloadTask task,
+        CancellationToken cancellationToken)
+    {
+        if (task.Phase == DownloadPhase.Failed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _stateWriter.FailAsync(
+                task.Id,
+                new DownloadFailure(
+                    "download.transfer.legacy-cleanup-failed",
+                    "The unfinished legacy download could not be removed safely.",
+                    false),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogErrorMessage("Legacy download cleanup failure could not be persisted.", exception);
         }
     }
 

@@ -174,6 +174,36 @@ public sealed partial class DownloadTask
         return TransitionTo(DownloadPhase.Failed, now, failure: failure);
     }
 
+    public OperationResult<DownloadTask> DiscardUnpublishedArtifactsAndFail(
+        DownloadFailure failure,
+        DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        if (Phase is DownloadPhase.Completed or DownloadPhase.Deleted)
+        {
+            return InvalidTransition(DownloadPhase.Failed);
+        }
+
+        EnsureTimestampDoesNotMoveBackward(now);
+        return OperationResult.Success(new DownloadTask(
+            Id,
+            Metadata,
+            Plan.WithTransferFiles([]),
+            new DownloadOutput(
+                Output.BasePath,
+                Output.FileSizeText,
+                Output.PublishedArtifacts,
+                Output.StagingToken),
+            DownloadPhase.Failed,
+            DownloadProgress.None,
+            DownloadTransferState.Empty,
+            failure,
+            completion: null,
+            checked(Version + 1),
+            CreatedAtUtc,
+            now));
+    }
+
     public OperationResult<DownloadTask> Complete(DownloadCompletion completion, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(completion);

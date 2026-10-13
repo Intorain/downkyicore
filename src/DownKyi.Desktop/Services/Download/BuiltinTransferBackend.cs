@@ -132,7 +132,9 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 Name,
                 request.FileName,
                 request.Urls.Count,
-                CalculateSegmentCount(request.ExpectedBytes),
+                BuiltinRangeDownloader.CalculateAdaptiveSegmentCount(
+                    request.ExpectedBytes,
+                    network.Split),
                 network.Split,
                 network);
 
@@ -211,21 +213,6 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
 
     public void Dispose()
     {
-    }
-
-    internal static int CalculateSegmentCount(
-        long expectedBytes,
-        long segmentSize = BuiltinRangeDownloader.DefaultSegmentSize)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(expectedBytes);
-        ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
-        if (expectedBytes == 0)
-        {
-            return 0;
-        }
-
-        var count = 1 + ((expectedBytes - 1) / segmentSize);
-        return checked((int)Math.Min(count, int.MaxValue));
     }
 
     internal static DownloadTransferResult ClassifyFailure(

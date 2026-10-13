@@ -85,6 +85,11 @@ public interface IDownloadTaskApplicationService
         DownloadFailure failure,
         CancellationToken cancellationToken);
 
+    Task<OperationResult<DownloadTask>> DiscardUnpublishedArtifactsAndFailAsync(
+        DownloadTaskId taskId,
+        DownloadFailure failure,
+        CancellationToken cancellationToken);
+
     Task<OperationResult<DownloadTask>> CompleteAsync(
         DownloadTaskId taskId,
         DownloadCompletion completion,

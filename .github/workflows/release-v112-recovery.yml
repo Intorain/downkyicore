@@ -97,24 +97,26 @@ jobs:
           critical_paths=(
             .github/workflows/build.yml
             .github/workflows/release-v112-recovery.yml
-            script/assets/external-assets.json
+            script/historical-rebuild/runtime-assets.json
             script/install-appimagetool.ps1
+            script/historical-rebuild/v1.1.2/validate-publish-output.ps1
+            script/historical-rebuild/v1.1.2/macos/aria2-runtime-integrity.sh
+            script/historical-rebuild/v1.1.2/macos/sign-app.sh
+            script/historical-rebuild/v1.1.2/macos/validate-dmg-package.sh
+            script/historical-rebuild/v1.1.2/macos/verify-aria2-rpc-readiness.sh
             docs/operations/v1.1.2-release-notes.md
             script/resolve-v112-macos-trust.ps1
             script/render-v112-recovery-release-notes.ps1
             script/test-project.ps1
             script/test-project-runner.ps1
             script/macos/codesign-common.sh
+            script/macos/package.sh
             script/macos/prepare-app-layout.sh
-            script/macos/sign.sh
             script/macos/verify-app-signature.sh
             script/macos/verify-app-loader.sh
             script/macos/verify-app-bundle-launch.swift
-            script/macos/aria2-runtime-integrity.sh
-            script/macos/verify-aria2-rpc-readiness.sh
             script/macos/sign-dmg.sh
             script/macos/verify-dmg.sh
-            script/macos/validate-dmg-package.sh
             docs/testing/test-runner-policy.json
             tools/DownKyi.CentralTestRunner
             tools/DownKyi.ProcessSupervision
@@ -205,7 +207,7 @@ jobs:
       - name: Validate package and hash
         shell: pwsh
         run: |
-          ./tooling/script/validate-publish-output.ps1 `
+          ./tooling/script/historical-rebuild/v1.1.2/validate-publish-output.ps1 `
             -PublishDirectory "subject/artifacts/publish/win-${{ matrix.cpu }}" `
             -RuntimeIdentifier "win-${{ matrix.cpu }}" `
             -ExpectedVersion '1.1.2' `
@@ -285,7 +287,9 @@ jobs:
       - name: Install mirrored appimagetool
         if: ${{ matrix.kind == 'AppImage' }}
         run: |
-          pwsh ./tooling/script/install-appimagetool.ps1 -ToolPath ./tooling/.tools
+          pwsh ./tooling/script/install-appimagetool.ps1 \
+            -ToolPath ./tooling/.tools \
+            -ManifestPath ./tooling/script/historical-rebuild/runtime-assets.json
           echo "$GITHUB_WORKSPACE/tooling/.tools" >> "$GITHUB_PATH"
       - name: Get exact-subject dependencies
         working-directory: subject/script
@@ -323,7 +327,7 @@ jobs:
       - name: Validate package and hash
         shell: pwsh
         run: |
-          ./tooling/script/validate-publish-output.ps1 `
+          ./tooling/script/historical-rebuild/v1.1.2/validate-publish-output.ps1 `
             -PublishDirectory "subject/artifacts/publish/linux-${{ matrix.cpu }}" `
             -RuntimeIdentifier "linux-${{ matrix.cpu }}" `
             -ExpectedVersion '1.1.2' `
@@ -446,10 +450,11 @@ jobs:
           chmod +x package.sh prepare-app-layout.sh codesign-common.sh
           release_version="${EXPECTED_RELEASE_VERSION#v}"
           ./package.sh ${{ matrix.cpu }} "$release_version"
+          chmod +x 哔哩下载姬.app/Contents/MacOS/aria2/aria2c
       - name: Validate packaged runtime
         shell: pwsh
         run: >
-          ./tooling/script/validate-publish-output.ps1
+          ./tooling/script/historical-rebuild/v1.1.2/validate-publish-output.ps1
           -PublishDirectory '${{ steps.publish-output.outputs.directory }}'
           -RuntimeIdentifier 'osx-${{ matrix.cpu }}'
           -ExpectedVersion '1.1.2'
@@ -458,15 +463,17 @@ jobs:
         working-directory: tooling/script/macos
         env:
           MACOS_ADHOC_SIGNING: ${{ env.HAS_MACOS_SIGNING != 'true' }}
+          MACOS_TOOLING_DIRECTORY: ${{ github.workspace }}/tooling/script/macos
         run: |
-          chmod +x sign.sh verify-app-signature.sh verify-app-loader.sh verify-runtime-architecture.sh aria2-runtime-integrity.sh verify-aria2-rpc-readiness.sh sign-dmg.sh verify-dmg.sh validate-dmg-package.sh
-          ./sign.sh
+          chmod +x verify-app-signature.sh verify-app-loader.sh verify-runtime-architecture.sh sign-dmg.sh verify-dmg.sh
+          chmod +x ../historical-rebuild/v1.1.2/macos/*.sh
+          ../historical-rebuild/v1.1.2/macos/sign-app.sh
       - name: Verify signed app trust
         working-directory: tooling/script/macos
         run: ./verify-app-signature.sh
       - name: Verify signed aria2 integrity
         working-directory: tooling/script/macos
-        run: ./aria2-runtime-integrity.sh verify 哔哩下载姬.app
+        run: ../historical-rebuild/v1.1.2/macos/aria2-runtime-integrity.sh verify 哔哩下载姬.app
       - name: Notarize and verify app
         if: ${{ env.HAS_MACOS_SIGNING == 'true' }}
         working-directory: tooling/script/macos
@@ -501,9 +508,10 @@ jobs:
         working-directory: tooling/script/macos
         env:
           MACOS_VERIFY_GATEKEEPER: ${{ env.HAS_MACOS_SIGNING == 'true' }}
+          MACOS_TOOLING_DIRECTORY: ${{ github.workspace }}/tooling/script/macos
         run: |
           release_version="${EXPECTED_RELEASE_VERSION#v}"
-          ./validate-dmg-package.sh \
+          ../historical-rebuild/v1.1.2/macos/validate-dmg-package.sh \
             DownKyi-1.1.2-osx-${{ matrix.cpu }}.dmg \
             "$release_version" \
             osx-${{ matrix.cpu }}

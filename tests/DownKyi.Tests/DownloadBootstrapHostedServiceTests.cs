@@ -342,7 +342,7 @@ public sealed class DownloadBootstrapHostedServiceTests
     }
 
     [Fact]
-    public async Task StartupFailsLegacyBackendTaskWithoutTouchingItsPartialFile()
+    public async Task StartupDeletesLegacyUnpublishedArtifactsBeforeFailingWithoutPublishing()
     {
         var directory = Path.Combine(
             Path.GetTempPath(),
@@ -350,10 +350,21 @@ public sealed class DownloadBootstrapHostedServiceTests
             Guid.NewGuid().ToString("N"));
         var databasePath = Path.Combine(directory, "download.db");
         var partialFile = Path.Combine(directory, "legacy.partial");
+        var legacyControlFile = $"{partialFile}.aria2";
+        var builtInControlFile = $"{partialFile}.download";
+        var unrelatedFile = Path.Combine(directory, "unrelated.keep");
+        var pendingDestination = Path.Combine(directory, "pending.mp4");
         Directory.CreateDirectory(directory);
+        foreach (var path in new[] { partialFile, legacyControlFile, builtInControlFile })
+        {
+            await File.WriteAllBytesAsync(
+                path,
+                [1, 2, 3, 4],
+                TestContext.Current.CancellationToken);
+        }
         await File.WriteAllBytesAsync(
-            partialFile,
-            [1, 2, 3, 4],
+            unrelatedFile,
+            [5, 6, 7, 8],
             TestContext.Current.CancellationToken);
         try
         {
@@ -376,19 +387,53 @@ public sealed class DownloadBootstrapHostedServiceTests
             Assert.True((await tasks.StartAsync(
                 task.Id,
                 TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.RecordTransferFileAsync(
+                task.Id,
+                "video-1",
+                Path.GetFileName(partialFile),
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.CompleteTransferFileAsync(
+                task.Id,
+                "video-1",
+                TestContext.Current.CancellationToken)).IsSuccess);
+            var stateWriter = new DownloadTaskStateWriter(tasks);
+            var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+            var stagingDirectory = staging.GetDirectory(
+                task.Id,
+                task.Output.BasePath,
+                task.Output.StagingToken);
+            var pendingBytes = new byte[] { 9, 10, 11, 12 };
+            await File.WriteAllBytesAsync(
+                Path.Combine(stagingDirectory, Path.GetFileName(pendingDestination)),
+                pendingBytes,
+                TestContext.Current.CancellationToken);
+            Assert.True((await tasks.BeginPublishingArtifactAsync(
+                task.Id,
+                new DownloadPublishingArtifact(
+                    "media",
+                    Path.GetFileName(pendingDestination),
+                    pendingBytes.Length,
+                    Convert.ToHexString(SHA256.HashData(pendingBytes))),
+                TestContext.Current.CancellationToken)).IsSuccess);
             Assert.True((await tasks.SetBackendIdentityAsync(
                 task.Id,
                 "legacy-execution-id",
                 TestContext.Current.CancellationToken)).IsSuccess);
             using var runtime = new RecordingDownloadRuntime();
+            var fileService = new DownloadTaskFileService(
+                NullLogger<DownloadTaskFileService>.Instance,
+                staging,
+                stateWriter);
             using var service = new DownloadBootstrapHostedService(
                 new DownloadListState(),
                 projections,
-                new DownloadTaskStateWriter(tasks),
+                stateWriter,
                 new RecordingRuntimeFactory(runtime),
                 new DownloadTaskQueueGateway(),
                 new ImmediateUiDispatcher(),
-                NullLogger<DownloadBootstrapHostedService>.Instance);
+                NullLogger<DownloadBootstrapHostedService>.Instance,
+                staging,
+                fileService);
 
             await service.StartAsync(TestContext.Current.CancellationToken);
 
@@ -398,9 +443,17 @@ public sealed class DownloadBootstrapHostedServiceTests
             Assert.Equal(DownloadPhase.Failed, failed.Phase);
             Assert.Equal("download.transfer.legacy-backend-removed", failed.Failure?.Code);
             Assert.Null(failed.Transfer.BackendIdentity);
+            Assert.Empty(failed.Transfer.CompletedFileKeys);
+            Assert.Empty(failed.Plan.TransferFiles);
+            Assert.Null(failed.Output.PublishingArtifact);
             Assert.Empty(runtime.Enqueued);
-            Assert.Equal([1, 2, 3, 4], await File.ReadAllBytesAsync(
-                partialFile,
+            Assert.False(File.Exists(partialFile));
+            Assert.False(File.Exists(legacyControlFile));
+            Assert.False(File.Exists(builtInControlFile));
+            Assert.False(File.Exists(pendingDestination));
+            Assert.False(Directory.Exists(stagingDirectory));
+            Assert.Equal([5, 6, 7, 8], await File.ReadAllBytesAsync(
+                unrelatedFile,
                 TestContext.Current.CancellationToken));
             await service.StopAsync(TestContext.Current.CancellationToken);
         }
@@ -409,6 +462,72 @@ public sealed class DownloadBootstrapHostedServiceTests
             ClearOwnedSqlitePool(databasePath);
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task LegacyCleanupFailureRemainsFailedAndCannotEnterBuiltinRuntime()
+    {
+        var clock = new FixedClock();
+        var taskStore = new EmptyDownloadTaskStore();
+        var historyService = DownloadHistoryService.CreateForSharedStore(taskStore);
+        using var tasks = new DownloadTaskApplicationService(
+            taskStore,
+            historyService,
+            clock);
+        using var projections = new DownloadTaskProjectionStore(
+            tasks,
+            historyService,
+            clock);
+        var task = CreateTask("legacy-cleanup-failure");
+        Assert.True((await tasks.AddAsync(
+            task,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await tasks.StartAsync(
+            task.Id,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await tasks.RecordTransferFileAsync(
+            task.Id,
+            "video-1",
+            "../outside-task-boundary.m4s",
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await tasks.SetBackendIdentityAsync(
+            task.Id,
+            "legacy-execution-id",
+            TestContext.Current.CancellationToken)).IsSuccess);
+        var stateWriter = new DownloadTaskStateWriter(tasks);
+        var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+        var fileService = new DownloadTaskFileService(
+            NullLogger<DownloadTaskFileService>.Instance,
+            staging,
+            stateWriter);
+        using var runtime = new RecordingDownloadRuntime();
+        using var service = new DownloadBootstrapHostedService(
+            new DownloadListState(),
+            projections,
+            stateWriter,
+            new RecordingRuntimeFactory(runtime),
+            new DownloadTaskQueueGateway(),
+            new ImmediateUiDispatcher(),
+            NullLogger<DownloadBootstrapHostedService>.Instance,
+            staging,
+            fileService);
+
+        await service.StartAsync(TestContext.Current.CancellationToken);
+
+        var failed = Assert.IsType<DownloadTask>(await tasks.FindAsync(
+            task.Id,
+            TestContext.Current.CancellationToken));
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Equal("download.transfer.legacy-cleanup-failed", failed.Failure?.Code);
+        Assert.Equal("legacy-execution-id", failed.Transfer.BackendIdentity);
+        Assert.Equal(
+            "../outside-task-boundary.m4s",
+            failed.Plan.TransferFiles["video-1"]);
+        Assert.Empty(runtime.Enqueued);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => stateWriter.ResumeAsync(
+            task.Id,
+            TestContext.Current.CancellationToken));
+        await service.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]

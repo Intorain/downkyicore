@@ -142,6 +142,18 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
             cancellationToken);
     }
 
+    public Task<OperationResult<DownloadTask>> DiscardUnpublishedArtifactsAndFailAsync(
+        DownloadTaskId taskId,
+        DownloadFailure failure,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return MutateAsync(
+            taskId,
+            (task, now) => task.DiscardUnpublishedArtifactsAndFail(failure, now),
+            cancellationToken);
+    }
+
     public Task<OperationResult<DownloadTask>> CompleteAsync(
         DownloadTaskId taskId,
         DownloadCompletion completion,

@@ -178,6 +178,27 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         return chunks;
     }
 
+    internal static int CalculateAdaptiveSegmentCount(
+        long totalBytes,
+        int parallelCount,
+        long segmentSize = DefaultSegmentSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(totalBytes);
+        ArgumentOutOfRangeException.ThrowIfLessThan(parallelCount, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
+        if (totalBytes == 0)
+        {
+            return 0;
+        }
+
+        var adaptiveSegmentSize = CalculateAdaptiveSegmentSize(
+            totalBytes,
+            parallelCount,
+            segmentSize);
+        var count = 1 + ((totalBytes - 1) / adaptiveSegmentSize);
+        return checked((int)Math.Min(count, int.MaxValue));
+    }
+
     internal static IReadOnlyList<BuiltinRangeChunk> OrderChunksForDistributedStart(
         IEnumerable<BuiltinRangeChunk> chunks)
     {
@@ -383,9 +404,10 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        var adaptiveSegmentSize = Math.Min(
-            _segmentSize,
-            Math.Max(1, ((totalBytes - 1) / _parallelCount) + 1));
+        var adaptiveSegmentSize = CalculateAdaptiveSegmentSize(
+            totalBytes,
+            _parallelCount,
+            _segmentSize);
         var chunks = supportsRanges
             ? CreateChunks(totalBytes, adaptiveSegmentSize).ToArray()
             : [new BuiltinRangeChunk(0, totalBytes - 1, position: 0)];
@@ -407,6 +429,12 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             chunks,
             resourceIdentity);
     }
+
+    private static long CalculateAdaptiveSegmentSize(
+        long totalBytes,
+        int parallelCount,
+        long segmentSize) =>
+        Math.Min(segmentSize, Math.Max(1, ((totalBytes - 1) / parallelCount) + 1));
 
     private async Task<BuiltinRangeResourceIdentity> VerifyResumeOverlapAsync(
         FileStream partialFile,
