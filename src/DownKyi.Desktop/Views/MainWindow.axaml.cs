@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
 using DownKyi.Core.Settings;
@@ -13,6 +14,7 @@ namespace DownKyi.Views;
 
 internal partial class MainWindow : Window
 {
+    private readonly Lazy<MainWindowViewModel> _viewModel;
     private readonly IApplicationLifecycle _applicationLifecycle;
     private readonly ILogger<MainWindow> _logger;
     private readonly ISettingsStore _settingsStore;
@@ -21,12 +23,12 @@ internal partial class MainWindow : Window
     private bool _closeInProgress;
 
     public MainWindow(
-        MainWindowViewModel viewModel,
+        Lazy<MainWindowViewModel> viewModel,
         ISettingsStore settingsStore,
         IApplicationLifecycle applicationLifecycle,
         ILogger<MainWindow> logger)
     {
-        ArgumentNullException.ThrowIfNull(viewModel);
+        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _applicationLifecycle = applicationLifecycle
             ?? throw new ArgumentNullException(nameof(applicationLifecycle));
@@ -41,7 +43,6 @@ internal partial class MainWindow : Window
             Y = window.Y
         };
         ApplyWindowSettings();
-        DataContext = viewModel;
     }
 
     private void ApplyWindowSettings()
@@ -62,6 +63,24 @@ internal partial class MainWindow : Window
     {
         EnsureWindowFitsWorkingArea();
         base.OnOpened(e);
+        if (!Design.IsDesignMode)
+        {
+            Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background);
+        }
+    }
+
+    internal void ActivateContent()
+    {
+        if (DataContext is MainWindowViewModel || _closeInProgress || _closeConfirmed)
+        {
+            return;
+        }
+
+        var viewModel = _viewModel.Value;
+        DataContext = viewModel;
+        MainContentHost.IsVisible = true;
+        StartupSurface.IsVisible = false;
+        viewModel.Activate();
     }
 
     private void EnsureWindowFitsWorkingArea()

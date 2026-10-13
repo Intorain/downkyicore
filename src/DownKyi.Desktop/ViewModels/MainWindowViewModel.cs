@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +23,7 @@ namespace DownKyi.ViewModels;
 internal sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
+    private bool _activated;
     private readonly IAppDialogService _dialogService;
     private readonly IAppNavigationService _navigationService;
     private readonly IUserNotificationService _notificationService;
@@ -65,8 +65,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         get => _message;
         set => SetProperty(ref _message, value);
     }
-
-    public RelayCommand? LoadedCommand { get; }
 
     private RelayCommand? _closingCommand;
 
@@ -159,29 +157,25 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _lifetimeToken = _lifetimeCancellation.Token;
 
-        #region MyRegion
-
-        // 订阅消息发送事件
         _notificationService.NotificationRaised += NotificationServiceOnNotificationRaised;
         _navigationService.NavigationChanged += NavigationServiceOnNavigationChanged;
         MainContent = _navigationService.GetActiveView(AppNavigationRegion.Main);
+    }
 
-        #endregion
-
-
-        LoadedCommand = new RelayCommand(() =>
+    internal void Activate()
+    {
+        if (_activated || _lifetimeToken.IsCancellationRequested)
         {
-            if (Design.IsDesignMode)
-            {
-                return;
-            }
-            _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
-            _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
-            _navigationService.Navigate(new AppNavigationRequest(
-                AppRoute.Index,
-                Parameter: "start"));
-            Dispatcher.UIThread.Post(StartStartupDialogs, DispatcherPriority.Background);
-        });
+            return;
+        }
+
+        _activated = true;
+        _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
+        _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
+        _navigationService.Navigate(new AppNavigationRequest(
+            AppRoute.Index,
+            Parameter: "start"));
+        Dispatcher.UIThread.Post(StartStartupDialogs, DispatcherPriority.Background);
     }
 
     private void NotificationServiceOnNotificationRaised(object? sender, UserNotificationEventArgs e)

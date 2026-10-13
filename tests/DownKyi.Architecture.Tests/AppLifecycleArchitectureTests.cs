@@ -55,6 +55,21 @@ public sealed class AppLifecycleArchitectureTests
     }
 
     [Fact]
+    public void MainWindowDefersContentCompositionUntilAfterItsFirstFrame()
+    {
+        var windowSource = ReadSource("src", "DownKyi.Desktop", "Views", "MainWindow.axaml.cs");
+        var compositionSource = ReadSource(
+            "src", "DownKyi.Desktop", "Composition", "DesktopComposition.cs");
+
+        Assert.Contains("Lazy<MainWindowViewModel> viewModel", windowSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background)",
+            windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("new Lazy<MainWindowViewModel>", compositionSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ReleaseStartupSkipsFullGraphValidationWhileHostDefaultRemainsStrict()
     {
         var appSource = ReadSource("src", "DownKyi.Desktop", "App.axaml.cs");
