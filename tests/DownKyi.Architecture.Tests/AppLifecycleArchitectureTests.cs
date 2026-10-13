@@ -40,13 +40,45 @@ public sealed class AppLifecycleArchitectureTests
     }
 
     [Fact]
-    public void MainWindowCompletesCleanupBeforeConfirmingClose()
+    public void MainWindowHidesBeforeCompletingCleanupAndConfirmingClose()
     {
         var source = ReadSource("src", "DownKyi.Desktop", "Views", "MainWindow.axaml.cs");
 
+        var hide = source.IndexOf("Hide();", StringComparison.Ordinal);
+        var shutdown = source.IndexOf(
+            "await _applicationLifecycle.RequestShutdownAsync()",
+            StringComparison.Ordinal);
+        Assert.True(hide >= 0 && shutdown > hide);
         Assert.Contains("await _applicationLifecycle.RequestShutdownAsync()", source, StringComparison.Ordinal);
         Assert.Contains("_closeConfirmed = true", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Application.Current", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MainWindowDefersContentCompositionUntilAfterItsFirstFrame()
+    {
+        var windowSource = ReadSource("src", "DownKyi.Desktop", "Views", "MainWindow.axaml.cs");
+        var compositionSource = ReadSource(
+            "src", "DownKyi.Desktop", "Composition", "DesktopComposition.cs");
+
+        Assert.Contains("Lazy<MainWindowViewModel> viewModel", windowSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background)",
+            windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("new Lazy<MainWindowViewModel>", compositionSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseStartupSkipsFullGraphValidationWhileHostDefaultRemainsStrict()
+    {
+        var appSource = ReadSource("src", "DownKyi.Desktop", "App.axaml.cs");
+        var hostSource = ReadSource(
+            "src", "DownKyi.Desktop", "Composition", "DownKyiHost.cs");
+
+        Assert.Contains("const bool validateOnBuild = false;", appSource, StringComparison.Ordinal);
+        Assert.Contains("bool validateOnBuild = true", hostSource, StringComparison.Ordinal);
+        Assert.Contains("ValidateOnBuild = validateOnBuild", hostSource, StringComparison.Ordinal);
     }
 
     [Fact]

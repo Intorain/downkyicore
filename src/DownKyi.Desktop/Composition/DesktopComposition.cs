@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
@@ -119,6 +120,10 @@ internal static class DesktopComposition
         services.AddDownloadModule();
         services.AddSingleton<IHostedService, StorageMaintenanceHostedService>();
         services.AddSingleton<MainWindowViewModel>();
+        services.AddSingleton(provider =>
+            new Lazy<MainWindowViewModel>(
+                () => provider.GetRequiredService<MainWindowViewModel>(),
+                LazyThreadSafetyMode.ExecutionAndPublication));
         services.AddSingleton<MainWindow>();
         return services;
     }

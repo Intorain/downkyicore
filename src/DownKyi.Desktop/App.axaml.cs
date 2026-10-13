@@ -173,8 +173,14 @@ internal partial class App : Avalonia.Application, IAsyncDisposable
             builder.AddProvider(_logProvider);
         });
         _logger = _loggerFactory.CreateLogger<App>();
+#if DEBUG
+        const bool validateOnBuild = true;
+#else
+        const bool validateOnBuild = false;
+#endif
         _host = DownKyiHost.Create(services =>
-            services.AddDownKyiDesktop(_loggerFactory, _logProvider));
+            services.AddDownKyiDesktop(_loggerFactory, _logProvider),
+            validateOnBuild);
     }
 
     private void AttachUnhandledExceptionLogging()

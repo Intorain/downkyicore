@@ -196,6 +196,8 @@ public sealed class LegacyUpgradeViewModelTests
 
     private sealed class BlockingLegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
     {
+        public bool IsUpgradeRequired() => true;
+
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource CancellationObserved { get; } =
@@ -247,6 +249,8 @@ public sealed class LegacyUpgradeViewModelTests
 
     private sealed class FaultingLegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
     {
+        public bool IsUpgradeRequired() => true;
+
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource Fail { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -263,6 +267,8 @@ public sealed class LegacyUpgradeViewModelTests
 
     private sealed class CompletedLegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
     {
+        public bool IsUpgradeRequired() => true;
+
         public Task<LegacyUpgradeResult> UpgradeAsync(
             IProgress<LegacyUpgradeProgress> progress,
             CancellationToken cancellationToken)
@@ -274,6 +280,8 @@ public sealed class LegacyUpgradeViewModelTests
 
     private sealed class FailedLegacyUpgradeCoordinator(Exception failure) : ILegacyUpgradeCoordinator
     {
+        public bool IsUpgradeRequired() => true;
+
         public Task<LegacyUpgradeResult> UpgradeAsync(
             IProgress<LegacyUpgradeProgress> progress,
             CancellationToken cancellationToken)

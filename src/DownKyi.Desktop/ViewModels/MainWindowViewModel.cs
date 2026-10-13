@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +23,7 @@ namespace DownKyi.ViewModels;
 internal sealed class MainWindowViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
+    private bool _activated;
     private readonly IAppDialogService _dialogService;
     private readonly IAppNavigationService _navigationService;
     private readonly IUserNotificationService _notificationService;
@@ -31,6 +31,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IClipboardMonitor _clipboardMonitor;
     private readonly SearchService _searchService;
     private readonly VersionCheckerService _versionChecker;
+    private readonly ILegacyUpgradeCoordinator _legacyUpgradeCoordinator;
     private readonly IDownloadRuntimeAvailability _downloadRuntimeAvailability;
     private readonly DownloadStoreRecoveryPresenter _downloadStoreRecoveryPresenter;
     private readonly ILogger<MainWindowViewModel> _logger;
@@ -64,8 +65,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         get => _message;
         set => SetProperty(ref _message, value);
     }
-
-    public RelayCommand? LoadedCommand { get; }
 
     private RelayCommand? _closingCommand;
 
@@ -137,6 +136,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         IClipboardMonitor clipboardMonitor,
         SearchService searchService,
         VersionCheckerService versionChecker,
+        ILegacyUpgradeCoordinator legacyUpgradeCoordinator,
         IDownloadRuntimeAvailability downloadRuntimeAvailability,
         DownloadStoreRecoveryPresenter downloadStoreRecoveryPresenter,
         ILogger<MainWindowViewModel> logger)
@@ -148,6 +148,8 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         _clipboardMonitor = clipboardMonitor ?? throw new ArgumentNullException(nameof(clipboardMonitor));
         _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
         _versionChecker = versionChecker ?? throw new ArgumentNullException(nameof(versionChecker));
+        _legacyUpgradeCoordinator = legacyUpgradeCoordinator
+            ?? throw new ArgumentNullException(nameof(legacyUpgradeCoordinator));
         _downloadRuntimeAvailability = downloadRuntimeAvailability
             ?? throw new ArgumentNullException(nameof(downloadRuntimeAvailability));
         _downloadStoreRecoveryPresenter = downloadStoreRecoveryPresenter
@@ -155,29 +157,25 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _lifetimeToken = _lifetimeCancellation.Token;
 
-        #region MyRegion
-
-        // 订阅消息发送事件
         _notificationService.NotificationRaised += NotificationServiceOnNotificationRaised;
         _navigationService.NavigationChanged += NavigationServiceOnNavigationChanged;
         MainContent = _navigationService.GetActiveView(AppNavigationRegion.Main);
+    }
 
-        #endregion
-
-
-        LoadedCommand = new RelayCommand(() =>
+    internal void Activate()
+    {
+        if (_activated || _lifetimeToken.IsCancellationRequested)
         {
-            if (Design.IsDesignMode)
-            {
-                return;
-            }
-            StartStartupDialogs();
-            _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
-            _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
-            _navigationService.Navigate(new AppNavigationRequest(
-                AppRoute.Index,
-                Parameter: "start"));
-        });
+            return;
+        }
+
+        _activated = true;
+        _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
+        _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
+        _navigationService.Navigate(new AppNavigationRequest(
+            AppRoute.Index,
+            Parameter: "start"));
+        Dispatcher.UIThread.Post(StartStartupDialogs, DispatcherPriority.Background);
     }
 
     private void NotificationServiceOnNotificationRaised(object? sender, UserNotificationEventArgs e)
@@ -332,6 +330,11 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task<StartupDiagnostic?> CollectLegacyUpgradeDiagnosticAsync()
     {
+        if (!_legacyUpgradeCoordinator.IsUpgradeRequired())
+        {
+            return null;
+        }
+
         try
         {
             var result = await _dialogService

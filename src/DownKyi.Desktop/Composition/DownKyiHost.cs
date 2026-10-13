@@ -8,7 +8,9 @@ namespace DownKyi.Desktop.Composition;
 
 public static class DownKyiHost
 {
-    public static IHost Create(Action<IServiceCollection>? configureDesktop = null)
+    public static IHost Create(
+        Action<IServiceCollection>? configureDesktop = null,
+        bool validateOnBuild = true)
     {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
         {
@@ -16,11 +18,13 @@ public static class DownKyiHost
         });
         builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
         {
-            ValidateOnBuild = true,
+            ValidateOnBuild = validateOnBuild,
             ValidateScopes = true
         }));
 
         builder.Services.AddLogging();
+        builder.Services.Configure<HostOptions>(options =>
+            options.ServicesStopConcurrently = true);
         builder.Services.AddSingleton<ApplicationCancellation>();
         builder.Services.AddSingleton<IClock, SystemClock>();
         builder.Services.AddSingleton<IHostedService>(services =>

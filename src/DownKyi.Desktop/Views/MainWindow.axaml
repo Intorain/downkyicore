@@ -13,16 +13,28 @@
         <EventTriggerBehavior EventName="Closing">
             <InvokeCommandAction Command="{Binding ClosingCommand}" />
         </EventTriggerBehavior>
-        <EventTriggerBehavior EventName="Opened">
-            <InvokeCommandAction Command="{Binding LoadedCommand}" />
-        </EventTriggerBehavior>
         <EventTriggerBehavior EventName="PointerPressed">
             <InvokeCommandAction Command="{Binding PointerPressedCommand}"
                                  PassEventArgsToCommand="True" />
         </EventTriggerBehavior>
     </Interaction.Behaviors>
     <Grid RowDefinitions="*">
-        <ContentControl Content="{Binding MainContent}" />
+        <Grid
+            x:Name="StartupSurface"
+            IsHitTestVisible="False">
+            <TextBlock
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="44"
+                FontWeight="Light"
+                Foreground="{DynamicResource BrushBrand}"
+                Text="DownKyi" />
+        </Grid>
+
+        <ContentControl
+            x:Name="MainContentHost"
+            Content="{Binding MainContent}"
+            IsVisible="False" />
 
         <Border
             MinHeight="30"

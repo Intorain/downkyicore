@@ -38,6 +38,8 @@ internal sealed record LegacyUpgradeResult(
 
 internal interface ILegacyUpgradeCoordinator
 {
+    bool IsUpgradeRequired();
+
     Task<LegacyUpgradeResult> UpgradeAsync(
         IProgress<LegacyUpgradeProgress> progress,
         CancellationToken cancellationToken);
@@ -59,6 +61,35 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             ?? throw new ArgumentNullException(nameof(projectionStore));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public bool IsUpgradeRequired()
+    {
+        try
+        {
+            var loginPath = ApplicationStorage.GetLogin();
+            if (File.Exists(loginPath))
+            {
+                using Stream stream = File.Open(
+                    loginPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read);
+                if (NrbfDecoder.StartsWithPayloadHeader(stream))
+                {
+                    return true;
+                }
+            }
+
+            return FindLegacyDatabase() != null;
+        }
+        catch (Exception exception) when (IsMigrationException(exception))
+        {
+            _logger.LogErrorMessage(
+                "Legacy upgrade preflight failed; preserving the diagnostic migration path.",
+                exception);
+            return true;
+        }
     }
 
     public Task<LegacyUpgradeResult> UpgradeAsync(

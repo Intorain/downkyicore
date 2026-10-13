@@ -32,6 +32,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace DownKyi.Desktop.Tests;
 
@@ -694,13 +695,16 @@ public sealed class UiSmokeTests
                 });
 
                 var window = host.Services.GetRequiredService<MainWindow>();
+                Assert.Null(window.DataContext);
                 var mainViewModel = host.Services.GetRequiredService<MainWindowViewModel>();
                 var imageLoader = host.Services.GetRequiredService<IAsyncImageLoader>();
 
                 Assert.True(window.Width >= window.MinWidth);
                 Assert.True(window.Height >= window.MinHeight);
                 Assert.NotNull(window.Content);
+                window.ActivateContent();
                 Assert.Same(mainViewModel, window.DataContext);
+                Assert.IsType<ViewIndexViewModel>(mainViewModel.MainContent);
                 Assert.IsType<DiskCachedWebImageLoader>(imageLoader);
                 Assert.NotNull(host.Services.GetRequiredService<ViewIndexViewModel>());
                 var videoDetailViewModel = host.Services.GetRequiredService<ViewVideoDetailViewModel>();
@@ -749,7 +753,6 @@ public sealed class UiSmokeTests
                     .GetRequiredService<IAppNavigationService>()
                     .Navigate(new AppNavigationRequest(AppRoute.Index, Parameter: "smoke"));
 
-                Assert.IsType<ViewIndexViewModel>(mainViewModel.MainContent);
                 Assert.NotNull(DesktopApplication.BuildAvaloniaApp());
                 AssertPrismRuntimeIsNotLoaded();
             }
@@ -843,6 +846,16 @@ public sealed class UiSmokeTests
         await host.StopAsync(TestContext.Current.CancellationToken);
 
         Assert.True(cancellation.ShutdownToken.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void ProductHostStopsIndependentServicesConcurrently()
+    {
+        using var host = DownKyiHost.Create();
+
+        var options = host.Services.GetRequiredService<IOptions<HostOptions>>().Value;
+
+        Assert.True(options.ServicesStopConcurrently);
     }
 
     [AvaloniaFact]
