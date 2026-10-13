@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels;
 
-internal class ViewIndexViewModel : ViewModelBase
+internal class ViewIndexViewModel : ViewModelBase, IIndexSurfaceViewModel
 {
     public const string Tag = "PageIndex";
     private readonly IUserSessionCoordinator _userSessionCoordinator;
@@ -335,4 +336,10 @@ internal class ViewIndexViewModel : ViewModelBase
 
         base.Dispose(disposing);
     }
+
+    ICommand IIndexSurfaceViewModel.InputCommand => InputCommand;
+    ICommand IIndexSurfaceViewModel.LoginCommand => LoginCommand;
+    ICommand IIndexSurfaceViewModel.SettingsCommand => SettingsCommand;
+    ICommand IIndexSurfaceViewModel.DownloadManagerCommand => DownloadManagerCommand;
+    ICommand IIndexSurfaceViewModel.ToolboxCommand => ToolboxCommand;
 }

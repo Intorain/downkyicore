@@ -58,10 +58,27 @@ public sealed class AppLifecycleArchitectureTests
     public void MainWindowDefersContentCompositionUntilAfterItsFirstFrame()
     {
         var windowSource = ReadSource("src", "DownKyi.Desktop", "Views", "MainWindow.axaml.cs");
+        var cloakSource = ReadSource(
+            "src", "DownKyi.Desktop", "Platform", "WindowsWindowCloak.cs");
         var compositionSource = ReadSource(
             "src", "DownKyi.Desktop", "Composition", "DesktopComposition.cs");
 
         Assert.Contains("Lazy<MainWindowViewModel> viewModel", windowSource, StringComparison.Ordinal);
+        Assert.Contains("RequestAnimationFrame(WaitForStartupSurfaceFrame)", windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("RequestAnimationFrame(RevealStartupSurface)", windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("WindowsWindowCloak.TrySetCloaked(this, cloaked: true)", windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("Opacity = 1", windowSource, StringComparison.Ordinal);
+        Assert.Contains("RequestAnimationFrame(PresentStartupSurface)", windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("WindowsWindowCloak.TrySetCloaked(this, cloaked: false)", windowSource,
+            StringComparison.Ordinal);
+        Assert.Contains("DwmWindowAttributeCloak = 13", cloakSource, StringComparison.Ordinal);
+        Assert.Contains("DllImportSearchPath.System32", cloakSource, StringComparison.Ordinal);
+        Assert.Contains("RequestAnimationFrame(ScheduleContentActivation)", windowSource,
+            StringComparison.Ordinal);
         Assert.Contains(
             "Dispatcher.UIThread.Post(ActivateContent, DispatcherPriority.Background)",
             windowSource,

@@ -17,6 +17,50 @@ namespace DownKyi.Tests;
 public sealed class StartupDialogOrderingTests
 {
     [Fact]
+    public void StartupClipboardInputAutomaticallyContinuesAfterActivation()
+    {
+        using var settings = new TestSettingsStore();
+        settings.Store.Update(current => current with
+        {
+            About = current.About with { AutoUpdateWhenLaunch = AllowStatus.No }
+        });
+        var navigation = new NavigationStub();
+        var dialogs = new OrderedDialogService();
+        using var handler = new ReleaseHandler();
+        using var httpClient = new HttpClient(handler, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://api.github.test/")
+        };
+        using var clipboard = new ClipboardMonitorStub();
+        using var viewModel = new MainWindowViewModel(
+            navigation,
+            new NotificationStub(),
+            dialogs,
+            settings.Store,
+            clipboard,
+            new SearchService(settings.Store, navigation),
+            new VersionCheckerService(httpClient, "owner", "repo"),
+            new LegacyUpgradeCoordinatorStub(required: false),
+            new RuntimeAvailabilityStub(),
+            CreateRecoveryPresenter(dialogs),
+            NullLogger<MainWindowViewModel>.Instance);
+
+        viewModel.Activate(
+            pendingStartupInput: "BV17x411w7KC",
+            pendingStartupInputFromClipboard: true);
+
+        Assert.Collection(
+            navigation.Requests,
+            request => Assert.Equal(AppRoute.Index, request.Route),
+            request =>
+            {
+                Assert.Equal(AppRoute.VideoDetail, request.Route);
+                var parameter = Assert.IsType<string>(request.Parameter);
+                Assert.EndsWith(AppConstant.ClipboardId, parameter, StringComparison.Ordinal);
+            });
+    }
+
+    [Fact]
     public async Task UpdateDialogWaitsForLegacyMigrationDialogToFinish()
     {
         using var settings = new TestSettingsStore();
@@ -447,6 +491,8 @@ public sealed class StartupDialogOrderingTests
 
     private sealed class NavigationStub : IAppNavigationService
     {
+        public List<AppNavigationRequest> Requests { get; } = [];
+
         public event EventHandler<AppNavigationChangedEventArgs>? NavigationChanged
         {
             add { }
@@ -455,6 +501,7 @@ public sealed class StartupDialogOrderingTests
 
         public void Navigate(AppNavigationRequest request)
         {
+            Requests.Add(request);
         }
 
         public void NavigateRegion(

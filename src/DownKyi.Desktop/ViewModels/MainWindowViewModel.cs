@@ -162,7 +162,10 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         MainContent = _navigationService.GetActiveView(AppNavigationRegion.Main);
     }
 
-    internal void Activate()
+    internal void Activate(
+        AppNavigationRequest? pendingStartupNavigation = null,
+        string? pendingStartupInput = null,
+        bool pendingStartupInputFromClipboard = false)
     {
         if (_activated || _lifetimeToken.IsCancellationRequested)
         {
@@ -170,11 +173,23 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
 
         _activated = true;
-        _clipboardMonitor.Changed -= ClipboardMonitorOnChanged;
         _clipboardMonitor.Changed += ClipboardMonitorOnChanged;
-        _navigationService.Navigate(new AppNavigationRequest(
-            AppRoute.Index,
-            Parameter: "start"));
+        _navigationService.Navigate(pendingStartupNavigation
+            ?? new AppNavigationRequest(AppRoute.Index, Parameter: "start"));
+        if (!string.IsNullOrWhiteSpace(pendingStartupInput)
+            && MainContent is ViewIndexViewModel index)
+        {
+            index.InputText = pendingStartupInput;
+        }
+
+        if (!string.IsNullOrWhiteSpace(pendingStartupInput))
+        {
+            _searchService.BiliInput(
+                pendingStartupInput + (pendingStartupInputFromClipboard
+                    ? AppConstant.ClipboardId
+                    : string.Empty),
+                AppRoute.Index);
+        }
         Dispatcher.UIThread.Post(StartStartupDialogs, DispatcherPriority.Background);
     }
 

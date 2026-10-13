@@ -683,13 +683,19 @@ public sealed class UiSmokeTests
             var logProvider = new ApplicationLogProvider(
                 new ApplicationLogOptions(Path.Combine(testDirectory, "logs")));
             var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logProvider));
+            var clipboardMonitor = new ClipboardMonitorStub();
 
             try
             {
+                settingsStore.Update(current => current with
+                {
+                    Basic = current.Basic with { IsListenClipboard = AllowStatus.Yes }
+                });
                 using var host = DownKyiHost.Create(services =>
                 {
                     services.AddDownKyiDesktop(loggerFactory, logProvider);
                     services.Replace(ServiceDescriptor.Singleton<ISettingsStore>(settingsStore));
+                    services.Replace(ServiceDescriptor.Singleton<IClipboardMonitor>(clipboardMonitor));
                     services.Replace(ServiceDescriptor.Singleton(
                         new SqliteDownloadTaskStoreOptions(databasePath)));
                 });
@@ -702,9 +708,24 @@ public sealed class UiSmokeTests
                 Assert.True(window.Width >= window.MinWidth);
                 Assert.True(window.Height >= window.MinHeight);
                 Assert.NotNull(window.Content);
+                Assert.Equal(0, window.Opacity);
+                var startupIndex = Assert.IsType<ViewIndex>(
+                    window.FindControl<ViewIndex>("StartupSurface"));
+                Assert.IsType<StartupIndexViewModel>(startupIndex.DataContext);
+                var startupIndicator = Assert.IsType<Border>(
+                    window.FindControl<Border>("StartupReadinessIndicator"));
+                Assert.True(startupIndicator.IsVisible);
+                Assert.Equal(1, clipboardMonitor.SubscriptionCount);
+                clipboardMonitor.Raise("startup clipboard text");
+                Assert.Equal("startup clipboard text", window.StartupIndex.InputText);
                 window.ActivateContent();
                 Assert.Same(mainViewModel, window.DataContext);
                 Assert.IsType<ViewIndexViewModel>(mainViewModel.MainContent);
+                Assert.Equal(
+                    "startup clipboard text",
+                    Assert.IsType<ViewIndexViewModel>(mainViewModel.MainContent).InputText);
+                Assert.Equal(1, clipboardMonitor.SubscriptionCount);
+                Assert.False(startupIndicator.IsVisible);
                 Assert.IsType<DiskCachedWebImageLoader>(imageLoader);
                 Assert.NotNull(host.Services.GetRequiredService<ViewIndexViewModel>());
                 var videoDetailViewModel = host.Services.GetRequiredService<ViewVideoDetailViewModel>();
@@ -1313,6 +1334,38 @@ public sealed class UiSmokeTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ClipboardMonitorStub : IClipboardMonitor
+    {
+        private EventHandler<ClipboardTextChangedEventArgs>? _changed;
+
+        public int SubscriptionCount { get; private set; }
+
+        public event EventHandler<ClipboardTextChangedEventArgs>? Changed
+        {
+            add
+            {
+                _changed += value;
+                SubscriptionCount++;
+            }
+            remove
+            {
+                _changed -= value;
+                SubscriptionCount--;
+            }
+        }
+
+        public void Raise(string text)
+        {
+            _changed?.Invoke(this, new ClipboardTextChangedEventArgs(text));
+        }
+
+        public void Dispose()
+        {
+            _changed = null;
+            SubscriptionCount = 0;
         }
     }
 

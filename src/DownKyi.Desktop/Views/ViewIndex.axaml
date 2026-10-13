@@ -7,7 +7,7 @@
              d:DesignHeight="620"
              xmlns:vm="clr-namespace:DownKyi.ViewModels"
              xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
-             x:DataType="vm:ViewIndexViewModel"
+             x:DataType="vm:IIndexSurfaceViewModel"
              x:Class="DownKyi.Views.ViewIndex">
     <UserControl.Styles>
         <Style Selector="TextBox.index-search-input /template/ Border#PART_BorderElement">
