@@ -179,7 +179,7 @@ public sealed partial class DownloadTask
         DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(failure);
-        if (Phase is DownloadPhase.Completed or DownloadPhase.Deleted)
+        if (Phase is DownloadPhase.Completed or DownloadPhase.Canceled or DownloadPhase.Deleted)
         {
             return InvalidTransition(DownloadPhase.Failed);
         }

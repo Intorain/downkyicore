@@ -469,6 +469,91 @@ public sealed class DownloadBootstrapHostedServiceTests
     }
 
     [Fact]
+    public async Task StartupCompletesInterruptedDeletionOfCanceledLegacyTask()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "downkyi-canceled-legacy-cleanup",
+            Guid.NewGuid().ToString("N"));
+        var databasePath = Path.Combine(directory, "download.db");
+        var partialFile = Path.Combine(directory, "legacy.partial");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllBytesAsync(
+            partialFile,
+            [1, 2, 3, 4],
+            TestContext.Current.CancellationToken);
+        try
+        {
+            using var store = new SqliteDownloadTaskStore(
+                new SqliteDownloadTaskStoreOptions(databasePath),
+                new SystemClock());
+            var historyService = DownloadHistoryService.CreateForSharedStore(store);
+            using var tasks = new DownloadTaskApplicationService(
+                store,
+                historyService,
+                new SystemClock());
+            using var projections = new DownloadTaskProjectionStore(
+                tasks,
+                historyService,
+                new SystemClock());
+            var task = CreateTask(
+                "canceled-legacy-backend",
+                Path.Combine(directory, "output"));
+            Assert.True((await tasks.AddAsync(
+                task,
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.StartAsync(
+                task.Id,
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.RecordTransferFileAsync(
+                task.Id,
+                "video-1",
+                Path.GetFileName(partialFile),
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.SetBackendIdentityAsync(
+                task.Id,
+                "legacy-execution-id",
+                TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await tasks.CancelAsync(
+                task.Id,
+                TestContext.Current.CancellationToken)).IsSuccess);
+            var stateWriter = new DownloadTaskStateWriter(tasks);
+            var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+            var fileService = new DownloadTaskFileService(
+                NullLogger<DownloadTaskFileService>.Instance,
+                staging,
+                stateWriter);
+            using var runtime = new RecordingDownloadRuntime();
+            var downloadLists = new DownloadListState();
+            using var service = new DownloadBootstrapHostedService(
+                downloadLists,
+                projections,
+                stateWriter,
+                new RecordingRuntimeFactory(runtime),
+                new DownloadTaskQueueGateway(),
+                new ImmediateUiDispatcher(),
+                NullLogger<DownloadBootstrapHostedService>.Instance,
+                staging,
+                fileService);
+
+            await service.StartAsync(TestContext.Current.CancellationToken);
+
+            Assert.Null(await tasks.FindAsync(
+                task.Id,
+                TestContext.Current.CancellationToken));
+            Assert.Empty(downloadLists.Downloading);
+            Assert.Empty(runtime.Enqueued);
+            Assert.False(File.Exists(partialFile));
+            await service.StopAsync(TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            ClearOwnedSqlitePool(databasePath);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task LegacyCleanupFailureRemainsFailedAndCannotEnterBuiltinRuntime()
     {
         var clock = new FixedClock();

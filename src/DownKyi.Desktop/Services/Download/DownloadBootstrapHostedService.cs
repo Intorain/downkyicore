@@ -77,9 +77,18 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                     continue;
                 }
 
-                await _stateWriter
-                    .FailLegacyBackendAsync(task.Id, cancellationToken)
-                    .ConfigureAwait(false);
+                if (task.Phase == DownloadPhase.Canceled)
+                {
+                    await _stateWriter
+                        .DeleteAsync(task.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await _stateWriter
+                        .FailLegacyBackendAsync(task.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                }
             }
 
             if (blocked.Count > 0)
@@ -188,7 +197,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         DownloadTask task,
         CancellationToken cancellationToken)
     {
-        if (task.Phase == DownloadPhase.Failed)
+        if (task.Phase is DownloadPhase.Failed or DownloadPhase.Canceled)
         {
             return;
         }

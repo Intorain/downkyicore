@@ -93,6 +93,22 @@ public sealed class DownloadTaskStateMachineTests
     }
 
     [Fact]
+    public void DiscardingUnpublishedArtifactsCannotReclassifyCanceledTaskAsFailed()
+    {
+        var canceled = CreateTask().Cancel(Epoch.AddSeconds(1)).RequireValue();
+
+        var result = canceled.DiscardUnpublishedArtifactsAndFail(
+            new DownloadFailure("legacy.removed", "Legacy transfer removed.", true),
+            Epoch.AddSeconds(2));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.transition.invalid", result.Error?.Code);
+        Assert.Equal(OperationErrorKind.Conflict, result.Error?.Kind);
+        Assert.Equal(DownloadPhase.Canceled, canceled.Phase);
+        Assert.Null(canceled.Failure);
+    }
+
+    [Fact]
     public void InvalidTransitionReturnsTypedConflictAndKeepsOriginalSnapshot()
     {
         var queued = CreateTask();
