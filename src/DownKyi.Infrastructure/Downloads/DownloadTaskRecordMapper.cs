@@ -79,7 +79,8 @@ internal static class DownloadTaskRecordMapper
             completedFiles,
             GetNullableString(reader, "download_content"),
             GetNullableString(reader, "download_status_title"),
-            reader.IsDBNull(reader.GetOrdinal("max_speed")) ? 0 : reader.GetInt64(reader.GetOrdinal("max_speed")));
+            reader.IsDBNull(reader.GetOrdinal("max_speed")) ? 0 : reader.GetInt64(reader.GetOrdinal("max_speed")),
+            reader.GetBoolean(reader.GetOrdinal("is_legacy_transfer")));
         var phase = ReadPhase(reader);
         DownloadFailure? failure = null;
         if (phase == DownloadPhase.Failed)

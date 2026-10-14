@@ -453,7 +453,6 @@ try {
         $runtime = $runtimeCandidates[0]
         $windowsExecutables = @(
             (Join-Path $runtime 'DownKyi.exe'),
-            (Join-Path $runtime 'aria2/aria2c.exe'),
             (Join-Path $runtime 'ffmpeg/ffmpeg.exe'),
             (Join-Path $runtime 'ffmpeg/ffprobe.exe')
         )
@@ -513,7 +512,6 @@ try {
         $runtime = $runtimeCandidates[0]
         $linuxExecutables = @(
             (Join-Path $runtime 'DownKyi'),
-            (Join-Path $runtime 'aria2/aria2c'),
             (Join-Path $runtime 'ffmpeg/ffmpeg'),
             (Join-Path $runtime 'ffmpeg/ffprobe')
         )

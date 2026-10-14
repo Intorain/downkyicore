@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace DownKyi.Services.Download;
 
-internal static class AriaTaskHeaderPolicy
+internal static class DownloadRequestHeaderPolicy
 {
     private const string BilibiliHost = "bilibili.com";
 
-    public static AriaTaskHeaders Create(
+    public static DownloadRequestHeaders Create(
         string url,
         string userAgent,
         string? credentials)
@@ -33,7 +33,7 @@ internal static class AriaTaskHeaderPolicy
             }
         }
 
-        return new AriaTaskHeaders(
+        return new DownloadRequestHeaders(
             headers,
             userAgent,
             carriesCredentials);
@@ -55,13 +55,13 @@ internal static class AriaTaskHeaderPolicy
             || char.IsControl(character)))
         {
             throw new ArgumentException(
-                "An aria2 task header contains a control character.",
+                "A download request header contains a control character.",
                 parameterName);
         }
     }
 }
 
-internal sealed record AriaTaskHeaders(
+internal sealed record DownloadRequestHeaders(
     IReadOnlyList<string> Headers,
     string UserAgent,
     bool CarriesCredentials);

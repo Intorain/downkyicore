@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using DownKyi.Core.Aria2cNet.Server;
 using DownKyi.Core.FileName;
 using DownKyi.Core.Settings;
 
@@ -161,15 +160,6 @@ public sealed class SettingsRoundtripCompletenessTests
             ?? throw new InvalidOperationException("ApplicationSettings could not be serialized.");
         SetJsonValue(root, leaf.Path, leaf.ValueType, replacement);
 
-        var candidate = root.Deserialize<ApplicationSettings>(SnapshotJsonOptions)
-            ?? throw new InvalidOperationException($"Candidate for '{leaf.Path}' could not be deserialized.");
-        if (candidate.Network.IsAriaHttpProxy == AllowStatus.Yes)
-        {
-            // Enabling this capability is validator-dependent on a complete local endpoint.
-            SetJsonValue(root, "Network.AriaHttpProxy", typeof(string), "127.0.0.1");
-            SetJsonValue(root, "Network.AriaHttpProxyListenPort", typeof(int), 17890);
-        }
-
         if (leaf.Path == "Network.CustomNetworkProxy"
             && !string.IsNullOrEmpty((string)replacement))
         {
@@ -177,7 +167,7 @@ public sealed class SettingsRoundtripCompletenessTests
             SetJsonValue(root, "Network.NetworkProxy", typeof(NetworkProxy), NetworkProxy.Custom);
         }
 
-        candidate = root.Deserialize<ApplicationSettings>(SnapshotJsonOptions)
+        var candidate = root.Deserialize<ApplicationSettings>(SnapshotJsonOptions)
             ?? throw new InvalidOperationException($"Candidate for '{leaf.Path}' could not be deserialized.");
         Assert.True(
             LeafValuesEqual(replacement, leaf.Read(candidate)),
@@ -212,9 +202,6 @@ public sealed class SettingsRoundtripCompletenessTests
                 "Network.UserAgent" => "DownKyi-Roundtrip-Guard/1.0",
                 "Network.CustomNetworkProxy" => "http://127.0.0.1:18080",
                 "Network.HttpProxy" => "127.0.0.1",
-                "Network.AriaToken" => "roundtrip-token",
-                "Network.AriaHost" => "https://aria.example.test",
-                "Network.AriaHttpProxy" => "127.0.0.1",
                 "Video.SaveVideoRootPath" => "C:/DownKyi/Roundtrip",
                 "Video.FileNamePartTimeFormat" => "yyyyMMdd-HHmmss",
                 "Danmaku.FontName" => "Roundtrip Sans",
@@ -232,14 +219,9 @@ public sealed class SettingsRoundtripCompletenessTests
             {
                 "Network.MaxCurrentDownloads" => 4,
                 "Network.Split" => 9,
+                "Network.MaxOverallDownloadLimit" => 17,
+                "Network.MaxDownloadLimit" => 23,
                 "Network.HttpProxyListenPort" => 18081,
-                "Network.AriaListenPort" => 35077,
-                "Network.AriaSplit" => 6,
-                "Network.AriaMaxConnectionPerServer" => 9,
-                "Network.AriaMinSplitSize" => 11,
-                "Network.AriaMaxOverallDownloadLimit" => 17,
-                "Network.AriaMaxDownloadLimit" => 23,
-                "Network.AriaHttpProxyListenPort" => 17890,
                 "Video.VideoCodecs" => 12,
                 "Video.Quality" => 80,
                 "Video.AudioQuality" => 30232,
@@ -278,10 +260,7 @@ public sealed class SettingsRoundtripCompletenessTests
                 "Basic.ParseScope" => ParseScope.CurrentSection,
                 "Basic.DownloadFinishedSort" => DownloadFinishedSort.DownloadDesc,
                 "Basic.RepeatDownloadStrategy" => RepeatDownloadStrategy.ReDownload,
-                "Network.Downloader" => Downloader.BuiltIn,
                 "Network.NetworkProxy" => NetworkProxy.System,
-                "Network.AriaLogLevel" => AriaConfigLogLevel.INFO,
-                "Network.AriaFileAllocation" => AriaConfigFileAllocation.PREALLOC,
                 "Video.FfmpegHardwareAcceleration" => FfmpegHardwareAcceleration.Disabled,
                 "Video.OrderFormat" => OrderFormat.LeadingZeros,
                 "Danmaku.OutputFormat" => DanmakuOutputFormat.AssAndXml,

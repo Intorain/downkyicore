@@ -20,7 +20,7 @@ internal static class DownloadFileIntegrity
         }
 
         var path = file;
-        if (File.Exists($"{path}.aria2") || File.Exists($"{path}.download"))
+        if (File.Exists($"{path}.download"))
         {
             return DownloadFileIntegrityResult.Invalid("Downloaded media file still has an unfinished sidecar.");
         }

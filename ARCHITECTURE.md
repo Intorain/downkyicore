@@ -31,7 +31,7 @@ flowchart TD
 - `DownKyi.Application` 擁有 use cases，以及 Bilibili HTTP、cookie／buvid、logging、physical output path 等 ports。
 - `DownKyi.Domain` 的 `DownloadTask` 是 durable state transition 的權威。
 - `DownKyi.Infrastructure` 擁有 SQLite、async Bilibili transport、single-flight buvid、write-behind、physical path resolver 與 private logging sink／retention／exporter。
-- `DownKyi.Core` 必須保持 headless；Bilibili DTO／protocol、aria2、FFmpeg 與部分 filesystem compatibility 目前仍在此。把後三者搬到 Infrastructure 是 ownership 方向，不是已完成事實。
+- `DownKyi.Core` 必須保持 headless；Bilibili DTO／protocol、FFmpeg 與部分 filesystem compatibility 目前仍在此。把後兩者搬到 Infrastructure 是 ownership 方向，不是已完成事實。
 
 Prism、DryIoc、EventAggregator、RegionManager、ContainerLocator、第二個 router／container 或 service locator 都不得重新引入。否則會產生平行生命週期、導航狀態或依賴解析 owner。
 
@@ -89,9 +89,9 @@ flowchart LR
 - `ValidateStage` 由實際 published／staged file 證據推導 requested media／subtitle／danmaku／cover 的 `Succeeded`、`NoResource` 或 `Failed`；未 requested 的 action 不建立 result entry，planning 中由使用者跳過的 page 不進入 execution。至少一個 requested action 成功才可進入 finalize。單一 action 無資源不等於 transport／解析／寫入失敗，所有 action 都沒有輸出則以 typed not-found failure 結束，不得寫入成功歷史。
 - Retry 只有一個預算 owner：coordinator 決定 typed retry／refresh／source switch，backend 每次只嘗試一個 URL。不得在 backend、RPC caller 或外層另加 retry，否則預算會相乘。
 - Playback metadata query 的 transient API-code／HTTP retry 只由 `VideoStreamApi` 擁有，最多重送一次；成功 response 缺少 requested quality 是 planning availability，不得由 preparation 再發出五次相同查詢。
-- Built-in resume 必須先比較 resource identity；沒有 validator 時驗證已保存 bytes 的 overlap。Mismatch 回報 `ResumeRejected`，coordinator 清除該 transfer artifacts 後，同地址最多重試一次。
+- Built-in resume 必須先比較 resource identity；沒有 strong validator 時，重用前必須逐段比對所有已保存 bytes。Mismatch 回報 `ResumeRejected`，coordinator 清除該 transfer artifacts 後，同地址最多重試一次。
 - Cancellation 保持 cancellation，不得轉成 failure 或 retry。來源切換前必須停止舊 transfer 並清除該 identity／target／sidecars；teardown 或 cleanup 失敗要 fail closed。
-- aria2 RPC failure 必須保留最新 GID；只有 terminal failure、確定 task-not-found 或安全完成的 source-switch teardown 才可清除。
+- `DownloadTransferState.HasLegacyProvenance` 是升級前未完成工作的唯一分類規則；bootstrap 只刪除該 task 的私有 staging 目錄，Canceled task 完成刪除，其餘 task 標為永久 `download.transfer.legacy-backend-removed` Failed history。不得讀取、搬移、刪除或遷移 staging 外的舊 partial files、GID、remote state 或 custom endpoint；resume guard 與 UI action 必須由同一分類規則拒絕此類 task。
 
 ### Artifact 與完成邊界
 
@@ -104,21 +104,18 @@ flowchart LR
 
 `DownloadComposition.AddDownloadModule()` 是唯一註冊入口。Queue gateway 的 queue／availability interfaces 必須解析到同一 singleton；bootstrap hosted service 的 service／hosted aliases 也必須共用同一 singleton。拆成不同 instance 會產生第二套 queue、start／stop 或 dispose owner。
 
-## aria2 security boundary
+## Built-in transfer security boundary
 
-- Packaged aria2 是 process-local child：每次使用 ephemeral loopback port、fresh high-entropy secret、restricted temporary config，且只有 supervised child 存活時 readiness 才有效。
-- Process arguments 不得含 Cookie、RPC secret 或 caller-combined argument text。
-- Custom remote aria2 由外部擁有；非 loopback endpoint 必須 HTTPS，禁止 RPC redirect。
-- Credential header 屬於 task，且只可給 exact HTTPS `bilibili.com` host／subdomain；其他 host 不得收到。傳輸前的單一候選安全預檢拒絕只可切換到下一個獨立候選，且每個候選都必須重新通過完整預檢；實際傳輸的 TLS failure 仍是 terminal failure，不得 retry 或 downgrade。
-- Runtime 啟動 packaged binary 前驗 sidecar digest，再由 RPC 驗 required feature。
-
-來源、六 RID real-binary gate、legacy migration 與 residual risk 見 `docs/operations/aria2-security.md`；RPC adapter 責任見 `docs/design-docs/aria2-rpc-client-ownership.md`。
+- Download runtime 只建立 in-process `BuiltinTransferBackend`；不得啟動、連線或封裝外部下載器。
+- Credential header 屬於 task，且只可給 exact HTTPS `bilibili.com` host／subdomain；其他 host 不得收到。禁止 downgrade 與 credential cross-origin redirect。
+- 每個 range response 必須精確符合要求的 `206 Content-Range`、總長度與 resource identity；任何 mismatch 都 fail closed 為 `ResumeRejected`。
+- Range ledger 是續傳的唯一真相。完成前所有區間必須無重疊、無缺口且各自到達終點，才可將 `.download` 原子邊界移成完成檔。
 
 ## Layer rules
 
 ### Domain
 
-- 不依賴 UI、HTTP、SQLite、FFmpeg、aria2、settings 或 logging implementation。
+- 不依賴 UI、HTTP、SQLite、FFmpeg、settings 或 logging implementation。
 - 所有 state transition 由 aggregate method 驗證。
 
 ### Application

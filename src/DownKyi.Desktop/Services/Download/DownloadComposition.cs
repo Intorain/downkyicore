@@ -1,5 +1,4 @@
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Aria2cNet.Server;
 using DownKyi.Core.FFmpeg;
 using DownKyi.Core.Storage;
 using DownKyi.Infrastructure.Downloads;
@@ -38,11 +37,9 @@ internal static class DownloadComposition
         services.AddSingleton<IDownloadRuntimeAvailability>(provider =>
             provider.GetRequiredService<DownloadTaskQueueGateway>());
         services.AddSingleton<DownloadTaskAdmissionService>();
-        services.AddSingleton<LegacyDownloadAdmissionPresenter>();
         services.AddSingleton<DownloadListState>();
         services.AddSingleton<DownloadTaskFileService>();
         services.AddSingleton<DownloadTaskStaging>();
-        services.AddSingleton<AriaRuntimeClientRegistry>();
         services.AddSingleton<IDownloadManagerCoordinator, DownloadManagerCoordinator>();
         services.AddSingleton<DownloadDuplicatePolicy>();
         services.AddSingleton<DownloadMovieMetadataBuilder>();
@@ -50,8 +47,7 @@ internal static class DownloadComposition
         services.AddSingleton<DownloadActionPlanner>();
         services.AddSingleton<IAddToDownloadServiceFactory, AddToDownloadServiceFactory>();
 
-        services.AddSingleton<AriaServer>();
-        services.AddSingleton<IDownloadEmergencyCleanup, AriaDownloadEmergencyCleanup>();
+        services.AddSingleton<IDownloadEmergencyCleanup, BuiltinDownloadEmergencyCleanup>();
         services.AddSingleton<DownloadDiagnosticLogger>();
         services.AddSingleton<IDownloadRuntimeFactory, DownloadRuntimeFactory>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();

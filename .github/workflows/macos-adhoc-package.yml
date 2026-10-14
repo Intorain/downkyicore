@@ -14,7 +14,6 @@ on:
       - 'global.json'
       - 'version.txt'
       - 'THIRD-PARTY-NOTICES.md'
-      - 'script/aria2.sh'
       - 'script/ffmpeg.sh'
       - 'script/ffmpeg-assets.py'
       - 'script/validate-publish-output.ps1'
@@ -70,8 +69,7 @@ jobs:
       - name: Download and verify upstream runtime dependencies
         working-directory: ./script
         run: |
-          chmod +x aria2.sh ffmpeg.sh
-          ./aria2.sh osx-${{ matrix.cpu }}
+          chmod +x ffmpeg.sh
           ./ffmpeg.sh mac ${{ matrix.cpu }}
       - name: Publish ${{ matrix.cpu }} app
         id: publish-output
@@ -100,7 +98,7 @@ jobs:
         env:
           MACOS_ADHOC_SIGNING: 'true'
         run: |
-          chmod +x codesign-common.sh prepare-app-layout.sh sign.sh verify-app-signature.sh verify-app-loader.sh validate-dmg-package.sh verify-runtime-architecture.sh aria2-runtime-integrity.sh verify-aria2-rpc-readiness.sh
+          chmod +x codesign-common.sh prepare-app-layout.sh sign.sh verify-app-signature.sh verify-app-loader.sh validate-dmg-package.sh verify-runtime-architecture.sh
           ./sign.sh
       - name: Verify ad-hoc signing policy
         working-directory: ./script/macos
@@ -112,9 +110,6 @@ jobs:
             exit 1
           fi
           ./verify-app-signature.sh
-      - name: Verify signed aria2 integrity
-        working-directory: ./script/macos
-        run: ./aria2-runtime-integrity.sh verify 哔哩下载姬.app
       - name: Create DMG
         working-directory: ./script/macos
         run: |

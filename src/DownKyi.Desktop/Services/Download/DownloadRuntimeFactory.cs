@@ -2,14 +2,11 @@ using System;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Aria2cNet.Client;
-using DownKyi.Core.Aria2cNet.Server;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.FFmpeg;
 using DownKyi.Core.Settings;
 using DownKyi.Platform;
 using Microsoft.Extensions.Logging;
-using DownloaderSetting = DownKyi.Core.Settings.Downloader;
 
 namespace DownKyi.Services.Download;
 
@@ -21,8 +18,6 @@ internal interface IDownloadRuntimeFactory
 internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
 {
     private readonly DownloadListState _downloadLists;
-    private readonly AriaRuntimeClientRegistry _ariaClientRegistry;
-    private readonly AriaServer _ariaServer;
     private readonly DownloadTaskProjectionStore _projectionStore;
     private readonly DownloadTaskStateWriter _stateWriter;
     private readonly IDownloadTaskApplicationService _tasks;
@@ -49,8 +44,6 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         DownloadDiagnosticLogger diagnosticLogger,
         FfmpegProcessor ffmpegProcessor,
         DownloadTaskFileService fileService,
-        AriaRuntimeClientRegistry ariaClientRegistry,
-        AriaServer ariaServer,
         ILoggerFactory loggerFactory,
         IBilibiliApiClient client,
         DownloadTaskStaging? staging = null)
@@ -67,9 +60,6 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         _diagnosticLogger = diagnosticLogger ?? throw new ArgumentNullException(nameof(diagnosticLogger));
         _ffmpegProcessor = ffmpegProcessor ?? throw new ArgumentNullException(nameof(ffmpegProcessor));
         _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
-        _ariaClientRegistry = ariaClientRegistry
-            ?? throw new ArgumentNullException(nameof(ariaClientRegistry));
-        _ariaServer = ariaServer ?? throw new ArgumentNullException(nameof(ariaServer));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _staging = staging;
@@ -79,31 +69,10 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
     {
         var settingsSnapshot = _settingsStore.Current;
         var network = settingsSnapshot.Network;
-        var downloader = network.Downloader;
-        ITransferBackend? transferBackend = downloader switch
-        {
-            DownloaderSetting.BuiltIn => new BuiltinTransferBackend(
-                _settingsStore,
-                _diagnosticLogger,
-                _loggerFactory.CreateLogger<BuiltinTransferBackend>()),
-            DownloaderSetting.Aria => CreateLocalAriaBackend(network),
-            DownloaderSetting.CustomAria => new Aria2TransferBackend(
-                network,
-                new AriaClient(network.AriaHost, network.AriaListenPort, network.AriaToken),
-                _ariaClientRegistry,
-                _diagnosticLogger,
-                _ariaServer,
-                _loggerFactory,
-                _loggerFactory.CreateLogger<Aria2TransferBackend>(),
-                ownsAriaServer: false,
-                localEndpoint: null),
-            _ => null
-        };
-
-        if (transferBackend == null)
-        {
-            return null;
-        }
+        ITransferBackend transferBackend = new BuiltinTransferBackend(
+            _settingsStore,
+            _diagnosticLogger,
+            _loggerFactory.CreateLogger<BuiltinTransferBackend>());
 
         var artifactWriter = new DownloadArtifactWriter(
             _wbiKeyProvider,
@@ -145,7 +114,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 playbackResolver,
                 presenter,
                 _loggerFactory.CreateLogger<DownloadMediaStage>()),
-            new DownloadArtifactsStage(artifactWriter, presenter, _fileService),
+            new DownloadArtifactsStage(artifactWriter, presenter),
             new MuxStage(
                 presenter,
                 _ffmpegProcessor,
@@ -164,6 +133,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 contextFactory,
                 stages,
                 _stateWriter,
+                _fileService,
                 shutdownRecovery,
                 transferBackend,
                 _loggerFactory.CreateLogger<DownloadPipeline>());
@@ -175,19 +145,4 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
             _loggerFactory.CreateLogger<DownloadOrchestrator>());
     }
 
-    private Aria2TransferBackend CreateLocalAriaBackend(
-        NetworkApplicationSettings network)
-    {
-        var endpoint = LocalAriaRpcEndpoint.Create();
-        return new Aria2TransferBackend(
-            network,
-            new AriaClient("http://localhost", endpoint.Port, endpoint.Secret),
-            _ariaClientRegistry,
-            _diagnosticLogger,
-            _ariaServer,
-            _loggerFactory,
-            _loggerFactory.CreateLogger<Aria2TransferBackend>(),
-            ownsAriaServer: true,
-            endpoint);
-    }
 }

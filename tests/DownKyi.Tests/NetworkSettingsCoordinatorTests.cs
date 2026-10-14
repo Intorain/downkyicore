@@ -2,7 +2,6 @@ using DownKyi.Application.Desktop;
 using DownKyi.Application.Lifetime;
 using DownKyi.Core.Settings;
 using DownKyi.Services.Settings;
-using DownloaderSetting = DownKyi.Core.Settings.Downloader;
 
 namespace DownKyi.Tests;
 
@@ -14,10 +13,7 @@ public sealed class NetworkSettingsCoordinatorTests
         var options = NetworkSettingsOptions.Default;
 
         Assert.Equal(Enumerable.Range(1, 10), options.MaxCurrentDownloads);
-        Assert.Equal(Enumerable.Range(1, 16), options.Splits);
-        Assert.Equal(["DEBUG", "INFO", "NOTICE", "WARN", "ERROR"], options.AriaLogLevels);
-        Assert.Equal([1, 2, 4, 8, 10, 16, 32, 64], options.AriaMinSplitSizes);
-        Assert.Equal(["NONE", "PREALLOC", "FALLOC"], options.AriaFileAllocations);
+        Assert.Equal(Enumerable.Range(1, 32), options.Splits);
     }
 
     [Fact]
@@ -47,8 +43,8 @@ public sealed class NetworkSettingsCoordinatorTests
         var coordinator = CreateCoordinator(settings, notifications, dialogs, lifecycle);
 
         var applied = await coordinator.ApplyWithRestartPromptAsync(
-            network => network with { Downloader = DownloaderSetting.Aria },
-            network => network.Downloader == DownloaderSetting.Aria,
+            network => network with { Split = 12 },
+            network => network.Split == 12,
             showFeedback: false,
             cancellationToken: TestContext.Current.CancellationToken);
 

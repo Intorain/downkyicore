@@ -81,7 +81,6 @@ public sealed class MuxFailureRecoveryTests
         Assert.False(result.IsSuccess);
         Assert.Equal("download.mux.invalid-source", result.Error?.Code);
         Assert.False(File.Exists(test.AudioFile));
-        Assert.False(File.Exists($"{test.AudioFile}.aria2"));
         Assert.False(File.Exists($"{test.AudioFile}.download"));
         Assert.True(File.Exists(test.VideoFile));
         var task = await test.GetTaskAsync().ConfigureAwait(true);
@@ -156,7 +155,6 @@ public sealed class MuxFailureRecoveryTests
         Assert.False(result.IsSuccess);
         Assert.Equal("download.mux.invalid-source-cleanup", result.Error?.Code);
         Assert.True(Directory.Exists(test.AudioFile));
-        Assert.True(File.Exists($"{test.AudioFile}.aria2"));
         Assert.True(File.Exists($"{test.AudioFile}.download"));
         Assert.True(File.Exists(test.VideoFile));
         var task = await test.GetTaskAsync().ConfigureAwait(true);
@@ -299,7 +297,6 @@ public sealed class MuxFailureRecoveryTests
             foreach (var path in new[]
                      {
                          audioFile,
-                         $"{audioFile}.aria2",
                          $"{audioFile}.download",
                          videoFile
                      })

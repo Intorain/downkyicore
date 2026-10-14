@@ -5,15 +5,19 @@ namespace DownKyi.Tests;
 public sealed class BuiltinTransferBackendSchedulingTests
 {
     [Theory]
-    [InlineData(8 * 1024 * 1024, 1)]
-    [InlineData(20 * 1024 * 1024, 1)]
-    [InlineData(64 * 1024 * 1024, 4)]
-    [InlineData(100 * 1024 * 1024, 5)]
-    public void KnownSizeUsesFixedTwentyMegabyteSegments(
+    [InlineData(8 * 1024 * 1024, 4, 4)]
+    [InlineData(20 * 1024 * 1024, 4, 4)]
+    [InlineData(20 * 1024 * 1024, 8, 8)]
+    [InlineData(64 * 1024 * 1024, 4, 4)]
+    [InlineData(100 * 1024 * 1024, 4, 5)]
+    public void KnownSizeReportsTheAdaptiveRangeQueue(
         long expectedBytes,
+        int parallelCount,
         int expectedSegmentCount)
     {
-        var segmentCount = BuiltinTransferBackend.CalculateSegmentCount(expectedBytes);
+        var segmentCount = BuiltinRangeDownloader.CalculateAdaptiveSegmentCount(
+            expectedBytes,
+            parallelCount);
 
         Assert.Equal(expectedSegmentCount, segmentCount);
     }
@@ -21,17 +25,23 @@ public sealed class BuiltinTransferBackendSchedulingTests
     [Fact]
     public void UnknownSizeIsReportedAfterRangeProbe()
     {
-        var segmentCount = BuiltinTransferBackend.CalculateSegmentCount(expectedBytes: 0);
+        var segmentCount = BuiltinRangeDownloader.CalculateAdaptiveSegmentCount(
+            totalBytes: 0,
+            parallelCount: 4);
 
         Assert.Equal(0, segmentCount);
     }
 
     [Theory]
-    [InlineData(-1, 1)]
-    [InlineData(1, 0)]
-    public void InvalidInputsAreRejected(long expectedBytes, long segmentSize)
+    [InlineData(-1, 1, 1)]
+    [InlineData(1, 0, 1)]
+    [InlineData(1, 1, 0)]
+    public void InvalidInputsAreRejected(long expectedBytes, int parallelCount, long segmentSize)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            BuiltinTransferBackend.CalculateSegmentCount(expectedBytes, segmentSize));
+            BuiltinRangeDownloader.CalculateAdaptiveSegmentCount(
+                expectedBytes,
+                parallelCount,
+                segmentSize));
     }
 }

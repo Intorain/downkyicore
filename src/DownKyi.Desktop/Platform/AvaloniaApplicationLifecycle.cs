@@ -182,7 +182,7 @@ internal sealed class AvaloniaApplicationLifecycle : IApplicationLifecycle
         }
         else
         {
-            _logger.LogWarningMessage("Application cleanup timed out; killing the tracked aria2 process.");
+            _logger.LogWarningMessage("Application cleanup timed out; forcing download runtime cleanup.");
             _downloadEmergencyCleanup.KillTrackedRuntime(
                 "application exit cleanup timed out.");
             _ = cleanup.ContinueWith(

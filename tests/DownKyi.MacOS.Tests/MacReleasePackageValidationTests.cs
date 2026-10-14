@@ -45,7 +45,7 @@ public sealed class MacReleasePackageValidationTests
             var sourceArchitectures = Run("/usr/bin/lipo", ["-archs", sourceBinary], root)
                 .StandardOutput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             Assert.Contains(fixtureArchitecture, sourceArchitectures);
-            foreach (var relativePath in new[] { "DownKyi", "aria2/aria2c", "ffmpeg/ffmpeg", "ffmpeg/ffprobe" })
+            foreach (var relativePath in new[] { "DownKyi", "ffmpeg/ffmpeg", "ffmpeg/ffprobe" })
             {
                 var path = Path.Combine(runtime, relativePath.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);

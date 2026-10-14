@@ -163,12 +163,12 @@ internal static class DownloadTaskSqlWriter
                 (id, gid, download_files, downloaded_files, play_stream_type, download_status,
                  download_content, download_status_title, progress, downloading_file_size,
                  max_speed, speed_display, phase, failure_code, failure_message, failure_transient,
-                 downloaded_bytes, total_bytes, bytes_per_second)
+                 downloaded_bytes, total_bytes, bytes_per_second, is_legacy_transfer)
             VALUES
                 (@id, @gid, @download_files, @downloaded_files, @play_stream_type, @download_status,
                  @download_content, @download_status_title, @progress, @downloaded_size_text,
                  @max_speed, @speed_text, @phase, @failure_code, @failure_message, @failure_transient,
-                 @downloaded_bytes, @total_bytes, @bytes_per_second)
+                 @downloaded_bytes, @total_bytes, @bytes_per_second, @is_legacy_transfer)
             ON CONFLICT(id) DO UPDATE SET
                 gid = excluded.gid,
                 download_files = excluded.download_files,
@@ -187,7 +187,8 @@ internal static class DownloadTaskSqlWriter
                 failure_transient = excluded.failure_transient,
                 downloaded_bytes = excluded.downloaded_bytes,
                 total_bytes = excluded.total_bytes,
-                bytes_per_second = excluded.bytes_per_second
+                bytes_per_second = excluded.bytes_per_second,
+                is_legacy_transfer = excluded.is_legacy_transfer
             """;
         command.Parameters.AddWithValue("@id", task.Id.Value);
         command.Parameters.AddWithValue("@gid", task.Transfer.BackendIdentity ?? (object)DBNull.Value);
@@ -206,6 +207,7 @@ internal static class DownloadTaskSqlWriter
         command.Parameters.AddWithValue(
             "@failure_transient",
             task.Failure == null ? DBNull.Value : task.Failure.IsTransient ? 1 : 0);
+        command.Parameters.AddWithValue("@is_legacy_transfer", task.Transfer.IsLegacyTransfer ? 1 : 0);
         BindProgress(command, task.Progress);
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }

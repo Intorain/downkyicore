@@ -290,26 +290,16 @@ public sealed class ModuleBoundaryBaselineTests
     }
 
     [Fact]
-    public void SettingsNetworkAndAriaOwnersRemainSeparated()
+    public void NetworkSettingsHaveOneSupportedOwner()
     {
         var settingsRoot = Path.Combine(RepositoryRoot, "DownKyi.Core", "Settings");
         var networkSource = File.ReadAllText(Path.Combine(
             settingsRoot,
             "SettingsManager.Network.cs"));
-        var ariaSource = File.ReadAllText(Path.Combine(
-            settingsRoot,
-            "SettingsManager.Aria.cs"));
-
         Assert.Contains("public partial class SettingsManager", networkSource, StringComparison.Ordinal);
-        Assert.Contains("public partial class SettingsManager", ariaSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("GetAriaToken", networkSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetAriaSplit", networkSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AriaConfigLogLevel", networkSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("_ariaHttpProxy", networkSource, StringComparison.Ordinal);
-        Assert.Contains("GetAriaToken", ariaSource, StringComparison.Ordinal);
-        Assert.Contains("GetAriaSplit", ariaSource, StringComparison.Ordinal);
-        Assert.Contains("GetAriaFileAllocation", ariaSource, StringComparison.Ordinal);
-        Assert.Contains("GetAriaHttpProxy", ariaSource, StringComparison.Ordinal);
+        Assert.Contains("GetMaxCurrentDownloads", networkSource, StringComparison.Ordinal);
+        Assert.Contains("GetSplit", networkSource, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(settingsRoot, "SettingsManager.Aria.cs")));
     }
 
     [Fact]

@@ -116,38 +116,6 @@
                 Foreground="{DynamicResource BrushTextPrimary}"
                 Text="{DynamicResource DownloaderSection}" />
 
-            <TextBlock
-                Margin="0,12,0,0"
-                FontSize="{DynamicResource DownKyiFontSizeBody}"
-                Foreground="{DynamicResource BrushTextDark}"
-                Text="{DynamicResource SelectDownloader}" />
-
-            <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-                <RadioButton
-                    Command="{Binding SelectDownloaderCommand}"
-                    CommandParameter="Builtin"
-                    Content="{DynamicResource BuiltinDownloader}"
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    IsChecked="{Binding Builtin}" />
-                <RadioButton
-                    Margin="20,0,0,0"
-                    Command="{Binding SelectDownloaderCommand}"
-                    CommandParameter="Aria2c"
-                    Content="{DynamicResource Aria2cDownloader}"
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    IsChecked="{Binding Aria2C}" />
-                <RadioButton
-                    Margin="20,0,0,0"
-                    Command="{Binding SelectDownloaderCommand}"
-                    CommandParameter="CustomAria2c"
-                    Content="{DynamicResource CustomAria2cDownloader}"
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    IsChecked="{Binding CustomAria2C}" />
-            </StackPanel>
-
             <CheckBox
                 Name="NameHighSpeedDownloadMode"
                 Margin="0,14,0,0"

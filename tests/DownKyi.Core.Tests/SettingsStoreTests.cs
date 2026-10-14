@@ -1,5 +1,4 @@
 using System.Text.Json;
-using DownKyi.Core.Aria2cNet.Client;
 using DownKyi.Core.FileName;
 using DownKyi.Core.Settings;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -63,38 +62,6 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
-    public void CustomAriaAcceptsTheDefaultEmptyRpcSecretWithoutBootstrapFailure()
-    {
-        var directory = CreateTestDirectory();
-        try
-        {
-            using var store = new SettingsStore(Path.Combine(directory, "settings.json"));
-            var updated = store.Update(settings => settings with
-            {
-                Network = settings.Network with
-                {
-                    Downloader = Downloader.CustomAria,
-                    AriaHost = "https://aria.example",
-                    AriaToken = string.Empty
-                }
-            });
-
-            var client = new AriaClient(
-                updated.Network.AriaHost,
-                updated.Network.AriaListenPort,
-                updated.Network.AriaToken);
-
-            Assert.NotNull(client);
-            Assert.Equal(Downloader.CustomAria, updated.Network.Downloader);
-            Assert.Empty(updated.Network.AriaToken);
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
     public async Task LegacyPlainHttpSettingIsMigratedToRequiredHttps()
     {
         var directory = CreateTestDirectory();
@@ -124,170 +91,6 @@ public sealed class SettingsStoreTests
             Assert.False(document.RootElement.GetProperty("Network").TryGetProperty(
                 "UseSsl",
                 out _));
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
-    public async Task RemotePlaintextAriaRpcSettingIsRestoredToLoopback()
-    {
-        var directory = CreateTestDirectory();
-        var settingsPath = Path.Combine(directory, "settings.json");
-        const string source = """
-            {
-              "Network": {
-                "AriaHost": "http://192.0.2.10"
-              }
-            }
-            """;
-
-        try
-        {
-            await File.WriteAllTextAsync(
-                settingsPath,
-                source,
-                TestContext.Current.CancellationToken);
-            using var store = new SettingsStore(settingsPath);
-
-            Assert.Equal("http://localhost", store.Current.Network.AriaHost);
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
-    public async Task CredentialBearingAriaRpcSettingIsRestoredBeforeBootstrap()
-    {
-        var directory = CreateTestDirectory();
-        var settingsPath = Path.Combine(directory, "settings.json");
-        const string source = """
-            {
-              "Network": {
-                "Downloader": 3,
-                "AriaHost": "https://user:password@aria.example"
-              }
-            }
-            """;
-
-        try
-        {
-            await File.WriteAllTextAsync(
-                settingsPath,
-                source,
-                TestContext.Current.CancellationToken);
-            using var store = new SettingsStore(settingsPath);
-
-            Assert.Equal("http://localhost", store.Current.Network.AriaHost);
-            Assert.Empty(new Uri(store.Current.Network.AriaHost).UserInfo);
-
-            await store.FlushAsync(TestContext.Current.CancellationToken);
-            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
-                settingsPath,
-                TestContext.Current.CancellationToken));
-            Assert.Equal(
-                "http://localhost",
-                document.RootElement.GetProperty("Network").GetProperty("AriaHost").GetString());
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
-    public void CredentialBearingAriaRpcUpdateIsRejectedByTheSnapshotContract()
-    {
-        var directory = CreateTestDirectory();
-        try
-        {
-            using var store = new SettingsStore(Path.Combine(directory, "settings.json"));
-
-            var updated = store.Update(settings => settings with
-            {
-                Network = settings.Network with
-                {
-                    AriaHost = "https://user:password@aria.example"
-                }
-            });
-
-            Assert.Equal("http://localhost", updated.Network.AriaHost);
-            Assert.Empty(new Uri(updated.Network.AriaHost).UserInfo);
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
-    public async Task LegacyRemoteAriaDownloadProxyIsDisabledAndRemoved()
-    {
-        var directory = CreateTestDirectory();
-        var settingsPath = Path.Combine(directory, "settings.json");
-        const string source = """
-            {
-              "Network": {
-                "IsAriaHttpProxy": 2,
-                "AriaHttpProxy": "192.0.2.10",
-                "AriaHttpProxyListenPort": 7890
-              }
-            }
-            """;
-
-        try
-        {
-            await File.WriteAllTextAsync(
-                settingsPath,
-                source,
-                TestContext.Current.CancellationToken);
-            using var store = new SettingsStore(settingsPath);
-
-            Assert.Equal(AllowStatus.No, store.Current.Network.IsAriaHttpProxy);
-            Assert.Empty(store.Current.Network.AriaHttpProxy);
-
-            await store.FlushAsync(TestContext.Current.CancellationToken);
-            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
-                settingsPath,
-                TestContext.Current.CancellationToken));
-            var network = document.RootElement.GetProperty("Network");
-            Assert.Equal(1, network.GetProperty("IsAriaHttpProxy").GetInt32());
-            Assert.Equal(string.Empty, network.GetProperty("AriaHttpProxy").GetString());
-        }
-        finally
-        {
-            DeleteDirectory(directory);
-        }
-    }
-
-    [Fact]
-    public void LocalAriaDownloadProxySurvivesValidationAsHttpConnectEndpoint()
-    {
-        var directory = CreateTestDirectory();
-        try
-        {
-            using var store = new SettingsStore(Path.Combine(directory, "settings.json"));
-            var updated = store.Update(settings => settings with
-            {
-                Network = settings.Network with
-                {
-                    IsAriaHttpProxy = AllowStatus.Yes,
-                    AriaHttpProxy = "[::1]",
-                    AriaHttpProxyListenPort = 7890
-                }
-            });
-
-            Assert.Equal(AllowStatus.Yes, updated.Network.IsAriaHttpProxy);
-            Assert.Equal("::1", updated.Network.AriaHttpProxy);
-            Assert.True(AriaHttpsProxyPolicy.TryCreateConnectProxyUri(
-                updated.Network.AriaHttpProxy,
-                updated.Network.AriaHttpProxyListenPort,
-                out var proxyUri));
-            Assert.Equal("http://[::1]:7890/", proxyUri.AbsoluteUri);
         }
         finally
         {
@@ -422,6 +225,50 @@ public sealed class SettingsStoreTests
             Assert.Equal(
                 ApplicationSettingsValidator.CurrentSchemaVersion,
                 document.RootElement.GetProperty("SchemaVersion").GetInt32());
+        }
+        finally
+        {
+            DeleteDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public async Task LegacyAriaRateLimitsAreOwnedByBuiltInDownloaderSettings()
+    {
+        const string legacySettings =
+            """{"Network":{"AriaMaxOverallDownloadLimit":321,"AriaMaxDownloadLimit":123}}""";
+        var directory = CreateTestDirectory();
+        var settingsPath = Path.Combine(directory, "settings.json");
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                settingsPath,
+                legacySettings,
+                TestContext.Current.CancellationToken);
+            using var store = new SettingsStore(settingsPath);
+
+            Assert.Equal(321, store.Current.Network.MaxOverallDownloadLimit);
+            Assert.Equal(123, store.Current.Network.MaxDownloadLimit);
+
+            store.Update(settings => settings with
+            {
+                Network = settings.Network with
+                {
+                    MaxOverallDownloadLimit = 654,
+                    MaxDownloadLimit = 456
+                }
+            });
+            await store.FlushAsync(TestContext.Current.CancellationToken);
+
+            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
+                settingsPath,
+                TestContext.Current.CancellationToken));
+            var network = document.RootElement.GetProperty("Network");
+            Assert.Equal(654, network.GetProperty("AriaMaxOverallDownloadLimit").GetInt32());
+            Assert.Equal(456, network.GetProperty("AriaMaxDownloadLimit").GetInt32());
+            Assert.False(network.TryGetProperty("MaxOverallDownloadLimit", out _));
+            Assert.False(network.TryGetProperty("MaxDownloadLimit", out _));
         }
         finally
         {

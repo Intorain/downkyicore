@@ -20,6 +20,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
     private readonly ISettingsStore _settingsStore;
     private readonly DownloadDiagnosticLogger _diagnosticLogger;
     private readonly ILogger<BuiltinTransferBackend> _logger;
+    private readonly DownloadBandwidthLimiter _bandwidthLimiter;
 
     public BuiltinTransferBackend(
         ISettingsStore settingsStore,
@@ -29,6 +30,15 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _diagnosticLogger = diagnosticLogger ?? throw new ArgumentNullException(nameof(diagnosticLogger));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _bandwidthLimiter = new DownloadBandwidthLimiter(
+            () =>
+            {
+                var network = _settingsStore.Current.Network;
+                return DownloadBandwidthLimits.FromKilobytesPerSecond(
+                    network.MaxOverallDownloadLimit,
+                    network.MaxDownloadLimit);
+            },
+            TimeProvider.System);
     }
 
     public string Name => "built-in";
@@ -45,9 +55,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
         return Task.CompletedTask;
     }
 
-    public Task<DownloadTransferResult> ResetAsync(
-        string? backendIdentity,
-        CancellationToken cancellationToken)
+    public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(DownloadTransferResult.Succeeded());
@@ -111,7 +119,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
             }
 
             var proxyAddress = ResolveProxyAddress(network);
-            using var resolver = AriaDownloadAddressResolver.Create(proxyAddress);
+            using var resolver = DownloadAddressResolver.Create(proxyAddress);
             var resolution = await resolver.ResolveAsync(
                 request.Urls[0],
                 network.UserAgent,
@@ -130,15 +138,8 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
             var headers = resolution.Headers
                 ?? throw new InvalidOperationException(
                     "The accepted built-in download headers are missing.");
-            _diagnosticLogger.LogBuiltInTaskStart(
-                Name,
-                request.FileName,
-                request.Urls.Count,
-                CalculateSegmentCount(request.ExpectedBytes),
-                network.Split,
-                network);
-
             using var handler = CreateHttpHandler(network, proxyAddress);
+            var bandwidthLease = _bandwidthLimiter.CreateTransferLease();
             using var downloader = new BuiltinRangeDownloader(
                 handler,
                 resolvedAddress,
@@ -146,7 +147,15 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 network.Split,
                 ReportProgress,
                 _logger,
-                disposeHandler: false);
+                disposeHandler: false,
+                bandwidthLimiter: bandwidthLease,
+                planCreated: chunkCount => _diagnosticLogger.LogBuiltInTaskStart(
+                    Name,
+                    request.FileName,
+                    request.Urls.Count,
+                    chunkCount,
+                    network.Split,
+                    network));
             using var transferCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                 request.CancellationToken);
             var transferTask = downloader.DownloadAsync(
@@ -213,21 +222,6 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
 
     public void Dispose()
     {
-    }
-
-    internal static int CalculateSegmentCount(
-        long expectedBytes,
-        long segmentSize = BuiltinRangeDownloader.DefaultSegmentSize)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(expectedBytes);
-        ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
-        if (expectedBytes == 0)
-        {
-            return 0;
-        }
-
-        var count = 1 + ((expectedBytes - 1) / segmentSize);
-        return checked((int)Math.Min(count, int.MaxValue));
     }
 
     internal static DownloadTransferResult ClassifyFailure(

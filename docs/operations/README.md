@@ -1,7 +1,6 @@
 # Operations
 
 - `verification-and-rollback.md`：本機與 CI 驗證、產物、失敗判讀及回滾。
-- `aria2-security.md`：aria2 TLS、RPC secret、task header、binary provenance owner、舊設定遷移與六 RID 驗證政策。
 - `ffmpeg-asset-mirroring.md`：FFmpeg immutable mirror、updater 權限、失敗恢復與 manifest 驗證。
 - `bilibili-api-audit.md`：Bilibili generated endpoint inventory、非推導 contract 例外與 live-audit 安全邊界。
 - `historical-source-archive.md`：1.0.24 以前的原始 Git 提交、封存 tags、快照辨識與查閱指令。

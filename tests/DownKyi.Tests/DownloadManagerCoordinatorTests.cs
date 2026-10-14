@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
 using DownKyi.Application.Lifetime;
-using DownKyi.Core.Aria2cNet.Client;
 using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Domain.Downloads;
 using DownKyi.Infrastructure.Downloads;
@@ -13,7 +12,6 @@ using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
-using Newtonsoft.Json.Linq;
 
 namespace DownKyi.Tests;
 
@@ -139,7 +137,7 @@ public sealed class DownloadManagerCoordinatorTests
         context.State.AddDownloading(item);
         await context.Storage.AddDownloadingAsync(item, TestContext.Current.CancellationToken);
         var media = context.CreateFile("delete-complete.mp4", "partial media");
-        var sidecar = context.CreateFile("delete-complete.mp4.aria2", "resume state");
+        var sidecar = context.CreateFile("delete-complete.mp4.legacy-partial", "resume state");
 
         await context.Coordinator.DeleteAsync(item, TestContext.Current.CancellationToken);
 
@@ -152,20 +150,9 @@ public sealed class DownloadManagerCoordinatorTests
     }
 
     [Fact]
-    public async Task DeleteAllCompletesWhenPersistedAriaGidsAreAlreadyGone()
+    public async Task DeleteAllCompletesWhenLegacyBackendIdentitiesRemain()
     {
-        var methods = new List<string>();
-        var ariaClient = new AriaClient(
-            "http://localhost",
-            6800,
-            string.Empty,
-            (_, parameters, _) =>
-            {
-                methods.Add(JObject.Parse(parameters)["method"]!.Value<string>()!);
-                return Task.FromResult<string?>(
-                    """{"jsonrpc":"2.0","id":"test","error":{"code":1,"message":"GID stale-gid is not found"}}""");
-            });
-        using var context = new CoordinatorContext(ariaClient: ariaClient);
+        using var context = new CoordinatorContext();
         var first = context.CreateDownloadingItem("stale-first", DownloadStatus.WaitForDownload);
         var second = context.CreateDownloadingItem("stale-second", DownloadStatus.WaitForDownload);
         context.State.AddDownloading(first);
@@ -192,14 +179,6 @@ public sealed class DownloadManagerCoordinatorTests
         Assert.Null(await context.Store.FindAsync(
             new DownloadTaskId(second.DownloadBase.Id),
             TestContext.Current.CancellationToken));
-        Assert.Equal(
-            [
-                "aria2.remove",
-                "aria2.removeDownloadResult",
-                "aria2.remove",
-                "aria2.removeDownloadResult"
-            ],
-            methods);
     }
 
     [Fact]
@@ -475,16 +454,12 @@ public sealed class DownloadManagerCoordinatorTests
             "downkyi-download-manager-tests",
             Guid.NewGuid().ToString("N"));
         private readonly string _databasePath;
-        private readonly AriaRuntimeClientRegistry _ariaRegistry = new();
-        private readonly IDisposable? _ariaRegistration;
-
         public CoordinatorContext(
             IDownloadTaskQueue? taskQueue = null,
             IDownloadRuntimeAvailability? runtimeAvailability = null,
             IDownloadSchedulerControl? schedulerControl = null,
             bool useStaging = false,
-            IUiDispatcher? uiDispatcher = null,
-            AriaClient? ariaClient = null)
+            IUiDispatcher? uiDispatcher = null)
         {
             Directory.CreateDirectory(_directory);
             _databasePath = Path.Combine(_directory, "download.db");
@@ -510,11 +485,7 @@ public sealed class DownloadManagerCoordinatorTests
             Staging = useStaging
                 ? new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance)
                 : null;
-            _ariaRegistration = ariaClient == null
-                ? null
-                : _ariaRegistry.Activate(ariaClient);
             var fileService = new DownloadTaskFileService(
-                _ariaRegistry,
                 NullLogger<DownloadTaskFileService>.Instance, Staging, StateWriter);
             Coordinator = new DownloadManagerCoordinator(
                 ApplicationCancellation,
@@ -581,7 +552,7 @@ public sealed class DownloadManagerCoordinatorTests
                 Scheduler,
                 new ReadyDownloadRuntimeAvailability(),
                 new DownloadTaskFileService(
-                    _ariaRegistry, NullLogger<DownloadTaskFileService>.Instance),
+                    NullLogger<DownloadTaskFileService>.Instance),
                 State, Launcher, new ImmediateUiDispatcher());
         }
 
@@ -647,7 +618,6 @@ public sealed class DownloadManagerCoordinatorTests
         public void Dispose()
         {
             Coordinator.Dispose();
-            _ariaRegistration?.Dispose();
             ApplicationCancellation.Dispose();
             Storage.Dispose();
             TaskService.Dispose();

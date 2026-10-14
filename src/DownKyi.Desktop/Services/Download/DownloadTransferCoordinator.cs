@@ -47,15 +47,6 @@ internal sealed class DownloadTransferCoordinator
         var attemptsForAddress = 0;
         var resumeCleanupRetryGrantedForAddress = false;
         var canRefreshAddresses = true;
-        var backendIdentity = request.BackendIdentity;
-        async Task SetBackendIdentityAsync(
-            string? value,
-            CancellationToken token)
-        {
-            await request.SetBackendIdentityAsync(value, token).ConfigureAwait(true);
-            backendIdentity = value;
-        }
-
         var lastResult = DownloadTransferResult.Failed(
             DownloadTransferFailureKind.Permanent,
             "download.transfer.not-started");
@@ -66,9 +57,7 @@ internal sealed class DownloadTransferCoordinator
             var currentAddress = addresses[addressIndex];
             var attemptRequest = request with
             {
-                BackendIdentity = backendIdentity,
                 Urls = [currentAddress],
-                SetBackendIdentityAsync = SetBackendIdentityAsync,
                 CancellationToken = cancellationToken
             };
             lastResult = await _backend.TransferAsync(attemptRequest).ConfigureAwait(true);
@@ -137,8 +126,6 @@ internal sealed class DownloadTransferCoordinator
                         request,
                         currentAddress,
                         addresses[nextAddressIndex],
-                        backendIdentity,
-                        SetBackendIdentityAsync,
                         deleteArtifacts: lastResult.FailureKind !=
                             DownloadTransferFailureKind.InvalidMedia,
                         cancellationToken: cancellationToken).ConfigureAwait(true);
@@ -163,8 +150,6 @@ internal sealed class DownloadTransferCoordinator
                         request,
                         currentAddress,
                         refreshedAddresses[0],
-                        backendIdentity,
-                        SetBackendIdentityAsync,
                         deleteArtifacts: lastResult.FailureKind !=
                             DownloadTransferFailureKind.InvalidMedia,
                         cancellationToken: cancellationToken).ConfigureAwait(true);
@@ -181,22 +166,6 @@ internal sealed class DownloadTransferCoordinator
                     break;
                 case DownloadRetryAction.Stop:
                 default:
-                    if (lastResult.FailureKind == DownloadTransferFailureKind.InvalidMedia
-                        && backendIdentity != null)
-                    {
-                        var terminalResetFailure = await ResetTransferStateAsync(
-                            request,
-                            backendIdentity,
-                            SetBackendIdentityAsync,
-                            "download.transfer.cleanup-failed",
-                            deleteArtifacts: false,
-                            cancellationToken: cancellationToken).ConfigureAwait(true);
-                        if (terminalResetFailure != null)
-                        {
-                            return terminalResetFailure;
-                        }
-                    }
-
                     return lastResult;
             }
         }
@@ -208,8 +177,6 @@ internal sealed class DownloadTransferCoordinator
         DownloadTransferRequest request,
         string currentAddress,
         string nextAddress,
-        string? backendIdentity,
-        Func<string?, CancellationToken, Task> setBackendIdentityAsync,
         bool deleteArtifacts,
         CancellationToken cancellationToken)
     {
@@ -220,8 +187,6 @@ internal sealed class DownloadTransferCoordinator
 
         var resetFailure = await ResetTransferStateAsync(
             request,
-            backendIdentity,
-            setBackendIdentityAsync,
             "download.transfer.source-change-cleanup",
             deleteArtifacts,
             cancellationToken).ConfigureAwait(true);
@@ -237,14 +202,12 @@ internal sealed class DownloadTransferCoordinator
 
     private async Task<DownloadTransferResult?> ResetTransferStateAsync(
         DownloadTransferRequest request,
-        string? backendIdentity,
-        Func<string?, CancellationToken, Task> setBackendIdentityAsync,
         string cleanupFailureCode,
         bool deleteArtifacts,
         CancellationToken cancellationToken)
     {
         var resetResult = await _backend
-            .ResetAsync(backendIdentity, cancellationToken)
+            .ResetAsync(cancellationToken)
             .ConfigureAwait(true);
         if (resetResult.Outcome != DownloadTransferOutcome.Succeeded)
         {
@@ -267,7 +230,6 @@ internal sealed class DownloadTransferCoordinator
             }
         }
 
-        await setBackendIdentityAsync(null, cancellationToken).ConfigureAwait(true);
         return null;
     }
 

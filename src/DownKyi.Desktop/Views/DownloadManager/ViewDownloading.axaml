@@ -190,6 +190,7 @@
                                         Padding="0"
                                         Command="{Binding ElementName=DownloadingList,Path=((vmdm:ViewDownloadingViewModel)DataContext).ToggleDownloadingCommand}"
                                         CommandParameter="{Binding}"
+                                        IsVisible="{Binding IsToggleVisible}"
                                         Theme="{StaticResource BtnStyle}"
                                         ToolTip.Tip="{Binding OperationTip}">
                                         <ContentControl Width="18" Height="18">

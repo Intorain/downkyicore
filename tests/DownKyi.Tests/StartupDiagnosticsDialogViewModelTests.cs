@@ -1,6 +1,5 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Aria2cNet.Server;
 using DownKyi.Infrastructure.Downloads;
 using DownKyi.Services.Startup;
 using DownKyi.ViewModels.Dialogs;
@@ -120,34 +119,6 @@ public sealed class StartupDiagnosticsDialogViewModelTests
         Assert.DoesNotContain("secret-path", issueBody, StringComparison.Ordinal);
         Assert.DoesNotContain("[redacted]", issueBody, StringComparison.Ordinal);
         Assert.Single(notifications.Messages);
-    }
-
-    [Fact]
-    public void DialogPreservesActionablePackagedAria2RecoveryGuidance()
-    {
-        var executablePath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-missing-aria2-{Guid.NewGuid():N}",
-            "aria2c.exe");
-        var failure = Assert.Throws<FileNotFoundException>(
-            () => AriaBinaryIntegrityVerifier.Verify(executablePath));
-        var viewModel = new StartupDiagnosticsDialogViewModel(
-            new RedactingLogService(),
-            new RecordingClipboardService(),
-            new RecordingPlatformLauncher(),
-            new RecordingNotificationService(),
-            NullLogger<StartupDiagnosticsDialogViewModel>.Instance);
-
-        viewModel.OnDialogOpened(CreateRequest(
-            StartupDiagnostic.ForDownloadBootstrap(failure)));
-
-        Assert.Contains("Redownload and reinstall DownKyi", viewModel.DiagnosticText,
-            StringComparison.Ordinal);
-        Assert.Contains("If you use the portable archive", viewModel.DiagnosticText,
-            StringComparison.Ordinal);
-        Assert.Contains("'aria2/aria2c.exe'", viewModel.DiagnosticText,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain(executablePath, viewModel.DiagnosticText, StringComparison.Ordinal);
     }
 
     [Fact]

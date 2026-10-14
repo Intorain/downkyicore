@@ -21,7 +21,7 @@ public sealed class LocalModuleWiringArchitectureTests
             "DownKyi.Services.Download.DownloadTaskQueueGateway",
             "DownKyi.Services.Download.DownloadBootstrapHostedService",
             "DownKyi.Services.Download.DownloadRuntimeFactory",
-            "DownKyi.Services.Download.AriaDownloadEmergencyCleanup"
+            "DownKyi.Services.Download.BuiltinDownloadEmergencyCleanup"
         ];
 
         var implementations = implementationNames
@@ -81,7 +81,7 @@ public sealed class LocalModuleWiringArchitectureTests
             RequireType("DownKyi.Services.Download.DownloadTaskQueueGateway"),
             RequireType("DownKyi.Services.Download.DownloadBootstrapHostedService"),
             RequireType("DownKyi.Services.Download.DownloadRuntimeFactory"),
-            RequireType("DownKyi.Services.Download.AriaDownloadEmergencyCleanup")
+            RequireType("DownKyi.Services.Download.BuiltinDownloadEmergencyCleanup")
         };
         var violations = DesktopAssembly.GetTypes()
             .SelectMany(consumer => GetDeclaredDependencies(consumer)
@@ -106,7 +106,7 @@ public sealed class LocalModuleWiringArchitectureTests
             "DownloadTaskQueueGateway",
             "DownloadBootstrapHostedService",
             "DownloadRuntimeFactory",
-            "AriaDownloadEmergencyCleanup"
+            "BuiltinDownloadEmergencyCleanup"
         };
         var allowedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

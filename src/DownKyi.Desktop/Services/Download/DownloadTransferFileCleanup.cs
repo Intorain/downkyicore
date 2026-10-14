@@ -35,7 +35,7 @@ internal static class DownloadTransferFileCleanup
 
         var attemptedCount = 0;
         var failedCount = 0;
-        foreach (var path in new[] { file, $"{file}.aria2", $"{file}.download" })
+        foreach (var path in new[] { file, $"{file}.download" })
         {
             attemptedCount++;
             try

@@ -152,7 +152,6 @@ internal sealed class DownloadManagerCoordinator : IDownloadManagerCoordinator, 
         }
 
         await _taskQueue.CancelAsync(taskId).ConfigureAwait(true);
-        await _fileService.CancelActiveDownloadAsync(item).ConfigureAwait(true);
 
         // Once physical deletion starts, finish the database/list transaction even if app shutdown is requested.
         var deletion = await _fileService

@@ -58,10 +58,54 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         {
             var state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             var blocked = new HashSet<DownloadTaskId>();
+            foreach (var task in state.UnfinishedTasks.Where(task =>
+                         task.Transfer.HasLegacyProvenance))
+            {
+                blocked.Add(task.Id);
+                if (IsRetiredLegacyTask(task))
+                {
+                    continue;
+                }
+
+                if (_fileService == null)
+                {
+                    await MarkLegacyCleanupFailedAsync(task, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                var cleanup = await _fileService
+                    .DeleteLegacyStagingAsync(task, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!cleanup.Succeeded)
+                {
+                    await MarkLegacyCleanupFailedAsync(task, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (task.Phase == DownloadPhase.Canceled)
+                {
+                    await _stateWriter
+                        .DeleteAsync(task.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await _stateWriter
+                        .FailLegacyBackendAsync(task.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+
+            if (blocked.Count > 0)
+            {
+                state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             if (_fileService != null)
             {
                 foreach (var task in state.UnfinishedTasks.Where(task =>
-                             task.Output.PublishingArtifact != null))
+                             task.Output.PublishingArtifact != null &&
+                             !blocked.Contains(task.Id)))
                 {
                     try
                     {
@@ -88,6 +132,11 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                     }
                 }
 
+                state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (blocked.Count > 0)
+            {
                 state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             }
 
@@ -149,6 +198,31 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         }
     }
 
+    private async Task MarkLegacyCleanupFailedAsync(
+        DownloadTask task,
+        CancellationToken cancellationToken)
+    {
+        if (task.Phase is DownloadPhase.Failed or DownloadPhase.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            await _stateWriter.FailAsync(
+                task.Id,
+                new DownloadFailure(
+                    "download.transfer.legacy-cleanup-failed",
+                    "The unfinished legacy download could not be removed safely.",
+                    false),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogErrorMessage("Legacy download cleanup failure could not be persisted.", exception);
+        }
+    }
+
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         var stopTasks = new List<Task>(1);
@@ -204,6 +278,10 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         exception is not OutOfMemoryException
             and not StackOverflowException
             and not AccessViolationException;
+
+    private static bool IsRetiredLegacyTask(DownloadTask task) =>
+        task.Phase == DownloadPhase.Failed &&
+        task.Failure?.Code == DownloadTaskStateWriter.LegacyBackendRemovedFailureCode;
 
     private async Task QueueStartupTasksAsync(
         IReadOnlyList<DownloadTask> tasks,

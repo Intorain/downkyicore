@@ -167,15 +167,5 @@ public sealed class SqliteDownloadTaskStore :
         CancellationToken cancellationToken) =>
         await _quarantine.GetRecordsAsync(cancellationToken).ConfigureAwait(false);
 
-    public async Task<bool> IsLegacyUpgradeAdmissionBlockedAsync(
-        CancellationToken cancellationToken) =>
-        await _quarantine.IsLegacyUpgradeAdmissionBlockedAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-    public async Task<OperationResult> ConfirmLegacyRemoteTasksStoppedAsync(
-        CancellationToken cancellationToken) =>
-        await _quarantine.ConfirmLegacyRemoteTasksStoppedAsync(cancellationToken)
-            .ConfigureAwait(false);
-
     public void Dispose() => _database.Dispose();
 }

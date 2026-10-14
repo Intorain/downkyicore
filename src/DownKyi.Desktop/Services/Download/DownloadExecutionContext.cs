@@ -39,10 +39,27 @@ internal sealed class DownloadExecutionContext
 
     public Dictionary<string, string> PublishedArtifacts { get; } = new(StringComparer.Ordinal);
 
+    public Dictionary<string, string> UnpublishedArtifacts { get; } = new(StringComparer.Ordinal);
+
+    public bool ArtifactsValidated { get; private set; }
+
     public DownloadActionExecutionSummary ActionResults { get; } = new();
 
     public bool HasPublished(string key) =>
         PublishedArtifacts.TryGetValue(key, out var path) && File.Exists(path);
+
+    public void RecordUnpublishedArtifact(string key, string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!HasPublished(key))
+        {
+            UnpublishedArtifacts[key] = path;
+            ArtifactsValidated = false;
+        }
+    }
+
+    public void MarkArtifactsValidated() => ArtifactsValidated = true;
 
     public bool HasUsablePublishedMedia() =>
         PublishedArtifacts.TryGetValue("media", out var path) &&

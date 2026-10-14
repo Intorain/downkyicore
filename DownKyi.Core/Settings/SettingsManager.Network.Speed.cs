@@ -3,13 +3,10 @@ namespace DownKyi.Core.Settings;
 public partial class SettingsManager
 {
     public const int HighSpeedBuiltInSplit = ApplicationSettingsDefaults.HighSpeedBuiltInSplit;
-    public const int HighSpeedAriaSplit = ApplicationSettingsDefaults.HighSpeedAriaSplit;
-    public const int HighSpeedAriaMaxConnectionPerServer = ApplicationSettingsDefaults.HighSpeedAriaMaxConnectionPerServer;
-    public const int HighSpeedAriaMinSplitSize = ApplicationSettingsDefaults.HighSpeedAriaMinSplitSize;
 
     private const AllowStatus HighSpeedDownloadMode = AllowStatus.No;
-    private const int AriaMaxConnectionPerServer = 8;
-    private const int AriaMinSplitSize = 10;
+    private const int MaxOverallDownloadLimit = 0;
+    private const int MaxDownloadLimit = 0;
 
     public AllowStatus GetHighSpeedDownloadMode()
     {
@@ -30,43 +27,41 @@ public partial class SettingsManager
             v => _appSettings.Network.HighSpeedDownloadMode = v);
     }
 
-    public int GetAriaMaxConnectionPerServer()
+    public int GetMaxOverallDownloadLimit()
     {
-        if (_appSettings.Network.AriaMaxConnectionPerServer != -1)
+        if (_appSettings.Network.MaxOverallDownloadLimit != -1)
         {
-            return _appSettings.Network.AriaMaxConnectionPerServer;
+            return _appSettings.Network.MaxOverallDownloadLimit;
         }
 
-        SetAriaMaxConnectionPerServer(AriaMaxConnectionPerServer);
-        return AriaMaxConnectionPerServer;
+        SetMaxOverallDownloadLimit(MaxOverallDownloadLimit);
+        return MaxOverallDownloadLimit;
     }
 
-    public bool SetAriaMaxConnectionPerServer(int ariaMaxConnectionPerServer)
+    public bool SetMaxOverallDownloadLimit(int maxOverallDownloadLimit)
     {
-        var value = Math.Clamp(ariaMaxConnectionPerServer, 1, 16);
         return SetProperty(
-            _appSettings.Network.AriaMaxConnectionPerServer,
-            value,
-            v => _appSettings.Network.AriaMaxConnectionPerServer = v);
+            _appSettings.Network.MaxOverallDownloadLimit,
+            maxOverallDownloadLimit,
+            value => _appSettings.Network.MaxOverallDownloadLimit = value);
     }
 
-    public int GetAriaMinSplitSize()
+    public int GetMaxDownloadLimit()
     {
-        if (_appSettings.Network.AriaMinSplitSize != -1)
+        if (_appSettings.Network.MaxDownloadLimit != -1)
         {
-            return _appSettings.Network.AriaMinSplitSize;
+            return _appSettings.Network.MaxDownloadLimit;
         }
 
-        SetAriaMinSplitSize(AriaMinSplitSize);
-        return AriaMinSplitSize;
+        SetMaxDownloadLimit(MaxDownloadLimit);
+        return MaxDownloadLimit;
     }
 
-    public bool SetAriaMinSplitSize(int ariaMinSplitSize)
+    public bool SetMaxDownloadLimit(int maxDownloadLimit)
     {
-        var value = Math.Clamp(ariaMinSplitSize, 1, 1024);
         return SetProperty(
-            _appSettings.Network.AriaMinSplitSize,
-            value,
-            v => _appSettings.Network.AriaMinSplitSize = v);
+            _appSettings.Network.MaxDownloadLimit,
+            maxDownloadLimit,
+            value => _appSettings.Network.MaxDownloadLimit = value);
     }
 }

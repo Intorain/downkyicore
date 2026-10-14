@@ -48,37 +48,6 @@ public sealed class DownloadTaskStagingSafetyTests : IDisposable
     }
 
     [Fact]
-    public async Task RecordedLegacyTransferIsCopiedWithoutMutatingOriginal()
-    {
-        var outputBase = Path.Combine(_directory, "output");
-        var name = "legacy-transfer";
-        Directory.CreateDirectory(_directory);
-        File.WriteAllBytes(Path.Combine(_directory, name), [1, 2, 3]);
-        File.WriteAllBytes(Path.Combine(_directory, name + ".aria2"), [4, 5]);
-        var task = CreateTask(outputBase, Path.Combine(_directory, "published.mp4"),
-            [KeyValuePair.Create("media", name)]);
-        using var settings = new TestSettingsStore();
-        var context = new DownloadExecutionContext(task.Id,
-            DownloadExecutionContextFactory.CreateInput(task, settings.Store.Current),
-            static (_, token) => token.ThrowIfCancellationRequested());
-        var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
-        context.StagingDirectory = staging.GetDirectory(task.Id, outputBase, task.Output.StagingToken);
-
-        await ResolvePlaybackStage.AdoptRecordedTransfersAsync(
-            context, TestContext.Current.CancellationToken);
-
-        Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(
-            Path.Combine(context.StagingDirectory, name), TestContext.Current.CancellationToken));
-        Assert.Equal(new byte[] { 4, 5 }, await File.ReadAllBytesAsync(
-            Path.Combine(context.StagingDirectory, name + ".aria2"), TestContext.Current.CancellationToken));
-        Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(
-            Path.Combine(_directory, name), TestContext.Current.CancellationToken));
-        Assert.Equal(new byte[] { 4, 5 }, await File.ReadAllBytesAsync(
-            Path.Combine(_directory, name + ".aria2"), TestContext.Current.CancellationToken));
-        staging.CleanupCurrentSession();
-    }
-
-    [Fact]
     public void TaskCleanupDoesNotFollowDirectorySymlinkInsideStaging()
     {
         var outputBase = Path.Combine(_directory, "output");

@@ -15,9 +15,7 @@ public sealed class NetworkSettingsViewArchitectureTests
     [
         "ViewNetwork.axaml",
         "NetworkGeneralSettingsView.axaml",
-        "BuiltinDownloaderSettingsView.axaml",
-        "AriaDownloaderSettingsView.axaml",
-        "CustomAriaSettingsView.axaml"
+        "BuiltinDownloaderSettingsView.axaml"
     ];
 
     [Fact]
@@ -29,9 +27,7 @@ public sealed class NetworkSettingsViewArchitectureTests
         AssertOrdered(
             source,
             "NetworkGeneralSettingsView",
-            "BuiltinDownloaderSettingsView",
-            "AriaDownloaderSettingsView",
-            "CustomAriaSettingsView");
+            "BuiltinDownloaderSettingsView");
         Assert.DoesNotContain("{Binding", source, StringComparison.Ordinal);
     }
 
@@ -56,24 +52,21 @@ public sealed class NetworkSettingsViewArchitectureTests
     {
         var source = string.Join(Environment.NewLine, ViewNames.Select(Read));
 
-        Assert.Equal(89, Count(source, @"\{Binding\s+([^},]+)"));
-        Assert.Equal(58, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
-        Assert.Equal(127, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
+        Assert.Equal(38, Count(source, @"\{Binding\s+([^},]+)"));
+        Assert.Equal(29, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
+        Assert.Equal(57, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
         Assert.Equal(4, Count(source, @"\{StaticResource\s+([^}]+)\}"));
-        Assert.Equal(25, Count(source, @"CommandParameter=""([^""]+)"""));
+        Assert.Equal(11, Count(source, @"CommandParameter=""([^""]+)"""));
     }
 
     [Fact]
-    public void AriaProxyElementReferenceRemainsInsideOneNameScope()
+    public void BuiltinProxyPanelUsesTheViewModelAsItsSingleVisibilityOwner()
     {
-        var source = Read("AriaDownloaderSettingsView.axaml");
+        var source = Read("BuiltinDownloaderSettingsView.axaml");
 
-        Assert.Contains("Name=\"NameIsAriaHttpsDownloadProxy\"", source, StringComparison.Ordinal);
-        Assert.Contains("Name=\"NameAriaHttpsDownloadProxyPanel\"", source, StringComparison.Ordinal);
-        Assert.Contains(
-            "IsVisible=\"{Binding ElementName=NameIsAriaHttpsDownloadProxy,Path=IsChecked}\"",
-            source,
-            StringComparison.Ordinal);
+        Assert.Contains("Name=\"NameIsHttpProxy\"", source, StringComparison.Ordinal);
+        Assert.Contains("Name=\"NameHttpProxyPanel\"", source, StringComparison.Ordinal);
+        Assert.Contains("IsVisible=\"{Binding IsHttpProxy}\"", source, StringComparison.Ordinal);
     }
 
     private static int Count(string source, string pattern)

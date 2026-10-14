@@ -1,5 +1,3 @@
-using DownKyi.Core.Aria2cNet.Server;
-
 namespace DownKyi.Services.Download;
 
 internal interface IDownloadEmergencyCleanup
@@ -7,13 +5,10 @@ internal interface IDownloadEmergencyCleanup
     void KillTrackedRuntime(string reason);
 }
 
-internal sealed class AriaDownloadEmergencyCleanup(AriaServer ariaServer) : IDownloadEmergencyCleanup
+internal sealed class BuiltinDownloadEmergencyCleanup : IDownloadEmergencyCleanup
 {
-    private readonly AriaServer _ariaServer = ariaServer
-        ?? throw new ArgumentNullException(nameof(ariaServer));
-
     public void KillTrackedRuntime(string reason)
     {
-        _ariaServer.KillTrackedServer(reason);
+        // Built-in transfers run in-process and are cancelled by the normal runtime shutdown path.
     }
 }

@@ -94,7 +94,6 @@ public sealed class DownloadTaskProjectionStoreResumeTests : IDisposable
             var startup = await reopenedStorage.GetDownloadingStateAsync(
                 TestContext.Current.CancellationToken);
             var restored = Assert.Single(startup.Projections);
-            Assert.Equal(ariaGid, restored.Downloading.Gid);
             Assert.Equal("video.m4s", restored.Downloading.DownloadFiles["video"]);
             Assert.Equal("audio.m4s", restored.Downloading.DownloadFiles["audio"]);
             Assert.Equal("cover", Assert.Single(restored.Downloading.DownloadedFiles));

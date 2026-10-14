@@ -8,23 +8,23 @@ using System.Threading.Tasks;
 
 namespace DownKyi.Services.Download;
 
-internal sealed class AriaDownloadAddressResolver : IDisposable
+internal sealed class DownloadAddressResolver : IDisposable
 {
     private const int MaximumRedirects = 5;
     private readonly HttpMessageInvoker _http;
 
-    private AriaDownloadAddressResolver(HttpMessageHandler handler)
+    private DownloadAddressResolver(HttpMessageHandler handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _http = new HttpMessageInvoker(handler, disposeHandler: true);
     }
 
-    public static AriaDownloadAddressResolver Create(Uri? proxyAddress)
+    public static DownloadAddressResolver Create(Uri? proxyAddress)
     {
         if (proxyAddress is { Scheme: not "http" })
         {
             throw new ArgumentException(
-                "The aria2 HTTPS download proxy must be an HTTP CONNECT endpoint.",
+                "The HTTPS download proxy must be an HTTP CONNECT endpoint.",
                 nameof(proxyAddress));
         }
 
@@ -47,7 +47,7 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
                 };
             }
 
-            var resolver = new AriaDownloadAddressResolver(handler);
+            var resolver = new DownloadAddressResolver(handler);
             handler = null;
             return resolver;
         }
@@ -57,13 +57,13 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
         }
     }
 
-    internal static AriaDownloadAddressResolver CreateForTest(HttpMessageHandler handler)
+    internal static DownloadAddressResolver CreateForTest(HttpMessageHandler handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         HttpMessageHandler? ownedHandler = handler;
         try
         {
-            var resolver = new AriaDownloadAddressResolver(ownedHandler);
+            var resolver = new DownloadAddressResolver(ownedHandler);
             ownedHandler = null;
             return resolver;
         }
@@ -73,7 +73,7 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
         }
     }
 
-    public async Task<AriaDownloadAddressResolution> ResolveAsync(
+    public async Task<DownloadAddressResolution> ResolveAsync(
         string address,
         string userAgent,
         string? credentials,
@@ -82,14 +82,14 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
         if (!Uri.TryCreate(address, UriKind.Absolute, out var current)
             || !string.Equals(current.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
-            return AriaDownloadAddressResolution.Rejected(
+            return DownloadAddressResolution.Rejected(
                 "download.transfer.insecure-address");
         }
 
         for (var redirectCount = 0; ; redirectCount++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var taskHeaders = AriaTaskHeaderPolicy.Create(
+            var taskHeaders = DownloadRequestHeaderPolicy.Create(
                 current.AbsoluteUri,
                 userAgent,
                 credentials);
@@ -104,21 +104,21 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
             catch (HttpRequestException exception) when (
                 TlsFailureClassifier.TryClassify(exception, out var tlsErrorCode))
             {
-                return AriaDownloadAddressResolution.Rejected(tlsErrorCode);
+                return DownloadAddressResolution.Rejected(tlsErrorCode);
             }
 
             using (response)
             {
                 if (!IsRedirect(response.StatusCode))
                 {
-                    return AriaDownloadAddressResolution.Accepted(
+                    return DownloadAddressResolution.Accepted(
                         current.AbsoluteUri,
                         taskHeaders);
                 }
 
                 if (redirectCount >= MaximumRedirects)
                 {
-                    return AriaDownloadAddressResolution.Rejected(
+                    return DownloadAddressResolution.Rejected(
                         "download.transfer.redirect-limit");
                 }
 
@@ -130,10 +130,10 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
 
                 var next = redirect.Address
                     ?? throw new InvalidOperationException(
-                        "The accepted aria2 redirect address is missing.");
+                        "The accepted download redirect address is missing.");
                 if (taskHeaders.CarriesCredentials && !IsSameOrigin(current, next))
                 {
-                    return AriaDownloadAddressResolution.Rejected(
+                    return DownloadAddressResolution.Rejected(
                         "download.transfer.credentialed-redirect");
                 }
 
@@ -144,7 +144,7 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
 
     private static HttpRequestMessage CreateProbeRequest(
         Uri address,
-        AriaTaskHeaders taskHeaders)
+        DownloadRequestHeaders taskHeaders)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, address);
         request.Headers.Range = new RangeHeaderValue(0, 0);
@@ -155,7 +155,7 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
             if (separator <= 0)
             {
                 request.Dispose();
-                throw new InvalidOperationException("An aria2 task header is malformed.");
+                throw new InvalidOperationException("A download request header is malformed.");
             }
 
             request.Headers.TryAddWithoutValidation(
@@ -166,24 +166,24 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
         return request;
     }
 
-    private static AriaDownloadAddressResolution ResolveRedirect(
+    private static DownloadAddressResolution ResolveRedirect(
         Uri current,
         Uri? location)
     {
         if (location == null)
         {
-            return AriaDownloadAddressResolution.Rejected(
+            return DownloadAddressResolution.Rejected(
                 "download.transfer.redirect-location-missing");
         }
 
         var next = location.IsAbsoluteUri ? location : new Uri(current, location);
         if (!string.Equals(next.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
-            return AriaDownloadAddressResolution.Rejected(
+            return DownloadAddressResolution.Rejected(
                 "download.transfer.insecure-redirect");
         }
 
-        return AriaDownloadAddressResolution.Redirect(next);
+        return DownloadAddressResolution.Redirect(next);
     }
 
     private static bool IsRedirect(HttpStatusCode statusCode)
@@ -214,19 +214,19 @@ internal sealed class AriaDownloadAddressResolver : IDisposable
     }
 }
 
-internal sealed record AriaDownloadAddressResolution(
+internal sealed record DownloadAddressResolution(
     Uri? Address,
-    AriaTaskHeaders? Headers,
+    DownloadRequestHeaders? Headers,
     string? ErrorCode)
 {
-    public static AriaDownloadAddressResolution Accepted(
+    public static DownloadAddressResolution Accepted(
         string address,
-        AriaTaskHeaders headers) =>
+        DownloadRequestHeaders headers) =>
         new(new Uri(address, UriKind.Absolute), headers, ErrorCode: null);
 
-    public static AriaDownloadAddressResolution Redirect(Uri address) =>
+    public static DownloadAddressResolution Redirect(Uri address) =>
         new(address, Headers: null, ErrorCode: null);
 
-    public static AriaDownloadAddressResolution Rejected(string errorCode) =>
+    public static DownloadAddressResolution Rejected(string errorCode) =>
         new(Address: null, Headers: null, errorCode);
 }

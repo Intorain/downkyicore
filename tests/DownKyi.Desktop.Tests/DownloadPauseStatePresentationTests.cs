@@ -41,6 +41,38 @@ public sealed class DownloadPauseStatePresentationTests
         }).ConfigureAwait(true);
     }
 
+    [AvaloniaFact]
+    public async Task RetiredLegacyFailureHidesTheUnavailableRetryAction()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var queued = CreateTask();
+            var failed = DownloadTask.Restore(
+                queued.Id,
+                queued.Metadata,
+                queued.Plan,
+                queued.Output,
+                DownloadPhase.Failed,
+                DownloadProgress.None,
+                DownloadTransferState.LegacyEmpty,
+                new DownloadFailure(
+                    "download.transfer.legacy-backend-removed",
+                    "The unfinished legacy download was removed and marked as failed.",
+                    false),
+                completion: null,
+                version: 1,
+                queued.CreatedAtUtc,
+                queued.CreatedAtUtc.AddSeconds(1));
+
+            var item = DownloadTaskProjectionMapper.ToDownloadingItem(failed);
+
+            Assert.Equal(DownloadStatus.DownloadFailed, item.Downloading.DownloadStatus);
+            Assert.Same(ButtonIcon.Retry, item.StartOrPause);
+            Assert.False(item.IsToggleVisible);
+        }).ConfigureAwait(true);
+    }
+
     private static DownloadTask CreateTask()
     {
         return DownloadTask.Create(

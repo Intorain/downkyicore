@@ -6,7 +6,7 @@ namespace DownKyi.Infrastructure.Downloads;
 
 internal static class DownloadStoreSchema
 {
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
 
     public static async Task InitializeAsync(
         SqliteConnection connection,
@@ -40,6 +40,16 @@ internal static class DownloadStoreSchema
             {
                 await CurrentDownloadStoreWriter
                     .CreateAsync(connection, transaction, clock.UtcNow, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (format.IsLegacyTransferMarkerUpgrade)
+            {
+                await CurrentDownloadStoreWriter
+                    .UpgradeLegacyTransferMarkerAsync(
+                        connection,
+                        transaction,
+                        clock.UtcNow,
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (format.IsPreviousCurrent)
@@ -82,6 +92,7 @@ internal static class DownloadStoreSchema
                         .RecoverCurrentWithLegacyHistoryAsync(
                             connection,
                             transaction,
+                            format,
                             plan,
                             clock.UtcNow,
                             cancellationToken)

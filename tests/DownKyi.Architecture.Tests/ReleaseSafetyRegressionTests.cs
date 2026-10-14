@@ -344,7 +344,6 @@ public sealed class ReleaseSafetyRegressionTests
     {
         var root = CreateTemporaryDirectory();
         var runtime = Path.Combine(root, "runtime");
-        Directory.CreateDirectory(Path.Combine(runtime, "aria2"));
         Directory.CreateDirectory(Path.Combine(runtime, "ffmpeg"));
         var validator = Path.Combine(RepositoryRoot, "script", "validate-release-package.ps1");
 
@@ -352,10 +351,6 @@ public sealed class ReleaseSafetyRegressionTests
         {
             File.Copy(typeof(ReleaseSafetyRegressionTests).Assembly.Location, Path.Combine(runtime, "DownKyi.dll"));
             WritePeFile(Path.Combine(runtime, "DownKyi.exe"), 0x8664);
-            var aria = Path.Combine(runtime, "aria2", "aria2c.exe");
-            WritePeFile(aria, 0x8664);
-            var ariaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(aria)));
-            File.WriteAllText(Path.Combine(runtime, "aria2", "aria2c.exe.sha256"), ariaHash);
             var ffmpeg = Path.Combine(runtime, "ffmpeg", "ffmpeg.exe");
             WritePeFile(ffmpeg, 0x8664);
             WritePeFile(Path.Combine(runtime, "ffmpeg", "ffprobe.exe"), 0x8664);
@@ -402,7 +397,7 @@ public sealed class ReleaseSafetyRegressionTests
             Assert.Contains("does not match the expected publish manifest", NormalizeDiagnostic(comparedManifestDrift), StringComparison.Ordinal);
             WriteNonEmptyFile(desktopDependency);
 
-            var packagedUserData = Path.Combine(runtime, "Config", "Settings");
+            var packagedUserData = Path.Combine(runtime, "Aria", ".rpc-stale.conf");
             Directory.CreateDirectory(Path.GetDirectoryName(packagedUserData)!);
             File.WriteAllText(packagedUserData, "user-specific-settings");
             var userDataResult = RunPowerShell(
@@ -416,7 +411,7 @@ public sealed class ReleaseSafetyRegressionTests
                 root);
             Assert.NotEqual(0, userDataResult.ExitCode);
             Assert.Contains("contains user data paths", NormalizeDiagnostic(userDataResult), StringComparison.Ordinal);
-            Directory.Delete(Path.Combine(runtime, "Config"), recursive: true);
+            Directory.Delete(Path.Combine(runtime, "Aria"), recursive: true);
 
             var validPackage = Path.Combine(root, "valid.zip");
             ZipFile.CreateFromDirectory(runtime, validPackage);
@@ -483,7 +478,7 @@ public sealed class ReleaseSafetyRegressionTests
             Assert.Contains("does not match the validated publish manifest", NormalizeDiagnostic(substituted), StringComparison.Ordinal);
             WritePeFile(ffmpeg, 0x8664);
 
-            WritePeFile(aria, 0x014c);
+            WritePeFile(ffmpeg, 0x014c);
             var wrongArchitecturePackage = Path.Combine(root, "wrong-architecture.zip");
             ZipFile.CreateFromDirectory(runtime, wrongArchitecturePackage);
             var wrongArchitecture = RunPowerShell(
@@ -498,9 +493,7 @@ public sealed class ReleaseSafetyRegressionTests
                 root);
             Assert.NotEqual(0, wrongArchitecture.ExitCode);
             Assert.Contains("does not match win-x64", NormalizeDiagnostic(wrongArchitecture), StringComparison.Ordinal);
-            WritePeFile(aria, 0x8664);
-            ariaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(aria)));
-            File.WriteAllText(Path.Combine(runtime, "aria2", "aria2c.exe.sha256"), ariaHash);
+            WritePeFile(ffmpeg, 0x8664);
 
             File.Delete(Path.Combine(runtime, "Avalonia.Themes.Fluent.dll"));
             var mutatedPackage = Path.Combine(root, "mutated.zip");
@@ -1193,14 +1186,12 @@ public sealed class ReleaseSafetyRegressionTests
         var controlDirectory = Path.Combine(packageRoot, "DEBIAN");
         var runtime = Path.Combine(packageRoot, "usr", "lib", "downkyi");
         Directory.CreateDirectory(controlDirectory);
-        Directory.CreateDirectory(Path.Combine(runtime, "aria2"));
         Directory.CreateDirectory(Path.Combine(runtime, "ffmpeg"));
 
         File.Copy(typeof(ReleaseSafetyRegressionTests).Assembly.Location, Path.Combine(runtime, "DownKyi.dll"));
         var executables = new[]
         {
             Path.Combine(runtime, "DownKyi"),
-            Path.Combine(runtime, "aria2", "aria2c"),
             Path.Combine(runtime, "ffmpeg", "ffmpeg"),
             Path.Combine(runtime, "ffmpeg", "ffprobe")
         };
@@ -1232,9 +1223,6 @@ public sealed class ReleaseSafetyRegressionTests
             File.SetUnixFileMode(executable, mode);
         }
 
-        var aria = Path.Combine(runtime, "aria2", "aria2c");
-        var ariaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(aria)));
-        File.WriteAllText(Path.Combine(runtime, "aria2", "aria2c.sha256"), ariaHash);
         File.WriteAllText(Path.Combine(runtime, "DownKyi.deps.json"), "{\"libraries\":{\"Avalonia.Themes.Fluent/fixture\":{}}}");
         WriteNonEmptyFile(Path.Combine(runtime, "Avalonia.Themes.Fluent.dll"));
         File.WriteAllText(
@@ -1266,14 +1254,12 @@ public sealed class ReleaseSafetyRegressionTests
         {
             Directory.CreateDirectory(Path.Combine(topDirectory, directory));
         }
-        Directory.CreateDirectory(Path.Combine(runtime, "aria2"));
         Directory.CreateDirectory(Path.Combine(runtime, "ffmpeg"));
 
         File.Copy(typeof(ReleaseSafetyRegressionTests).Assembly.Location, Path.Combine(runtime, "DownKyi.dll"));
         var executables = new[]
         {
             Path.Combine(runtime, "DownKyi"),
-            Path.Combine(runtime, "aria2", "aria2c"),
             Path.Combine(runtime, "ffmpeg", "ffmpeg"),
             Path.Combine(runtime, "ffmpeg", "ffprobe")
         };
@@ -1286,9 +1272,6 @@ public sealed class ReleaseSafetyRegressionTests
                 UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
                 UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         }
-        var aria = Path.Combine(runtime, "aria2", "aria2c");
-        var ariaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(aria)));
-        File.WriteAllText(Path.Combine(runtime, "aria2", "aria2c.sha256"), ariaHash);
         File.WriteAllText(Path.Combine(runtime, "DownKyi.deps.json"), "{\"libraries\":{\"Avalonia.Themes.Fluent/fixture\":{}}}");
         WriteNonEmptyFile(Path.Combine(runtime, "Avalonia.Themes.Fluent.dll"));
 
@@ -1344,7 +1327,6 @@ public sealed class ReleaseSafetyRegressionTests
         Directory.CreateDirectory(root);
         var appRoot = Path.Combine(root, "app-root");
         var runtime = Path.Combine(appRoot, "usr", "bin");
-        Directory.CreateDirectory(Path.Combine(runtime, "aria2"));
         Directory.CreateDirectory(Path.Combine(runtime, "ffmpeg"));
 
         File.Copy(typeof(ReleaseSafetyRegressionTests).Assembly.Location, Path.Combine(runtime, "DownKyi.dll"));
@@ -1395,12 +1377,8 @@ public sealed class ReleaseSafetyRegressionTests
             """
             .Replace("__MARKER_VISIBILITY__", markerVisibility, StringComparison.Ordinal));
         RunRequired("gcc", ["-O2", "-o", Path.Combine(runtime, "DownKyi"), downKyiSource], root);
-        var aria = Path.Combine(runtime, "aria2", "aria2c");
-        File.Copy("/bin/true", aria);
         File.Copy("/bin/true", Path.Combine(runtime, "ffmpeg", "ffmpeg"));
         File.Copy("/bin/true", Path.Combine(runtime, "ffmpeg", "ffprobe"));
-        var ariaHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(aria)));
-        File.WriteAllText(Path.Combine(runtime, "aria2", "aria2c.sha256"), ariaHash);
         File.WriteAllText(Path.Combine(runtime, "DownKyi.deps.json"), "{\"libraries\":{\"Avalonia.Themes.Fluent/fixture\":{}}}");
         WriteNonEmptyFile(Path.Combine(runtime, "Avalonia.Themes.Fluent.dll"));
 

@@ -219,6 +219,38 @@ public sealed class DownloadTaskApplicationServiceTests
     }
 
     [Fact]
+    public async Task DiscardingUnpublishedArtifactsAndFailingUsesOneDurableMutation()
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(
+            store,
+            DownloadHistoryService.CreateForSharedStore(store),
+            new AdvancingClock());
+        var task = CreateTask();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        await service.StartAsync(task.Id, TestContext.Current.CancellationToken);
+        await service.SetBackendIdentityAsync(
+            task.Id,
+            "legacy-id",
+            TestContext.Current.CancellationToken);
+        var updatesBeforeFailure = store.ExpectedVersions.Count;
+        var failure = new DownloadFailure("legacy.removed", "Legacy transfer removed.", true);
+
+        var result = await service.DiscardUnpublishedArtifactsAndFailAsync(
+            task.Id,
+            failure,
+            TestContext.Current.CancellationToken);
+
+        var failed = result.RequireValue();
+        Assert.Equal(updatesBeforeFailure + 1, store.ExpectedVersions.Count);
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Same(failure, failed.Failure);
+        Assert.Empty(failed.Plan.TransferFiles);
+        Assert.Same(DownloadTransferState.LegacyEmpty, failed.Transfer);
+        Assert.True(failed.Transfer.HasLegacyProvenance);
+    }
+
+    [Fact]
     public async Task InvalidCommandDoesNotPersistOrPublishAReplacementSnapshot()
     {
         var store = new RecordingStore();
@@ -265,66 +297,20 @@ public sealed class DownloadTaskApplicationServiceTests
     }
 
     [Fact]
-    public async Task LegacyUpgradeAdmissionStateAndConfirmationDelegateToStore()
+    public async Task RemovedBackendDoesNotBlockNewTaskAdmission()
     {
-        var store = new RecordingStore { LegacyUpgradeAdmissionBlocked = true };
-        using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
-
-        Assert.True(await service.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
-        Assert.True((await service.ConfirmLegacyRemoteTasksStoppedAsync(
-            TestContext.Current.CancellationToken)).IsSuccess);
-
-        Assert.False(await service.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
-        Assert.Equal(1, store.LegacyRemoteStopConfirmationCount);
-    }
-
-    [Fact]
-    public async Task BlockedLegacyUpgradeRejectsQueuedTaskBeforeStoreAddAndAllowsSameSessionAfterConfirmation()
-    {
-        var store = new RecordingStore { LegacyUpgradeAdmissionBlocked = true };
+        var store = new RecordingStore();
         using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
 
         var admission = await service.CheckNewDownloadAdmissionAsync(
             TestContext.Current.CancellationToken);
-        var blocked = await service.AddAsync(
+        var added = await service.AddAsync(
             CreateTask(),
             TestContext.Current.CancellationToken);
 
-        Assert.False(admission.IsSuccess);
-        Assert.True(DownloadAdmissionErrors.IsLegacyUpgradeBlocked(admission.Error));
-        Assert.False(blocked.IsSuccess);
-        Assert.True(DownloadAdmissionErrors.IsLegacyUpgradeBlocked(blocked.Error));
-        Assert.Equal(0, store.AddCount);
-        Assert.Null(store.Current);
-
-        Assert.True((await service.ConfirmLegacyRemoteTasksStoppedAsync(
-            TestContext.Current.CancellationToken)).IsSuccess);
-        Assert.True((await service.AddAsync(
-            CreateTask(),
-            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True(admission.IsSuccess);
+        Assert.True(added.IsSuccess);
         Assert.Equal(1, store.AddCount);
-    }
-
-    [Fact]
-    public async Task BlockedLegacyUpgradeDoesNotRejectExplicitHistoryImport()
-    {
-        var store = new RecordingStore { LegacyUpgradeAdmissionBlocked = true };
-        var historyService = DownloadHistoryService.CreateForSharedStore(store);
-        var started = CreateTask().Start(Epoch.AddSeconds(1)).RequireValue();
-        var completed = started.Complete(
-            new DownloadCompletion(1, "finished", null),
-            Epoch.AddSeconds(2)).RequireValue();
-
-        var history = DownloadHistoryRecord.FromCompletedTask(completed);
-        var result = await historyService.AddAsync(history, TestContext.Current.CancellationToken);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(0, store.AddCount);
-        Assert.Same(history, store.AddedHistory);
-        Assert.Null(store.Current);
-        Assert.True(store.LegacyUpgradeAdmissionBlocked);
     }
 
     private static DownloadTask CreateTask()
@@ -382,10 +368,6 @@ public sealed class DownloadTaskApplicationServiceTests
         public DownloadTask? Current { get; private set; }
 
         public List<long> ExpectedVersions { get; } = [];
-
-        public bool LegacyUpgradeAdmissionBlocked { get; set; }
-
-        public int LegacyRemoteStopConfirmationCount { get; private set; }
 
         public int AddCount { get; private set; }
 
@@ -482,18 +464,6 @@ public sealed class DownloadTaskApplicationServiceTests
             string basePath,
             bool ignoreCase,
             CancellationToken cancellationToken) => Task.FromResult(false);
-
-        public Task<bool> IsLegacyUpgradeAdmissionBlockedAsync(
-            CancellationToken cancellationToken) =>
-            Task.FromResult(LegacyUpgradeAdmissionBlocked);
-
-        public Task<OperationResult> ConfirmLegacyRemoteTasksStoppedAsync(
-            CancellationToken cancellationToken)
-        {
-            LegacyRemoteStopConfirmationCount++;
-            LegacyUpgradeAdmissionBlocked = false;
-            return Task.FromResult(OperationResult.Success());
-        }
 
         public Task<IReadOnlyList<string>> GetActiveOutputReservationKeysAsync(
             bool ignoreCase,

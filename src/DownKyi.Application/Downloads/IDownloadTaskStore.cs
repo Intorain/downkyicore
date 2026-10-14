@@ -48,13 +48,6 @@ public interface IDownloadTaskStore
                 || task.Plan.ActionClaims.Overlaps(requestedClaims)));
     }
 
-    Task<bool> IsLegacyUpgradeAdmissionBlockedAsync(CancellationToken cancellationToken) =>
-        Task.FromResult(false);
-
-    Task<OperationResult> ConfirmLegacyRemoteTasksStoppedAsync(
-        CancellationToken cancellationToken) =>
-        Task.FromResult(OperationResult.Success());
-
     Task<OperationResult> DeleteAsync(DownloadTaskId taskId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<QuarantinedDownloadRecord>> GetQuarantinedRecordsAsync(

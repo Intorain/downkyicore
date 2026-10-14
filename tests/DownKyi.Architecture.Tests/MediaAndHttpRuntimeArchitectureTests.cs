@@ -266,11 +266,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
         const string defaultEnvelopePattern =
             @"\[JsonProperty(?:Name)?\(\""(?:data|result|error|payload)\""\)\]\s*" +
             @"public[^\{\r\n]+\{\s*get;\s*set;\s*\}\s*=\s*(?:new\b|Array\.Empty)";
-        var roots = new[]
-        {
-            Path.Combine(RepositoryRoot, "DownKyi.Core", "BiliApi"),
-            Path.Combine(RepositoryRoot, "DownKyi.Core", "Aria2cNet", "Client", "Entity")
-        };
+        var roots = new[] { Path.Combine(RepositoryRoot, "DownKyi.Core", "BiliApi") };
         var violations = roots
             .SelectMany(root => Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Where(path => Regex.IsMatch(

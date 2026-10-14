@@ -21,7 +21,7 @@ DownKyi Core 是基于哔哩下载姬 Windows 版与 Avalonia 的跨平台 B 站
 - macOS：`DownKyi-*-osx-arm64.dmg` 或 `DownKyi-*-osx-x64.dmg`
 - Linux：AppImage / deb / rpm
 
-Windows ZIP 必须完整解压到新目录后再运行。`DownKyi.exe` 旁必须保留 `aria2` 与 `ffmpeg` 子目录；若程序报告缺少 `aria2/aria2c.exe`，请重新下载官方 Release 并完整解压，不要单独补放执行文件。
+Windows ZIP 必须完整解压到新目录后再运行。`DownKyi.exe` 旁必须保留 `ffmpeg` 子目录；若程序报告文件不完整，请重新下载官方 Release 并完整解压，不要单独补放执行文件。
 
 版本变化见 [CHANGELOG.md](CHANGELOG.md)，安装包见 [GitHub Releases](https://github.com/crazysmile-PhD/downkyicore/releases)。
 
@@ -31,13 +31,13 @@ Windows ZIP 必须完整解压到新目录后再运行。`DownKyi.exe` 旁必须
 
 - 解析视频、合集、番剧、课程、收藏、历史记录和稍后再看等入口。
 - 下载音频、视频、封面、弹幕、普通字幕和 AI 字幕。
-- 支持 aria2 与内置下载器，并保留断点续传需要的状态。
+- 内建多连接分段下载器会分散下载文件区间，并保存严格校验的断点续传状态。
 - 删除下载中任务时，同步停止下载器并清理已产生的媒体和临时文件。
 - 导出会脱敏 Cookie、token、邮箱、uid 和本机用户路径的诊断日志。
 
 ## 运行与数据目录
 
-发布包已包含 .NET、FFmpeg 和 aria2，不需要另外安装运行环境。FFmpeg 优先无损 stream copy；必须转码时会探测可用的硬件 encoder，失败则记录原因并回退到软件编码。
+发布包已包含 .NET 和 FFmpeg，不需要另外安装运行环境。FFmpeg 优先无损 stream copy；必须转码时会探测可用的硬件 encoder，失败则记录原因并回退到软件编码。
 
 默认数据目录：
 
@@ -52,7 +52,6 @@ Windows ZIP 必须完整解压到新目录后再运行。`DownKyi.exe` 旁必须
 - `Storage`：SQLite 下载数据库
 - `Config`：设置与登录信息
 - `Cache`：图片和运行缓存
-- `Aria`：aria2 session 与日志
 
 设置 `DOWNKYI_DATA_DIR` 可指定数据根目录。设置 `DOWNKYI_PORTABLE=1`，或在程序目录放置 `portable`、`.portable`、`DownKyi.portable`，可启用便携模式。
 

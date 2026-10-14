@@ -13,7 +13,7 @@ case "$RUNTIME_IDENTIFIER" in
     ;;
 esac
 
-for relative_path in DownKyi aria2/aria2c ffmpeg/ffmpeg ffmpeg/ffprobe; do
+for relative_path in DownKyi ffmpeg/ffmpeg ffmpeg/ffprobe; do
   binary="$APP_PATH/Contents/MacOS/$relative_path"
   if [ ! -f "$binary" ]; then
     echo "::error::Mounted app is missing runtime binary: $relative_path" >&2

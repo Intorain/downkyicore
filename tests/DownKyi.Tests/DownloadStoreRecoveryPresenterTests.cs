@@ -53,7 +53,7 @@ public sealed class DownloadStoreRecoveryPresenterTests
         var presenter = CreatePresenter(dialogs, recovery, lifecycle);
 
         await presenter.ConfirmResetAndRestartAsync(
-            new InvalidOperationException("aria2 startup failed"),
+            new InvalidOperationException("download runtime startup failed"),
             TestContext.Current.CancellationToken);
 
         Assert.False(recovery.Called);

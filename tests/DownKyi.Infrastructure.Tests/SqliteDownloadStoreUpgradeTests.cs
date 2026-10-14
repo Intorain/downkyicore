@@ -34,12 +34,13 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
             ],
             await _fixture.ReadTableColumnsAsync("download_history"));
         Assert.True(await _fixture.TableExistsAsync("download_upgrade_admission_gate"));
+        Assert.Contains(
+            "is_legacy_transfer",
+            await _fixture.ReadTableColumnsAsync("downloading"));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(4));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(5));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(8));
         Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
-        Assert.False(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
     }
 
     [Theory]
@@ -90,6 +91,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         {
             command.CommandText = """
                 PRAGMA user_version = 10;
+                ALTER TABLE downloading DROP COLUMN is_legacy_transfer;
                 DROP INDEX IF EXISTS ix_download_base_output_reservation;
                 CREATE UNIQUE INDEX ux_download_base_output_reservation
                     ON download_base(output_reservation_key)
@@ -122,6 +124,42 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
             "download.db.schema-v10-*.bak"));
+    }
+
+    [Fact]
+    public async Task VersionElevenMarksExistingGidlessTasksAsLegacyTransfers()
+    {
+        var task = _fixture.CreateQueuedTask(
+            "gidless-legacy",
+            Path.Combine(_fixture.TempDirectory, "gidless-legacy"));
+        using (var current = _fixture.CreateStore())
+        {
+            Assert.True((await current.AddAsync(
+                task,
+                TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                PRAGMA user_version = 11;
+                ALTER TABLE downloading DROP COLUMN is_legacy_transfer;
+                """;
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var upgraded = _fixture.CreateStore();
+        await upgraded.InitializeAsync(TestContext.Current.CancellationToken);
+        var restored = Assert.Single(await upgraded.GetUnfinishedAsync(
+            TestContext.Current.CancellationToken));
+
+        Assert.Null(restored.Transfer.BackendIdentity);
+        Assert.True(restored.Transfer.IsLegacyTransfer);
+        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
+        Assert.Single(Directory.GetFiles(
+            Path.Combine(_fixture.TempDirectory, "Backup"),
+            "download.db.schema-v11-*.bak"));
     }
 
     [Fact]
@@ -205,6 +243,9 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 unfinished.Select(task => task.Id.Value).Order(StringComparer.Ordinal));
             var legacyActive = Assert.Single(unfinished, task => task.Id.Value == "legacy-active");
             Assert.True(Guid.TryParseExact(legacyActive.Output.StagingToken, "N", out _));
+            Assert.False(Assert.Single(unfinished, task => task.Id.Value == "current-active")
+                .Transfer.IsLegacyTransfer);
+            Assert.True(legacyActive.Transfer.IsLegacyTransfer);
 
             var history = await recovered.GetHistoryPageAsync(
                 null,
@@ -220,7 +261,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(0, await _fixture.CountDownloadBaseRecordAsync("legacy-history"));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v11-*.bak"));
+            "download.db.schema-v12-*.bak"));
 
         using (var reopened = _fixture.CreateStore())
         {
@@ -229,7 +270,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v11-*.bak"));
+            "download.db.schema-v12-*.bak"));
     }
 
     [Theory]
@@ -389,8 +430,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 ["unsafe-a", "unsafe-b"],
                 (await first.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken))
                     .Select(record => record.RecordId));
-            Assert.True(await first.IsLegacyUpgradeAdmissionBlockedAsync(
-                TestContext.Current.CancellationToken));
         }
 
         using var reopened = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
@@ -404,41 +443,8 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(
             "safe",
             Assert.Single(await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken)).Id.Value);
-        Assert.True(await reopened.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
         Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
     }
-
-    [Fact]
-    public async Task ConfirmationOnlyReleasesAdmissionGateAndPersistsAcrossRestart()
-    {
-        var originalPath = Path.Combine(_fixture.TempDirectory, "confirm-logical", "video");
-        await _fixture.CreateVersionThreeDatabaseAsync(_fixture.CreatePausedTask("confirm", originalPath));
-        var before = await _fixture.ReadStoredStateAsync("confirm");
-        using (var store = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(path => path + "-physical")))
-        {
-            await store.InitializeAsync(TestContext.Current.CancellationToken);
-            Assert.True((await store.ConfirmLegacyRemoteTasksStoppedAsync(
-                TestContext.Current.CancellationToken)).IsSuccess);
-            Assert.False(await store.IsLegacyUpgradeAdmissionBlockedAsync(
-                TestContext.Current.CancellationToken));
-            Assert.Empty(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-            Assert.Single(await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
-            Assert.Equal(before, await _fixture.ReadStoredStateAsync("confirm"));
-        }
-
-        using var reopened = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
-            _ => throw new InvalidOperationException("Version four must not rescan.")));
-        Assert.False(await reopened.IsLegacyUpgradeAdmissionBlockedAsync(
-            TestContext.Current.CancellationToken));
-        Assert.Empty(await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(
-            "confirm",
-            Assert.Single(
-                await reopened.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken)).RecordId);
-        Assert.Equal(before, await _fixture.ReadStoredStateAsync("confirm"));
-    }
-
     [Fact]
     public async Task VersionFourFailureRollsBackQuarantineGateLedgerAndUserVersion()
     {

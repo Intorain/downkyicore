@@ -325,10 +325,6 @@ internal sealed class DownloadMediaStage : IDownloadPipelineStage
                     return CleanupFailure();
                 }
 
-                await _stateWriter.SetBackendIdentityAsync(
-                    context.TaskId,
-                    null,
-                    cancellationToken).ConfigureAwait(true);
                 return OperationResult.Failure<DownloadedMediaTransfer>(OperationError.Unexpected(
                     "download.transfer.invalid-media",
                     "The transfer completed with an invalid media file."));

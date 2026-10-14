@@ -122,6 +122,14 @@ namespace DownKyi.ViewModels.DownloadManager
 
         public VectorImage Delete { get; } = ButtonIcon.Delete;
 
+        private bool _isToggleVisible = true;
+
+        public bool IsToggleVisible
+        {
+            get => _isToggleVisible;
+            set => SetProperty(ref _isToggleVisible, value);
+        }
+
         #endregion
 
         private void RefreshControlPresentation(DownloadStatus status)

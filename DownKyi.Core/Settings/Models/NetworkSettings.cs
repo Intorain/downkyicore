@@ -1,4 +1,3 @@
-using DownKyi.Core.Aria2cNet.Server;
 using Newtonsoft.Json;
 
 namespace DownKyi.Core.Settings.Models;
@@ -28,7 +27,6 @@ public class NetworkSettings
 
     public string UserAgent { get; set; } = string.Empty;
 
-    public Downloader Downloader { get; set; } = Downloader.NotSet;
     public AllowStatus HighSpeedDownloadMode { get; set; } = AllowStatus.None;
 
     public NetworkProxy NetworkProxy { get; set; } = NetworkProxy.None;
@@ -39,30 +37,18 @@ public class NetworkSettings
 
     public int MaxCurrentDownloads { get; set; } = -1;
     public int Split { get; set; } = -1;
+
+    // Keep the persisted aria2 keys so an existing user's limits migrate to the
+    // built-in downloader without maintaining a second settings owner.
+    [JsonProperty("AriaMaxOverallDownloadLimit")]
+    public int MaxOverallDownloadLimit { get; set; } = -1;
+
+    [JsonProperty("AriaMaxDownloadLimit")]
+    public int MaxDownloadLimit { get; set; } = -1;
+
     public AllowStatus IsHttpProxy { get; set; } = AllowStatus.None;
     public string? HttpProxy { get; set; }
     public int HttpProxyListenPort { get; set; } = -1;
-
-    #endregion
-
-    #region Aria
-
-    public string? AriaToken { get; set; }
-    public string? AriaHost { get; set; }
-
-    public int AriaListenPort { get; set; } = -1;
-
-    public AriaConfigLogLevel AriaLogLevel { get; set; } = AriaConfigLogLevel.NotSet;
-    public int AriaSplit { get; set; } = -1;
-    public int AriaMaxConnectionPerServer { get; set; } = -1;
-    public int AriaMinSplitSize { get; set; } = -1;
-    public int AriaMaxOverallDownloadLimit { get; set; } = -1;
-    public int AriaMaxDownloadLimit { get; set; } = -1;
-    public AriaConfigFileAllocation AriaFileAllocation { get; set; } = AriaConfigFileAllocation.NotSet;
-
-    public AllowStatus IsAriaHttpProxy { get; set; } = AllowStatus.None;
-    public string? AriaHttpProxy { get; set; }
-    public int AriaHttpProxyListenPort { get; set; } = -1;
 
     #endregion
 }

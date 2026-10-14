@@ -195,6 +195,37 @@ public sealed class DownloadPipelineStageTests
     }
 
     [Fact]
+    public async Task ValidateStageClassifiesCorruptUnpublishedArtifactForDiscard()
+    {
+        var artifact = Path.Combine(
+            Path.GetTempPath(),
+            $"invalid-unpublished-{Guid.NewGuid():N}.nfo");
+        try
+        {
+            await File.WriteAllBytesAsync(
+                artifact,
+                [],
+                TestContext.Current.CancellationToken);
+            using var settings = new TestSettingsStore();
+            var context = CreateContext(
+                settings.Store.Current,
+                requestedContent: DownloadContentSelection.None with { Cover = true });
+            context.RecordUnpublishedArtifact("nfo", artifact);
+
+            var result = await new ValidateStage(new StubFfmpegMediaStreamValidator())
+                .ExecuteAsync(context, TestContext.Current.CancellationToken);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal("download.validate.unpublished-invalid", result.Error?.Code);
+            Assert.Equal(OperationErrorKind.Validation, result.Error?.Kind);
+        }
+        finally
+        {
+            File.Delete(artifact);
+        }
+    }
+
+    [Fact]
     public async Task ValidateStageRejectsSubtitleOnlyTaskWithoutFiles()
     {
         using var settings = new TestSettingsStore();
@@ -1857,9 +1888,7 @@ public sealed class DownloadPipelineStageTests
             return Task.CompletedTask;
         }
 
-        public Task<DownloadTransferResult> ResetAsync(
-            string? backendIdentity,
-            CancellationToken cancellationToken)
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(DownloadTransferResult.Succeeded());

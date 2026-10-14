@@ -176,7 +176,7 @@ internal sealed class ResolvePlaybackStage : IDownloadPipelineStage
         ArgumentNullException.ThrowIfNull(context);
         var stagingDirectory = context.StagingDirectory
             ?? throw new InvalidOperationException("Task staging is unavailable.");
-        var legacyDirectory = GetDownloadDirectoryPath(context.Input.OutputBasePath);
+        var previousDirectory = GetDownloadDirectoryPath(context.Input.OutputBasePath);
         foreach (var fileName in context.Input.TransferFiles.Values)
         {
             if (string.IsNullOrWhiteSpace(fileName) ||
@@ -185,10 +185,12 @@ internal sealed class ResolvePlaybackStage : IDownloadPipelineStage
                 continue;
             }
 
-            await CopyIfMissingAsync(fileName, legacyDirectory, stagingDirectory, cancellationToken)
+            await CopyIfMissingAsync(
+                    fileName,
+                    previousDirectory,
+                    stagingDirectory,
+                    cancellationToken)
                 .ConfigureAwait(false);
-            await CopyIfMissingAsync(fileName + ".aria2", legacyDirectory, stagingDirectory,
-                cancellationToken).ConfigureAwait(false);
         }
     }
 

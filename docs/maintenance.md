@@ -19,14 +19,14 @@ PR 修正文件。
 | NuGet、package、SDK、TFM、Python、tool、Action version、restore | `Directory.Packages.props`／`Directory.Build.props`／`global.json`／`.python-version`／`.config/dotnet-tools.json`／`.github/actions` | restore、strict build、tests、workflow lint、package audit | [依賴卡](#dependency) |
 | CI、timeout、TRX、zero tests、cleanup | `DownKyi.CentralTestRunner` + OS test project | TRX + failure recorder | [Test／CI 卡](#test-ci) |
 | SQLite、migration、history、persistence | Domain task + Application service + SQLite store | transition／migration tests | [下載資料卡](#download-persistence) |
-| queue、retry、resume、media selection、aria2、FFmpeg | selection／media contract + coordinator + backend | focused runtime regression | [傳輸與媒體卡](#transfer-media) |
+| queue、retry、resume、media selection、built-in range transfer、FFmpeg | selection／media contract + coordinator + backend | focused runtime regression | [傳輸與媒體卡](#transfer-media) |
 | 已知 runtime gap、恢復中斷工作 | GitHub Project item／linked Issue | current-main repro + owner confirmation | [DownKyiCore 工作項目](https://github.com/users/crazysmile-PhD/projects/2) |
 | settings、schema、invalid file、flush | `ISettingsStore`／`SettingsSchemaMigrator` | settings + architecture + Host tests | [Settings 卡](#settings) |
 | logging、redaction、export、retention | `ApplicationLogProvider` + Infrastructure logging owners | provider stress + Host tests | [Logging 卡](#logging) |
 | Desktop、DI、Host、theme、XAML | Desktop composition + design tokens | architecture + XAML + packaged smoke | [Desktop／Host 卡](#desktop-host) |
 | Bilibili、WBI、endpoint、envelope | API adapter + `IWbiKeyProvider` + fixtures | contract fixture + inventory gate | [Bilibili／WBI 卡](#bilibili-wbi) |
 | analyzer、warning、suppression、nullable | strict build config + analyzer inventory | clean strict build + inventory | [Analyzer 卡](#analyzer) |
-| asset、checksum、aria2／FFmpeg binary | `script/assets/external-assets.json` + installer scripts | digest + six-RID gates | [External Binary 卡](#external-binary) |
+| asset、checksum、FFmpeg binary | `script/assets/external-assets.json` + installer scripts | digest + six-RID gates | [External Binary 卡](#external-binary) |
 | release、tag、exact head、rollback | `version.txt` + release workflow | exact-head release gates | [Release 卡](#release) |
 
 ## 共用起飛檢查
@@ -98,10 +98,10 @@ cross-platform stress proof，不得移除。
 
 ## 傳輸與媒體卡
 
-- **Use when**：queue、content conflict、retry、resume、resource identity、aria2、DURL、mux、FFmpeg、media refresh、HTTP cancellation。
+- **Use when**：queue、content conflict、retry、resume、resource identity、range transfer、DURL、mux、FFmpeg、media refresh、HTTP cancellation。
 - **Owner**：selection conflict=`DownloadContentConflictResolver`；admission=`DownloadTaskAdmissionService`；finalized media=`DownloadMediaContract`；retry=coordinator；attempt=backend；integrity=validator；FFmpeg lifecycle=`FfmpegProcessRunner`。
-- **Invariant**：conflict 在 task 建立前解決並保存 finalized selection；refresh 可換 URL，不可改 transport／quality／codec／audio-video intent。worker 只收 `DownloadTaskId`；backends 共用 key／resume／integrity／persistence；success 仍過 shared integrity；pause／shutdown 保留 GID、partial map、completed keys、progress、version。
-- **Do**：built-in resume 先比 resource identity；無 validator 才驗 overlap；mismatch 回 `ResumeRejected`，清該 transfer artifacts 後同地址只重試一次。Delete：persist `Canceled` → stop → 刪 artifacts → 刪 row；failure 不算成功。DURL 只拒絕 duplicate `Order`／無可用地址，不新增 positive／gap／contiguity／start-at-1。Mux 用 same-directory temp、不覆蓋 foreign destination；只有 real decode failure 才撤銷 completed evidence。401／403／schema／cancel 不 retry；429 bounded `Retry-After`。
+- **Invariant**：conflict 在 task 建立前解決並保存 finalized selection；refresh 可換 URL，不可改 transport／quality／codec／audio-video intent。worker 只收 `DownloadTaskId`；built-in backend 擁有唯一 range ledger／resume／integrity；success 仍過 shared integrity；pause／shutdown 保留 partial map、completed keys、progress、version。
+- **Do**：built-in fresh transfer 只有 strong ETag／可用 Last-Modified 才建立多段 range plan，否則整份內容用單一 request；resume 先比 resource identity，無 strong validator 時，重用前逐段比對所有 retained bytes；mismatch 回 `ResumeRejected`，清該 transfer artifacts 後同地址只重試一次。Legacy task 只由 `DownloadTransferState.HasLegacyProvenance` 分類，upgrade cleanup 只刪 task-private staging，不遷移或處理 staging 外的 A2 狀態。Delete：persist `Canceled` → stop → 刪 artifacts → 刪 row；failure 不算成功。DURL 只拒絕 duplicate `Order`／無可用地址，不新增 positive／gap／contiguity／start-at-1。Mux 用 same-directory temp、不覆蓋 foreign destination；只有 real decode failure 才撤銷 completed evidence。401／403／schema／cancel 不 retry；429 bounded `Retry-After`。
 - **Proof**：content-conflict、`BuiltinRangeDownloaderTests`、`DownloadPipelineStageTests`、delete／integrity tests；loopback 先同步 server 收到 request，不用固定 sleep。
 - **Stop**：第二 retry budget／process owner、自訂 DURL 規則、刪除仍有效 source。
 - **Details**：[Architecture：Execution 與 retry](../ARCHITECTURE.md#execution-與-retry)。
@@ -175,13 +175,13 @@ cross-platform stress proof，不得移除。
 
 ## External Binary 卡
 
-- **Use when**：asset URL、checksum、installer、provenance、TLS、RPC secret、six RID。
-- **Owner**：URL／checksum=`external-assets.json`；安裝=installer；official base、source／patch／build provenance 與 trust policy=security docs。
-- **Invariant**：immutable URL + checksum；installer 可從 root／`script/` 執行；start 前驗 sidecar／RPC feature。Local aria2 用 loopback + fresh secret + restricted config + `--stop-with-process`，Windows 加 Job Object。Credential 只給 exact HTTPS `bilibili.com` host／subdomain；禁止 downgrade／credential cross-origin redirect。Remote 不由 App 管 lifecycle，non-loopback 要 HTTPS + secure-redirect feature。
-- **Do**：固定 commits、機械產生 patch；驗 patch／tree／six-RID digests，再驗 installer／sidecar／TLS／sanitized reports。FFmpeg／ffprobe 驗 target encoder 並保留 CPU fallback。
-- **Proof**：manifest、installer、sidecar、six-RID digest／TLS、sanitized reports。
-- **Stop**：mutable `latest`、略過 checksum／TLS、擴 credential host、App 管 remote lifecycle。Generic aria2／Motrix 不支援。
-- **Details**：[aria2 Security](operations/aria2-security.md)；[FFmpeg Asset Mirroring](operations/ffmpeg-asset-mirroring.md)。
+- **Use when**：asset URL、checksum、installer、provenance、TLS、six RID。
+- **Owner**：URL／checksum=`external-assets.json`；安裝=installer；source／build provenance 與 trust policy=security docs。
+- **Invariant**：immutable URL + checksum；installer 可從 root／`script/` 執行。Credential 只給 exact HTTPS `bilibili.com` host／subdomain；禁止 downgrade／credential cross-origin redirect。
+- **Do**：固定 commits；驗 six-RID digests、installer 與 TLS。FFmpeg／ffprobe 驗 target encoder 並保留 CPU fallback。
+- **Proof**：manifest、installer、six-RID digest／TLS。
+- **Stop**：mutable `latest`、略過 checksum／TLS、擴 credential host。
+- **Details**：[FFmpeg Asset Mirroring](operations/ffmpeg-asset-mirroring.md)。
 
 <a id="release"></a>
 
@@ -189,7 +189,7 @@ cross-platform stress proof，不得移除。
 
 - **Use when**：version、tag、exact head、manifest、signing、rollback。
 - **Owner**：version／publication=`version.txt` + release workflow；package identity=`release-package-catalog.ps1`；下載後 artifact inventory／checksum gate=`validate-build-run-artifacts.ps1`；公開集合=`assemble-release-assets.ps1`；package payload=`validate-release-package.ps1` + `validate-publish-output.ps1`；正式命令／rollback=verification doc。
-- **Invariant**：version／tag／manifest 一致且 tag immutable；證據只對 exact final commit 與同一次 Build run 有效。CI 不重新 build，下載完整 artifact inventory 後重算每個 package SHA-256，並在原生平台以 manifest 核對 DownKyi、aria2、FFmpeg、ffprobe、Fluent theme、version 與使用者資料排除。macOS manifest 只能在最終 app 完成 signing／stapling 後封存；ad-hoc 不宣稱 Developer ID／notarization／Gatekeeper。公開附件只能是九個 installer 與單一 verification ZIP。
+- **Invariant**：version／tag／manifest 一致且 tag immutable；證據只對 exact final commit 與同一次 Build run 有效。CI 不重新 build，下載完整 artifact inventory 後重算每個 package SHA-256，並在原生平台以 manifest 核對 DownKyi、FFmpeg、ffprobe、Fluent theme、version 與使用者資料排除。macOS manifest 只能在最終 app 完成 signing／stapling 後封存；ad-hoc 不宣稱 Developer ID／notarization／Gatekeeper。公開附件只能是九個 installer 與單一 verification ZIP。
 - **Do**：review README／CHANGELOG；跑 canonical procedure；先 push `main` 再 tag；通過 downloaded-artifact gate 後，以 `assemble-release-assets.ps1` 組裝公開集合；發布後重新下載核對。
 - **Proof**：exact-head gates、cross-platform packages、`Pre-release artifacts` matrix、驗證 ZIP 內的原始 checksum／post-package publish manifest、remote read-back。
 - **Stop**：blocker／required gate 未解決：不改 version、不 tag、不 publish；不以單平台 file-exists 取代 content gate。
@@ -201,7 +201,7 @@ cross-platform stress proof，不得移除。
 - [ ] BV、AV、bangumi、cheese 可解析。
 - [ ] 單項、多 P、全選可加入下載；取消 directory picker 不新增 task。
 - [ ] Pause → close → reopen 後 resume，不從零開始。
-- [ ] 刪除 active task 會移除 media 與 `.aria2`／`.download` sidecars。
+- [ ] 刪除 active task 會移除 media 與 `.download` state。
 - [ ] Subtitle SRT time code 正確。
 - [ ] Diagnostic export 不含私人路徑、Cookie、token、敏感 URL。
 

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace DownKyi.MacOS.Tests;
@@ -68,11 +67,6 @@ public sealed class MacBundleLayoutTests
             Assert.Null(new FileInfo(legacyRuntimeConfig).LinkTarget);
             Assert.True(File.Exists(legacyDeps));
             Assert.Null(new FileInfo(legacyDeps).LinkTarget);
-
-            var legacySigning = RunSigningScript(legacyApp);
-            Assert.NotEqual(0, legacySigning.ExitCode);
-            var legacyOutput = legacySigning.StandardOutput + legacySigning.StandardError;
-            Assert.Contains("runtime checksum path must remain a symlink", legacyOutput, StringComparison.Ordinal);
 
             CreateAppBundle(correctedApp, publishDirectory);
             AssertSuccess(Run(
@@ -352,14 +346,6 @@ public sealed class MacBundleLayoutTests
         Directory.CreateDirectory(Path.Combine(contentsDirectory, "Resources"));
 
         AssertSuccess(Run("/bin/cp", RepositoryRoot, "-a", $"{publishDirectory}/.", macOsDirectory));
-        var ariaDirectory = Path.Combine(macOsDirectory, "aria2");
-        var ariaExecutable = Path.Combine(ariaDirectory, "aria2c");
-        Directory.CreateDirectory(ariaDirectory);
-        File.Copy(Path.Combine(macOsDirectory, "BundleProbe"), ariaExecutable);
-        AssertSuccess(Run("/bin/chmod", RepositoryRoot, "+x", ariaExecutable));
-        File.WriteAllText(
-            $"{ariaExecutable}.sha256",
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(ariaExecutable))));
         File.WriteAllText(
             Path.Combine(contentsDirectory, "Info.plist"),
             """

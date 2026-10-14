@@ -742,8 +742,6 @@ public sealed class UiSmokeTests
                     networkSections.Children,
                     child => Assert.IsType<NetworkGeneralSettingsView>(child),
                     child => Assert.IsType<BuiltinDownloaderSettingsView>(child),
-                    child => Assert.IsType<AriaDownloaderSettingsView>(child),
-                    child => Assert.IsType<CustomAriaSettingsView>(child),
                     child => Assert.IsType<StackPanel>(child));
 
                 var videoDetailView = new ViewVideoDetail { DataContext = videoDetailViewModel };

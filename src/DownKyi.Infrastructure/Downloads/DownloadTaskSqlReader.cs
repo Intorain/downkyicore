@@ -15,7 +15,8 @@ internal static class DownloadTaskSqlReader
             dl.download_status, dl.download_content, dl.download_status_title, dl.progress,
             dl.downloading_file_size, dl.max_speed, dl.speed_display, dl.phase,
             dl.failure_code, dl.failure_message, dl.failure_transient,
-            dl.downloaded_bytes, dl.total_bytes, dl.bytes_per_second
+            dl.downloaded_bytes, dl.total_bytes, dl.bytes_per_second,
+            dl.is_legacy_transfer
         FROM download_base db
         INNER JOIN downloading dl ON dl.id = db.id
         """;

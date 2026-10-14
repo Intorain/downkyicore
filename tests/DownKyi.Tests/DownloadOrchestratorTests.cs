@@ -385,7 +385,7 @@ public sealed class DownloadOrchestratorTests
                 await context.StateWriter.FailAsync(
                     taskId,
                     new DownloadFailure(
-                        "download.transfer.aria2-rpc",
+                        "download.transfer.pause-unconfirmed",
                         "Synthetic unconfirmed pause.",
                         true),
                     CancellationToken.None).ConfigureAwait(false);

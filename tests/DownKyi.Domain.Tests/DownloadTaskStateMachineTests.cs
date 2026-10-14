@@ -52,6 +52,81 @@ public sealed class DownloadTaskStateMachineTests
     }
 
     [Fact]
+    public void DiscardingUnpublishedArtifactsFailsWithoutRetainingTransferOwnership()
+    {
+        var pending = new DownloadPublishingArtifact(
+            "media",
+            "pending.mp4",
+            4,
+            new string('A', 64));
+        var queued = DownloadTask.Create(
+            new DownloadTaskId("legacy-task"),
+            CreateTask().Metadata,
+            new DownloadPlan(
+                new DownloadContentSelection(false, true, false, false, false),
+                new Dictionary<string, string> { ["video"] = "legacy.m4s" },
+                streamType: 1,
+                nfoRequest: null),
+            new DownloadOutput(
+                "legacy-output",
+                "100 MB",
+                new Dictionary<string, string> { ["cover"] = "published-cover.jpg" },
+                publishingArtifact: pending),
+            Epoch);
+        var downloading = queued.Start(Epoch.AddSeconds(1)).RequireValue()
+            .UpdateTransferState(
+                new DownloadTransferState("legacy-id", ["video"], "video", "Downloading", 4),
+                Epoch.AddSeconds(2)).RequireValue();
+        var failure = new DownloadFailure("legacy.removed", "Legacy transfer removed.", true);
+
+        var failed = downloading.DiscardUnpublishedArtifactsAndFail(
+            failure,
+            Epoch.AddSeconds(3)).RequireValue();
+
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Same(failure, failed.Failure);
+        Assert.Equal(DownloadProgress.None, failed.Progress);
+        Assert.Empty(failed.Plan.TransferFiles);
+        Assert.Same(DownloadTransferState.LegacyEmpty, failed.Transfer);
+        Assert.True(failed.Transfer.HasLegacyProvenance);
+        Assert.Null(failed.Output.PublishingArtifact);
+        Assert.Equal("published-cover.jpg", failed.Output.PublishedArtifacts["cover"]);
+    }
+
+    [Theory]
+    [InlineData(null, false, false)]
+    [InlineData(null, true, true)]
+    [InlineData("legacy-backend-id", false, true)]
+    public void LegacyProvenanceIncludesTheDurableMarkerOrBackendIdentity(
+        string? backendIdentity,
+        bool isLegacyTransfer,
+        bool expected)
+    {
+        var transfer = new DownloadTransferState(
+            backendIdentity,
+            [],
+            isLegacyTransfer: isLegacyTransfer);
+
+        Assert.Equal(expected, transfer.HasLegacyProvenance);
+    }
+
+    [Fact]
+    public void DiscardingUnpublishedArtifactsCannotReclassifyCanceledTaskAsFailed()
+    {
+        var canceled = CreateTask().Cancel(Epoch.AddSeconds(1)).RequireValue();
+
+        var result = canceled.DiscardUnpublishedArtifactsAndFail(
+            new DownloadFailure("legacy.removed", "Legacy transfer removed.", true),
+            Epoch.AddSeconds(2));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.transition.invalid", result.Error?.Code);
+        Assert.Equal(OperationErrorKind.Conflict, result.Error?.Kind);
+        Assert.Equal(DownloadPhase.Canceled, canceled.Phase);
+        Assert.Null(canceled.Failure);
+    }
+
+    [Fact]
     public void InvalidTransitionReturnsTypedConflictAndKeepsOriginalSnapshot()
     {
         var queued = CreateTask();

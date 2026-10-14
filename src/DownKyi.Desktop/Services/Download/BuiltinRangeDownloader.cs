@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 namespace DownKyi.Services.Download;
 
 /// <summary>
-/// Downloads one resolved address as bounded HTTP ranges. The fixed-size range queue,
+/// Downloads one resolved address as bounded HTTP ranges. The distributed range queue,
 /// resumable per-range state and read-stall watchdog are adapted from BBDown's MIT-licensed
 /// download pipeline. See THIRD-PARTY-NOTICES.md.
 /// </summary>
@@ -28,7 +28,6 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     internal static readonly TimeSpan DefaultReadStallTimeout = TimeSpan.FromSeconds(60);
 
     private const int BufferSize = 256 * 1024;
-    private const int ResumeOverlapSize = 64 * 1024;
     private const int MaximumResumeMetadataBytes = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions ResumeJsonOptions = new()
     {
@@ -37,12 +36,14 @@ internal sealed class BuiltinRangeDownloader : IDisposable
 
     private readonly Uri _address;
     private readonly HttpMessageInvoker _http;
-    private readonly AriaTaskHeaders _headers;
+    private readonly DownloadRequestHeaders _headers;
     private readonly ILogger _logger;
+    private readonly Action<int>? _planCreated;
     private readonly int _parallelCount;
     private readonly Action<long, long> _progress;
     private readonly TimeSpan _readStallTimeout;
     private readonly long _segmentSize;
+    private readonly DownloadBandwidthLimiter.TransferLease? _bandwidthLimiter;
     private readonly SemaphoreSlim _checkpointGate = new(1, 1);
     private long _lastCheckpointTimestamp;
     private bool _disposed;
@@ -50,13 +51,15 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     public BuiltinRangeDownloader(
         HttpMessageHandler handler,
         Uri address,
-        AriaTaskHeaders headers,
+        DownloadRequestHeaders headers,
         int parallelCount,
         Action<long, long> progress,
         ILogger logger,
         long segmentSize = DefaultSegmentSize,
         TimeSpan? readStallTimeout = null,
-        bool disposeHandler = true)
+        bool disposeHandler = true,
+        DownloadBandwidthLimiter.TransferLease? bandwidthLimiter = null,
+        Action<int>? planCreated = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _address = address ?? throw new ArgumentNullException(nameof(address));
@@ -65,8 +68,10 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
         _progress = progress ?? throw new ArgumentNullException(nameof(progress));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _planCreated = planCreated;
         _parallelCount = parallelCount;
         _segmentSize = segmentSize;
+        _bandwidthLimiter = bandwidthLimiter;
         _readStallTimeout = readStallTimeout ?? DefaultReadStallTimeout;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
             _readStallTimeout,
@@ -105,6 +110,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             probe.SupportsRanges,
             probe.ResourceIdentity,
             cancellationToken).ConfigureAwait(false);
+        _planCreated?.Invoke(state.Chunks.Length);
         var receivedBytes = state.Chunks.Sum(static chunk => chunk.Position);
         _progress(receivedBytes, probe.TotalBytes);
 
@@ -176,6 +182,66 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         }
 
         return chunks;
+    }
+
+    internal static int CalculateAdaptiveSegmentCount(
+        long totalBytes,
+        int parallelCount,
+        long segmentSize = DefaultSegmentSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(totalBytes);
+        ArgumentOutOfRangeException.ThrowIfLessThan(parallelCount, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
+        if (totalBytes == 0)
+        {
+            return 0;
+        }
+
+        var adaptiveSegmentSize = CalculateAdaptiveSegmentSize(
+            totalBytes,
+            parallelCount,
+            segmentSize);
+        var count = 1 + ((totalBytes - 1) / adaptiveSegmentSize);
+        return checked((int)Math.Min(count, int.MaxValue));
+    }
+
+    internal static IReadOnlyList<BuiltinRangeChunk> OrderChunksForDistributedStart(
+        IEnumerable<BuiltinRangeChunk> chunks)
+    {
+        ArgumentNullException.ThrowIfNull(chunks);
+        var pending = chunks.Where(static chunk => !chunk.IsComplete).ToArray();
+        if (pending.Length <= 2)
+        {
+            return pending;
+        }
+
+        var ordered = new List<BuiltinRangeChunk>(pending.Length);
+        var scheduled = new bool[pending.Length];
+        var queue = new Queue<(int Start, int End)>();
+        queue.Enqueue((0, pending.Length - 1));
+        while (queue.TryDequeue(out var interval))
+        {
+            var index = interval.Start == 0
+                ? 0
+                : interval.Start + (interval.End - interval.Start + 1) / 2;
+            if (!scheduled[index])
+            {
+                scheduled[index] = true;
+                ordered.Add(pending[index]);
+            }
+
+            if (interval.Start <= index - 1)
+            {
+                queue.Enqueue((interval.Start, index - 1));
+            }
+
+            if (index + 1 <= interval.End)
+            {
+                queue.Enqueue((index + 1, interval.End));
+            }
+        }
+
+        return ordered;
     }
 
     private async Task<BuiltinRangeProbe> ProbeAsync(
@@ -294,7 +360,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         }
 
         var hasResumedBytes = chunks.Any(static chunk => chunk.Position > 0);
-        if (!supportsRanges && hasResumedBytes)
+        if (!supportsRanges && (hasResumedBytes || chunks.Length != 1))
         {
             throw new BuiltinResumeRejectedException(
                 "The server no longer supports resuming the partial media file.");
@@ -312,7 +378,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                     throw new BuiltinResumeRejectedException(
                         "The built-in resume metadata does not match the media file.");
                 case BuiltinRangeContinuity.Unavailable:
-                    resourceIdentity = await VerifyResumeOverlapAsync(
+                    resourceIdentity = await VerifyRetainedRangesAsync(
                         stream,
                         chunks,
                         totalBytes,
@@ -344,8 +410,12 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        var chunks = supportsRanges
-            ? CreateChunks(totalBytes, _segmentSize).ToArray()
+        var adaptiveSegmentSize = CalculateAdaptiveSegmentSize(
+            totalBytes,
+            _parallelCount,
+            _segmentSize);
+        var chunks = supportsRanges && resourceIdentity.HasContinuityValidator
+            ? CreateChunks(totalBytes, adaptiveSegmentSize).ToArray()
             : [new BuiltinRangeChunk(0, totalBytes - 1, position: 0)];
         var stream = new FileStream(
             partialFile,
@@ -366,7 +436,13 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             resourceIdentity);
     }
 
-    private async Task<BuiltinRangeResourceIdentity> VerifyResumeOverlapAsync(
+    private static long CalculateAdaptiveSegmentSize(
+        long totalBytes,
+        int parallelCount,
+        long segmentSize) =>
+        Math.Min(segmentSize, Math.Max(1, ((totalBytes - 1) / parallelCount) + 1));
+
+    private async Task<BuiltinRangeResourceIdentity> VerifyRetainedRangesAsync(
         FileStream partialFile,
         BuiltinRangeChunk[] chunks,
         long totalBytes,
@@ -374,66 +450,118 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         BuiltinRangeResourceIdentity resourceIdentity,
         CancellationToken cancellationToken)
     {
-        var resumeChunk = chunks
-            .Where(static chunk => chunk.Position > 0)
-            .MaxBy(static chunk => checked(chunk.Start + chunk.Position))!;
-        var resumeOffset = checked(resumeChunk.Start + resumeChunk.Position);
-        var overlapStart = Math.Max(resumeChunk.Start, resumeOffset - ResumeOverlapSize);
-        var overlapEnd = resumeOffset - 1;
-        var overlapLength = checked((int)(overlapEnd - overlapStart + 1));
-        var localBytes = new byte[overlapLength];
-        partialFile.Position = overlapStart;
-        await partialFile.ReadExactlyAsync(localBytes, cancellationToken).ConfigureAwait(false);
+        var verifiedIdentity = resourceIdentity;
+        foreach (var resumeChunk in chunks
+                     .Where(static chunk => chunk.Position > 0)
+                     .OrderBy(static chunk => chunk.Start))
+        {
+            verifiedIdentity = await VerifyRetainedChunkAsync(
+                partialFile,
+                resumeChunk,
+                totalBytes,
+                persistedIdentity,
+                verifiedIdentity,
+                cancellationToken).ConfigureAwait(false);
+        }
 
-        using var request = CreateRequest(overlapStart, overlapEnd);
+        return verifiedIdentity;
+    }
+
+    private async Task<BuiltinRangeResourceIdentity> VerifyRetainedChunkAsync(
+        FileStream partialFile,
+        BuiltinRangeChunk resumeChunk,
+        long totalBytes,
+        BuiltinRangeResourceIdentity? persistedIdentity,
+        BuiltinRangeResourceIdentity resourceIdentity,
+        CancellationToken cancellationToken)
+    {
+        var retainedStart = resumeChunk.Start;
+        var retainedEnd = checked(retainedStart + resumeChunk.Position - 1);
+        using var request = CreateRequest(retainedStart, retainedEnd);
         using var response = await SendWithStallTimeoutAsync(request, cancellationToken)
             .ConfigureAwait(false);
         ValidateChunkResponse(
             response,
-            overlapStart,
-            overlapEnd,
+            retainedStart,
+            retainedEnd,
             totalBytes,
             supportsRanges: true,
             resourceIdentity);
-        var overlapIdentity = BuiltinRangeResourceIdentity.Create(_address, response);
-        if (persistedIdentity?.CompareContinuity(overlapIdentity)
+        var retainedIdentity = BuiltinRangeResourceIdentity.Create(_address, response);
+        if (persistedIdentity?.CompareContinuity(retainedIdentity)
             == BuiltinRangeContinuity.Mismatch)
         {
             throw new BuiltinResumeRejectedException(
-                "The persisted resource identity changed before overlap verification.");
+                "The persisted resource identity changed before retained-range verification.");
         }
 
         var source = await response.Content
             .ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using var sourceLifetime = source.ConfigureAwait(false);
-        var remoteBytes = new byte[overlapLength];
-        var offset = 0;
-        while (offset < remoteBytes.Length)
+        var localBytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+        var remoteBytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+        try
         {
-            var read = await ReadWithStallTimeoutAsync(
-                source,
-                remoteBytes.AsMemory(offset),
-                cancellationToken).ConfigureAwait(false);
-            if (read == 0)
+            var remaining = resumeChunk.Position;
+            var fileOffset = retainedStart;
+            while (remaining > 0)
             {
-                throw new HttpIOException(
-                    HttpRequestError.ResponseEnded,
-                    "The media overlap response ended before verification completed.");
+                var blockLength = checked((int)Math.Min(BufferSize, remaining));
+                var localOffset = 0;
+                while (localOffset < blockLength)
+                {
+                    var read = await RandomAccess.ReadAsync(
+                        partialFile.SafeFileHandle,
+                        localBytes.AsMemory(localOffset, blockLength - localOffset),
+                        checked(fileOffset + localOffset),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new EndOfStreamException(
+                            "The local partial media ended before verification completed.");
+                    }
+
+                    localOffset += read;
+                }
+
+                var remoteOffset = 0;
+                while (remoteOffset < blockLength)
+                {
+                    var read = await ReadWithBandwidthLimitAsync(
+                        source,
+                        remoteBytes.AsMemory(remoteOffset, blockLength - remoteOffset),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new HttpIOException(
+                            HttpRequestError.ResponseEnded,
+                            "The media retained-range response ended before verification completed.");
+                    }
+
+                    remoteOffset += read;
+                }
+
+                if (!localBytes.AsSpan(0, blockLength)
+                        .SequenceEqual(remoteBytes.AsSpan(0, blockLength)))
+                {
+                    throw new BuiltinResumeRejectedException(
+                        "The persisted partial media does not match the current resource.");
+                }
+
+                fileOffset = checked(fileOffset + blockLength);
+                remaining -= blockLength;
             }
-
-            offset += read;
         }
-
-        if (!localBytes.AsSpan().SequenceEqual(remoteBytes))
+        finally
         {
-            throw new BuiltinResumeRejectedException(
-                "The persisted partial media does not match the current resource.");
+            ArrayPool<byte>.Shared.Return(localBytes);
+            ArrayPool<byte>.Shared.Return(remoteBytes);
         }
 
         return resourceIdentity with
         {
-            StrongETag = overlapIdentity.StrongETag ?? resourceIdentity.StrongETag,
-            LastModified = overlapIdentity.LastModified ?? resourceIdentity.LastModified
+            StrongETag = retainedIdentity.StrongETag ?? resourceIdentity.StrongETag,
+            LastModified = retainedIdentity.LastModified ?? resourceIdentity.LastModified
         };
     }
 
@@ -445,7 +573,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         CancellationToken cancellationToken)
     {
         var queue = new ConcurrentQueue<BuiltinRangeChunk>(
-            state.Chunks.Where(static chunk => !chunk.IsComplete));
+            OrderChunksForDistributedStart(state.Chunks));
         if (queue.IsEmpty)
         {
             return initialReceivedBytes;
@@ -541,7 +669,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         {
             while (remaining > 0)
             {
-                var read = await ReadWithStallTimeoutAsync(
+                var read = await ReadWithBandwidthLimitAsync(
                     source,
                     buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)),
                     cancellationToken).ConfigureAwait(false);
@@ -661,6 +789,36 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         }
     }
 
+    private async ValueTask<int> ReadWithBandwidthLimitAsync(
+        Stream source,
+        Memory<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        if (_bandwidthLimiter == null)
+        {
+            return await ReadWithStallTimeoutAsync(source, buffer, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var permit = await _bandwidthLimiter
+            .AcquireAsync(buffer.Length, cancellationToken)
+            .ConfigureAwait(false);
+        var unusedBytes = permit.ByteCount;
+        try
+        {
+            var read = await ReadWithStallTimeoutAsync(
+                source,
+                buffer[..permit.ByteCount],
+                cancellationToken).ConfigureAwait(false);
+            unusedBytes -= read;
+            return read;
+        }
+        finally
+        {
+            _bandwidthLimiter.ReturnUnused(permit, unusedBytes);
+        }
+    }
+
     private async Task SaveCheckpointIfDueAsync(
         FileStream storage,
         BuiltinRangeResumeState state,
@@ -708,6 +866,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                 metadata,
                 state.TotalBytes,
                 cancellationToken).ConfigureAwait(false);
+            storage.SetLength(checked(state.TotalBytes + metadata.Length));
             await storage.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -923,6 +1082,8 @@ internal sealed record BuiltinRangeResourceIdentity(
         TimeSpan.FromSeconds(60);
 
     public string? IfRangeValue => StrongETag ?? LastModified?.ToString("R");
+
+    public bool HasContinuityValidator => !string.IsNullOrWhiteSpace(IfRangeValue);
 
     public static BuiltinRangeResourceIdentity Create(
         Uri address,

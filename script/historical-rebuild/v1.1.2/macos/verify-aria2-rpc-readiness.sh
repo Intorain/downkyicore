@@ -51,8 +51,6 @@ SHUTDOWN_RESPONSE="$PROBE_ROOT/shutdown-response.json"
 umask 077
 printf 'rpc-secret=%s\n' "$RPC_SECRET" >"$RPC_CONFIG"
 
-# DHT is not compiled into every trusted aria2 build. When those options are
-# available, keep their persistent state inside the disposable probe boundary.
 ARIA_OPTION_HELP="$("$ARIA_EXECUTABLE" --help=#all 2>/dev/null || true)"
 if grep -Fq -- '--dht-file-path=' <<<"$ARIA_OPTION_HELP"; then
   printf 'dht-file-path=%s\n' "$PROBE_ROOT/dht.dat" >>"$RPC_CONFIG"

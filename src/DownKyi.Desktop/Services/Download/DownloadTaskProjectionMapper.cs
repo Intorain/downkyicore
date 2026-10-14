@@ -75,10 +75,10 @@ internal static class DownloadTaskProjectionMapper
         var downloadBase = ToDownloadBase(task);
         item.DownloadBase = downloadBase;
         item.Metadata = ToMovieMetadata(task.Plan.NfoRequest);
+        item.IsToggleVisible = !task.Transfer.HasLegacyProvenance;
         item.Downloading = new Downloading
         {
             Id = task.Id.Value,
-            Gid = task.Transfer.BackendIdentity,
             DownloadFiles = task.Plan.TransferFiles.ToDictionary(entry => entry.Key, entry => entry.Value),
             DownloadedFiles = task.Transfer.CompletedFileKeys.ToList(),
             PlayStreamType = (PlayStreamType)task.Plan.StreamType,

@@ -1,11 +1,9 @@
 using System;
 using System.IO;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Aria2cNet.Client;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.ViewModels.DownloadManager;
@@ -15,75 +13,18 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadTaskFileService
 {
-    private readonly AriaRuntimeClientRegistry _ariaClientRegistry;
     private readonly ILogger<DownloadTaskFileService> _logger;
     private readonly DownloadTaskStaging? _staging;
     private readonly DownloadTaskStateWriter? _stateWriter;
 
     public DownloadTaskFileService(
-        AriaRuntimeClientRegistry ariaClientRegistry,
         ILogger<DownloadTaskFileService> logger,
         DownloadTaskStaging? staging = null,
         DownloadTaskStateWriter? stateWriter = null)
     {
-        _ariaClientRegistry = ariaClientRegistry
-            ?? throw new ArgumentNullException(nameof(ariaClientRegistry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _staging = staging;
         _stateWriter = stateWriter;
-    }
-
-    public async Task CancelActiveDownloadAsync(DownloadingItem downloading)
-    {
-        ArgumentNullException.ThrowIfNull(downloading);
-
-        var gid = downloading.Downloading.Gid;
-        if (string.IsNullOrWhiteSpace(gid))
-        {
-            return;
-        }
-
-        var ariaClient = _ariaClientRegistry.Current;
-        if (ariaClient == null)
-        {
-            _logger.LogDebugMessage("Cancel aria downloader skipped because no aria2 runtime is active.");
-            return;
-        }
-
-        try
-        {
-            try
-            {
-                await ariaClient.RemoveAsync(gid)
-                    .WaitAsync(TimeSpan.FromSeconds(3))
-                    .ConfigureAwait(false);
-            }
-            catch (AriaRpcException exception) when (exception.IsNotFound)
-            {
-                _logger.LogDebugMessage(
-                    "Cancel aria downloader found no active task for the persisted GID.");
-            }
-
-            try
-            {
-                await ariaClient.RemoveDownloadResultAsync(gid)
-                    .WaitAsync(TimeSpan.FromSeconds(3))
-                    .ConfigureAwait(false);
-            }
-            catch (AriaRpcException exception) when (exception.IsNotFound)
-            {
-                _logger.LogDebugMessage(
-                    "Cancel aria downloader found no retained result for the persisted GID.");
-            }
-        }
-        catch (TimeoutException e)
-        {
-            _logger.LogDebugMessage($"Cancel aria downloader failed: {e.Message}");
-        }
-        catch (HttpRequestException e)
-        {
-            _logger.LogDebugMessage($"Cancel aria downloader failed: {e.Message}");
-        }
     }
 
     public Task<DownloadFileDeletionResult> DeleteGeneratedFilesAsync(
@@ -109,6 +50,40 @@ internal sealed class DownloadTaskFileService
         return Task.FromResult(new DownloadFileDeletionResult(0, 0));
     }
 
+    public Task<DownloadFileDeletionResult> DeleteLegacyStagingAsync(
+        DownloadTask task,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_staging == null)
+        {
+            _logger.LogWarningMessage("Legacy transfer staging cleanup is unavailable.");
+            return Task.FromResult(new DownloadFileDeletionResult(1, 1));
+        }
+
+        return Task.FromResult(_staging.CleanupTask(task)
+            ? new DownloadFileDeletionResult(1, 0)
+            : new DownloadFileDeletionResult(1, 1));
+    }
+
+    public Task<DownloadFileDeletionResult> DeleteUnpublishedArtifactsAsync(
+        DownloadTaskId taskId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(taskId);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_staging == null)
+        {
+            _logger.LogWarningMessage("Task-private staging cleanup is unavailable.");
+            return Task.FromResult(new DownloadFileDeletionResult(1, 1));
+        }
+
+        return Task.FromResult(_staging.CleanupTask(taskId)
+            ? new DownloadFileDeletionResult(1, 0)
+            : new DownloadFileDeletionResult(1, 1));
+    }
+
     public async Task<OperationResult> PublishAsync(
         DownloadExecutionContext context,
         string key,
@@ -123,6 +98,14 @@ internal sealed class DownloadTaskFileService
             throw new InvalidOperationException("Task-private staging is required for publication.");
         }
 
+        if (!context.ArtifactsValidated)
+        {
+            return OperationResult.Failure(new OperationError(
+                "download.publish.unvalidated",
+                "Only validated download artifacts may be published.",
+                OperationErrorKind.Validation));
+        }
+
         var fullSource = Path.GetFullPath(stagedFile);
         var stagingPath = Path.GetFullPath(context.StagingDirectory);
         var comparison = OperatingSystem.IsWindows()
@@ -130,6 +113,14 @@ internal sealed class DownloadTaskFileService
         if (!string.Equals(Path.GetDirectoryName(fullSource), stagingPath, comparison))
         {
             throw new InvalidOperationException("Only a task-private staged file may be published.");
+        }
+
+        if (!DownloadFileIntegrity.Check(fullSource).IsUsable)
+        {
+            return OperationResult.Failure(new OperationError(
+                "download.publish.invalid",
+                "An invalid staged artifact cannot be published.",
+                OperationErrorKind.Validation));
         }
 
         var outputRoot = Path.GetDirectoryName(Path.GetFullPath(context.Input.OutputBasePath))!;
@@ -252,7 +243,6 @@ internal sealed class DownloadTaskFileService
     }
 
     public void CleanupStaging(DownloadTaskId taskId) => _staging?.CleanupTask(taskId);
-
 }
 
 internal readonly record struct DownloadFileDeletionResult(int AttemptedCount, int FailedCount)
