@@ -78,8 +78,10 @@ internal class VideoPage : ObservableObject
         get => audioQualityFormat;
         set
         {
-            SetProperty(ref audioQualityFormat, value ?? audioQualityFormat);
-            AudioQualityMatch = null;
+            if (SetProperty(ref audioQualityFormat, value ?? audioQualityFormat))
+            {
+                AudioQualityMatch = null;
+            }
         }
     }
 

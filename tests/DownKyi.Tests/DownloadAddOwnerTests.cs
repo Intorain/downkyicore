@@ -373,6 +373,34 @@ public sealed class DownloadAddOwnerTests : IDisposable
     }
 
     [Fact]
+    public async Task CompletedVideoOwnerStillBlocksReparsedMediaParameterDrift()
+    {
+        var videoOnly = DownloadContentSelection.None with
+        {
+            Video = true,
+            MediaKind = DownloadMediaKind.Dash
+        };
+        using var context = DuplicatePolicyContext.WithCompleted(
+            AppDialogOutcome.Canceled,
+            content: videoOnly);
+        var reparsedQuality = new VideoQuality
+        {
+            Quality = 64,
+            QualityFormat = "720P",
+            IsDurl = true,
+            SelectedVideoCodec = "H.265/HEVC"
+        };
+        var reparsedContent = videoOnly with { MediaKind = DownloadMediaKind.Durl };
+
+        var shouldSkip = await context.Policy.ShouldSkipAsync(
+            CreateRequestedItem(reparsedContent, videoQuality: reparsedQuality),
+            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
+            TestContext.Current.CancellationToken);
+
+        Assert.True(shouldSkip);
+    }
+
+    [Fact]
     public async Task ActiveDuplicateIsSkippedBeforeCompletedHistoryIsRead()
     {
         using var context = DuplicatePolicyContext.WithCompleted(AppDialogOutcome.Accepted);
