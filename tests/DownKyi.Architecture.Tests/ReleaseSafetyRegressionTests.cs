@@ -397,7 +397,7 @@ public sealed class ReleaseSafetyRegressionTests
             Assert.Contains("does not match the expected publish manifest", NormalizeDiagnostic(comparedManifestDrift), StringComparison.Ordinal);
             WriteNonEmptyFile(desktopDependency);
 
-            var packagedUserData = Path.Combine(runtime, "Config", "Settings");
+            var packagedUserData = Path.Combine(runtime, "Aria", ".rpc-stale.conf");
             Directory.CreateDirectory(Path.GetDirectoryName(packagedUserData)!);
             File.WriteAllText(packagedUserData, "user-specific-settings");
             var userDataResult = RunPowerShell(
@@ -411,7 +411,7 @@ public sealed class ReleaseSafetyRegressionTests
                 root);
             Assert.NotEqual(0, userDataResult.ExitCode);
             Assert.Contains("contains user data paths", NormalizeDiagnostic(userDataResult), StringComparison.Ordinal);
-            Directory.Delete(Path.Combine(runtime, "Config"), recursive: true);
+            Directory.Delete(Path.Combine(runtime, "Aria"), recursive: true);
 
             var validPackage = Path.Combine(root, "valid.zip");
             ZipFile.CreateFromDirectory(runtime, validPackage);

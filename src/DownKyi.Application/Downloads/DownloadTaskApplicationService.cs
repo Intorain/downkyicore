@@ -322,7 +322,8 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
                 task.Transfer.CompletedFileKeys,
                 activeContent,
                 statusText,
-                task.Transfer.MaximumBytesPerSecond),
+                task.Transfer.MaximumBytesPerSecond,
+                task.Transfer.IsLegacyTransfer),
             now), cancellationToken);
 
     public Task<OperationResult<DownloadTask>> UpdateProgressAsync(
@@ -476,7 +477,8 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
             completedFileKeys ?? source.CompletedFileKeys,
             source.ActiveContent,
             source.StatusText,
-            maximumBytesPerSecond ?? source.MaximumBytesPerSecond);
+            maximumBytesPerSecond ?? source.MaximumBytesPerSecond,
+            source.IsLegacyTransfer);
     }
 
     private static OperationError RequireError(OperationResult result)

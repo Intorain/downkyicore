@@ -123,6 +123,7 @@ internal static class LegacyDownloadStoreFormatDetector
                 HasPublishedArtifacts: false,
                 HasStagingToken: false,
                 HasPublishingArtifact: false,
+                HasLegacyTransferMarker: false,
                 SchemaDifferences: []);
         }
 
@@ -171,6 +172,7 @@ internal static class LegacyDownloadStoreFormatDetector
         var hasStagingToken = baseColumns.Contains("staging_token");
         var hasPublishingArtifact = PublishingColumns.All(baseColumns.Contains);
         var hasAnyPublishingArtifact = PublishingColumns.Any(baseColumns.Contains);
+        var hasLegacyTransferMarker = downloadingColumns.Contains("is_legacy_transfer");
         var fingerprint = new DownloadStoreSchemaFingerprint(
             UserVersion: userVersion,
             HasNoTables: tables.Count == 0,
@@ -190,7 +192,8 @@ internal static class LegacyDownloadStoreFormatDetector
             HasPublishedArtifacts: hasPublishedArtifacts,
             HasStagingToken: hasStagingToken,
             HasPublishingArtifact: hasPublishingArtifact,
-            HasAnyPublishingArtifact: hasAnyPublishingArtifact);
+            HasAnyPublishingArtifact: hasAnyPublishingArtifact,
+            HasLegacyTransferMarker: hasLegacyTransferMarker);
         var kind = DetectKind(fingerprint);
         var schemaDifferences = kind == LegacyDownloadStoreKind.Unsupported
             ? DescribeUnsupportedShape(
@@ -215,6 +218,7 @@ internal static class LegacyDownloadStoreFormatDetector
             HasPublishedArtifacts: hasPublishedArtifacts,
             HasStagingToken: hasStagingToken,
             HasPublishingArtifact: hasPublishingArtifact,
+            HasLegacyTransferMarker: hasLegacyTransferMarker,
             SchemaDifferences: schemaDifferences);
     }
 
@@ -244,8 +248,14 @@ internal static class LegacyDownloadStoreFormatDetector
                 baseColumns);
             AddMissingColumns(differences, "download_base", PublishingColumns, baseColumns);
             AddMissingColumns(differences, "downloading", DownloadingStateColumns, downloadingColumns);
+            AddVersionedColumns(
+                differences,
+                "downloading",
+                ["is_legacy_transfer"],
+                downloadingColumns,
+                userVersion >= DownloadStoreSchema.CurrentVersion);
             AddMissingColumns(differences, "download_history",
-                userVersion == DownloadStoreSchema.CurrentVersion
+                userVersion >= DownloadStoreSchema.CurrentVersion - 2
                     ? CurrentHistoryColumns
                     : PreviousHistoryColumns,
                 historyColumns);
@@ -280,6 +290,12 @@ internal static class LegacyDownloadStoreFormatDetector
                 baseColumns, userVersion >= 7);
             AddVersionedColumns(differences, "download_base", PublishingColumns,
                 baseColumns, userVersion >= 8);
+            AddVersionedColumns(
+                differences,
+                "downloading",
+                ["is_legacy_transfer"],
+                downloadingColumns,
+                expected: false);
         }
 
         if (differences.Count == 0)
@@ -376,6 +392,16 @@ internal static class LegacyDownloadStoreFormatDetector
             return LegacyDownloadStoreKind.CurrentWithLegacyHistory;
         }
 
+        if (fingerprint.IsLegacyTransferMarkerUpgrade)
+        {
+            return LegacyDownloadStoreKind.LegacyTransferMarkerUpgrade;
+        }
+
+        if (fingerprint.IsLegacyTransferMarkerUpgradeWithLegacyHistory)
+        {
+            return LegacyDownloadStoreKind.LegacyTransferMarkerUpgradeWithLegacyHistory;
+        }
+
         if (fingerprint.IsPreviousCurrent)
         {
             return LegacyDownloadStoreKind.PreviousCurrent;
@@ -451,7 +477,8 @@ internal static class LegacyDownloadStoreFormatDetector
         bool HasPublishedArtifacts,
         bool HasStagingToken,
         bool HasPublishingArtifact,
-        bool HasAnyPublishingArtifact)
+        bool HasAnyPublishingArtifact,
+        bool HasLegacyTransferMarker)
     {
         public bool IsNew => UserVersion == 0 && HasNoTables;
 
@@ -465,7 +492,8 @@ internal static class LegacyDownloadStoreFormatDetector
                                  && HasNfoRequest
                                  && HasPublishedArtifacts
                                  && HasStagingToken
-                                 && HasPublishingArtifact;
+                                 && HasPublishingArtifact
+                                 && HasLegacyTransferMarker;
 
         public bool IsCurrentWithLegacyHistory => HasCurrentHistoryShape
                                                   && HasLegacyDownloadedShape
@@ -477,11 +505,39 @@ internal static class LegacyDownloadStoreFormatDetector
                                                   && HasNfoRequest
                                                   && HasPublishedArtifacts
                                                   && HasStagingToken
-                                                  && HasPublishingArtifact;
+                                                  && HasPublishingArtifact
+                                                  && HasLegacyTransferMarker;
+
+        public bool IsLegacyTransferMarkerUpgrade => HasCurrentHistoryShape
+                                                      && !HasLegacyDownloadedTable
+                                                      && UserVersion == DownloadStoreSchema.CurrentVersion - 1
+                                                      && HasRequiredSchemaMetadata
+                                                      && HasStateColumns
+                                                      && HasReservationKey
+                                                      && HasAdmissionGate
+                                                      && HasNfoRequest
+                                                      && HasPublishedArtifacts
+                                                      && HasStagingToken
+                                                      && HasPublishingArtifact
+                                                      && !HasLegacyTransferMarker;
+
+        public bool IsLegacyTransferMarkerUpgradeWithLegacyHistory =>
+            HasCurrentHistoryShape
+            && HasLegacyDownloadedShape
+            && UserVersion == DownloadStoreSchema.CurrentVersion - 1
+            && HasRequiredSchemaMetadata
+            && HasStateColumns
+            && HasReservationKey
+            && HasAdmissionGate
+            && HasNfoRequest
+            && HasPublishedArtifacts
+            && HasStagingToken
+            && HasPublishingArtifact
+            && !HasLegacyTransferMarker;
 
         public bool IsPreviousCurrent => HasCurrentHistoryShape
                                          && !HasLegacyDownloadedTable
-                                         && UserVersion == DownloadStoreSchema.CurrentVersion - 1
+                                         && UserVersion == DownloadStoreSchema.CurrentVersion - 2
                                          && HasRequiredSchemaMetadata
                                          && HasStateColumns
                                          && HasReservationKey
@@ -489,11 +545,12 @@ internal static class LegacyDownloadStoreFormatDetector
                                          && HasNfoRequest
                                          && HasPublishedArtifacts
                                          && HasStagingToken
-                                         && HasPublishingArtifact;
+                                         && HasPublishingArtifact
+                                         && !HasLegacyTransferMarker;
 
         public bool IsPreviousCurrentWithLegacyHistory => HasCurrentHistoryShape
                                                           && HasLegacyDownloadedShape
-                                                          && UserVersion == DownloadStoreSchema.CurrentVersion - 1
+                                                          && UserVersion == DownloadStoreSchema.CurrentVersion - 2
                                                           && HasRequiredSchemaMetadata
                                                           && HasStateColumns
                                                           && HasReservationKey
@@ -501,12 +558,13 @@ internal static class LegacyDownloadStoreFormatDetector
                                                           && HasNfoRequest
                                                           && HasPublishedArtifacts
                                                           && HasStagingToken
-                                                          && HasPublishingArtifact;
+                                                          && HasPublishingArtifact
+                                                          && !HasLegacyTransferMarker;
 
         public bool IsHistoryContentUpgrade => HasPreviousHistoryShape
                                                && !HasCurrentHistoryShape
                                                && !HasLegacyDownloadedTable
-                                               && UserVersion == DownloadStoreSchema.CurrentVersion - 2
+                                               && UserVersion == DownloadStoreSchema.CurrentVersion - 3
                                                && HasRequiredSchemaMetadata
                                                && HasStateColumns
                                                && HasReservationKey
@@ -514,12 +572,13 @@ internal static class LegacyDownloadStoreFormatDetector
                                                && HasNfoRequest
                                                && HasPublishedArtifacts
                                                && HasStagingToken
-                                               && HasPublishingArtifact;
+                                               && HasPublishingArtifact
+                                               && !HasLegacyTransferMarker;
 
         public bool IsHistoryContentUpgradeWithLegacyHistory => HasPreviousHistoryShape
                                                                 && !HasCurrentHistoryShape
                                                                 && HasLegacyDownloadedShape
-                                                                && UserVersion == DownloadStoreSchema.CurrentVersion - 2
+                                                                && UserVersion == DownloadStoreSchema.CurrentVersion - 3
                                                                 && HasRequiredSchemaMetadata
                                                                 && HasStateColumns
                                                                 && HasReservationKey
@@ -527,13 +586,16 @@ internal static class LegacyDownloadStoreFormatDetector
                                                                 && HasNfoRequest
                                                                 && HasPublishedArtifacts
                                                                 && HasStagingToken
-                                                                && HasPublishingArtifact;
+                                                                && HasPublishingArtifact
+                                                                && !HasLegacyTransferMarker;
 
         public bool IsStructurallyIncomplete => HasHistoryTable
                                                 || !HasLegacyCoreTables
                                                 || (HasLegacyDownloadedTable && !HasLegacyDownloadedShape)
                                                 || HasAnyStateColumns != HasStateColumns
-                                                || HasAnyPublishingArtifact != HasPublishingArtifact;
+                                                || HasAnyPublishingArtifact != HasPublishingArtifact
+                                                || (HasLegacyTransferMarker &&
+                                                    UserVersion < DownloadStoreSchema.CurrentVersion);
 
         public bool HasRequiredSchemaMetadata => HasSchemaLedger && HasQuarantine;
 
@@ -544,23 +606,27 @@ internal static class LegacyDownloadStoreFormatDetector
                                   && !HasNfoRequest
                                   && !HasPublishedArtifacts
                                   && !HasStagingToken
-                                  && !HasPublishingArtifact;
+                                  && !HasPublishingArtifact
+                                  && !HasLegacyTransferMarker;
 
         public bool IsReserved => UserVersion == 3
                                   && !HasNfoRequest
                                   && !HasPublishedArtifacts
                                   && !HasStagingToken
-                                  && !HasPublishingArtifact;
+                                  && !HasPublishingArtifact
+                                  && !HasLegacyTransferMarker;
 
         public bool IsAdmissionSafe => HasMonotonicAdditiveShape
-                                       && UserVersion == AdditiveShapeVersion;
+                                       && UserVersion == AdditiveShapeVersion
+                                       && !HasLegacyTransferMarker;
 
         private bool HasOnlyRelationalColumns => !HasReservationKey
                                                  && !HasAdmissionGate
                                                  && !HasNfoRequest
                                                  && !HasPublishedArtifacts
                                                  && !HasStagingToken
-                                                 && !HasPublishingArtifact;
+                                                 && !HasPublishingArtifact
+                                                 && !HasLegacyTransferMarker;
 
         private bool IsKnownV0 => UserVersion == 0 && !HasSchemaLedger && !HasQuarantine;
 

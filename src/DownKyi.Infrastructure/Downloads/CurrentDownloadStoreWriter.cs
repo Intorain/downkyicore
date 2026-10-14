@@ -68,7 +68,9 @@ internal static class CurrentDownloadStoreWriter
                     failure_transient      INTEGER,
                     downloaded_bytes       INTEGER,
                     total_bytes            INTEGER,
-                    bytes_per_second       INTEGER NOT NULL DEFAULT 0
+                    bytes_per_second       INTEGER NOT NULL DEFAULT 0,
+                    is_legacy_transfer     INTEGER NOT NULL DEFAULT 1
+                        CHECK(is_legacy_transfer IN (0, 1))
                 );
 
                 """;
@@ -113,10 +115,16 @@ internal static class CurrentDownloadStoreWriter
     public static async Task RecoverCurrentWithLegacyHistoryAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
+        LegacyDownloadStoreFormat format,
         LegacyDownloadNormalizationPlan plan,
         DateTimeOffset appliedAtUtc,
         CancellationToken cancellationToken)
     {
+        if (!format.HasLegacyTransferMarker)
+        {
+            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+                .ConfigureAwait(false);
+        }
         await ProjectLegacyHistoryAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await ApplyStagingTokenUpdatesAsync(
             connection,
@@ -135,6 +143,8 @@ internal static class CurrentDownloadStoreWriter
     {
         await AddHistoryContentColumnAsync(connection, transaction, cancellationToken)
             .ConfigureAwait(false);
+        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+            .ConfigureAwait(false);
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
             .ConfigureAwait(false);
@@ -146,6 +156,21 @@ internal static class CurrentDownloadStoreWriter
         DateTimeOffset appliedAtUtc,
         CancellationToken cancellationToken)
     {
+        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+            .ConfigureAwait(false);
+        await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public static async Task UpgradeLegacyTransferMarkerAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        DateTimeOffset appliedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+            .ConfigureAwait(false);
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
             .ConfigureAwait(false);
@@ -321,6 +346,27 @@ internal static class CurrentDownloadStoreWriter
                 """;
             await publishing.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        if (!format.HasLegacyTransferMarker)
+        {
+            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private static async Task AddLegacyTransferMarkerAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            ALTER TABLE downloading
+            ADD COLUMN is_legacy_transfer INTEGER NOT NULL DEFAULT 1
+                CHECK(is_legacy_transfer IN (0, 1))
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task AddStateColumnsAsync(

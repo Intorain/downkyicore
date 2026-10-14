@@ -196,7 +196,9 @@ public sealed partial class DownloadTask
                 Output.StagingToken),
             DownloadPhase.Failed,
             DownloadProgress.None,
-            DownloadTransferState.Empty,
+            Transfer.IsLegacyTransfer
+                ? DownloadTransferState.LegacyEmpty
+                : DownloadTransferState.Empty,
             failure,
             completion: null,
             checked(Version + 1),

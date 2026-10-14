@@ -64,8 +64,10 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
         { "current-v9", 9, "HistoryContentUpgrade" },
         { "current-v10-with-legacy-history", 10, "PreviousCurrentWithLegacyHistory" },
         { "current-v10", 10, "PreviousCurrent" },
-        { "current-v11-with-legacy-history", 11, "CurrentWithLegacyHistory" },
-        { "current-v11", 11, "Current" }
+        { "current-v11-with-legacy-history", 11, "LegacyTransferMarkerUpgradeWithLegacyHistory" },
+        { "current-v11", 11, "LegacyTransferMarkerUpgrade" },
+        { "current-v12-with-legacy-history", 12, "CurrentWithLegacyHistory" },
+        { "current-v12", 12, "Current" }
     };
 
     public static TheoryData<string> MalformedShapes => new()
@@ -119,7 +121,10 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
     {
         using var connection = OpenConnection();
         SetUserVersion(connection, DownloadStoreSchema.CurrentVersion);
-        CreateCurrentShape(connection, includeStagingToken: false);
+        CreateCurrentShape(
+            connection,
+            includeStagingToken: false,
+            includeLegacyTransferMarker: true);
         CreateTable(connection, "private_custom_table_73918", ["private_column_73918"]);
 
         var format = await LegacyDownloadStoreFormatDetector.DetectAsync(
@@ -213,9 +218,13 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
         }
 
         if (shape is "current-v10" or "current-v10-with-legacy-history"
-            or "current-v11" or "current-v11-with-legacy-history")
+            or "current-v11" or "current-v11-with-legacy-history"
+            or "current-v12" or "current-v12-with-legacy-history")
         {
-            CreateCurrentShape(connection, includeStagingToken: true);
+            CreateCurrentShape(
+                connection,
+                includeStagingToken: true,
+                includeLegacyTransferMarker: userVersion >= 12);
             if (shape.EndsWith("with-legacy-history", StringComparison.Ordinal))
             {
                 CreateTable(connection, "downloaded", CoreDownloadedColumns);
@@ -261,12 +270,18 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
                 break;
             case "current-with-malformed-legacy-history":
                 SetUserVersion(connection, DownloadStoreSchema.CurrentVersion);
-                CreateCurrentShape(connection, includeStagingToken: true);
+                CreateCurrentShape(
+                    connection,
+                    includeStagingToken: true,
+                    includeLegacyTransferMarker: true);
                 CreateTable(connection, "downloaded", ["id"]);
                 break;
             case "current-missing-staging":
                 SetUserVersion(connection, DownloadStoreSchema.CurrentVersion);
-                CreateCurrentShape(connection, includeStagingToken: false);
+                CreateCurrentShape(
+                    connection,
+                    includeStagingToken: false,
+                    includeLegacyTransferMarker: true);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(shape), shape, "Unknown malformed schema fixture.");
@@ -328,7 +343,8 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
     private static void CreateCurrentShape(
         SqliteConnection connection,
         bool includeStagingToken,
-        bool includeContentColumn = true)
+        bool includeContentColumn = true,
+        bool includeLegacyTransferMarker = false)
     {
         var baseColumns = new List<string>(CoreBaseColumns);
         baseColumns.AddRange(BaseStateColumns);
@@ -342,10 +358,14 @@ public sealed class LegacyDownloadStoreFormatDetectorTests
 
         baseColumns.AddRange(PublishingColumns);
         CreateTable(connection, "download_base", baseColumns);
-        CreateTable(
-            connection,
-            "downloading",
+        var downloadingColumns = new List<string>(
             [.. CoreDownloadingColumns, .. DownloadingStateColumns]);
+        if (includeLegacyTransferMarker)
+        {
+            downloadingColumns.Add("is_legacy_transfer");
+        }
+
+        CreateTable(connection, "downloading", downloadingColumns);
         CreateTable(connection, "download_history", includeContentColumn
             ? [.. CurrentHistoryColumns, "requested_content"]
             : CurrentHistoryColumns);

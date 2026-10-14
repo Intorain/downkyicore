@@ -62,39 +62,6 @@ internal sealed class DownloadTaskStaging
         }
     }
 
-    public static bool OwnsPath(DownloadTask task, string path)
-    {
-        ArgumentNullException.ThrowIfNull(task);
-        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
-        {
-            return false;
-        }
-
-        try
-        {
-            var directory = Path.Combine(
-                GetRoot(task.Output.BasePath),
-                task.Output.StagingToken,
-                "data");
-            var relative = Path.GetRelativePath(directory, Path.GetFullPath(path));
-            return relative != "."
-                   && !Path.IsPathRooted(relative)
-                   && relative != ".."
-                   && !relative.StartsWith(
-                       $"..{Path.DirectorySeparatorChar}",
-                       StringComparison.Ordinal)
-                   && !relative.StartsWith(
-                       $"..{Path.AltDirectorySeparatorChar}",
-                       StringComparison.Ordinal);
-        }
-        catch (Exception exception) when (exception is ArgumentException
-            or IOException
-            or NotSupportedException)
-        {
-            return false;
-        }
-    }
-
     public bool CleanupTask(DownloadTaskId taskId)
     {
         lock (_gate)

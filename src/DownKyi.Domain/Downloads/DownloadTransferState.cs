@@ -9,7 +9,8 @@ public sealed class DownloadTransferState
         IEnumerable<string> completedFileKeys,
         string? activeContent = null,
         string? statusText = null,
-        long maximumBytesPerSecond = 0)
+        long maximumBytesPerSecond = 0,
+        bool isLegacyTransfer = false)
     {
         ArgumentNullException.ThrowIfNull(completedFileKeys);
         ArgumentOutOfRangeException.ThrowIfNegative(maximumBytesPerSecond);
@@ -19,9 +20,12 @@ public sealed class DownloadTransferState
         ActiveContent = activeContent;
         StatusText = statusText;
         MaximumBytesPerSecond = maximumBytesPerSecond;
+        IsLegacyTransfer = isLegacyTransfer;
     }
 
     public static DownloadTransferState Empty { get; } = new(null, []);
+
+    public static DownloadTransferState LegacyEmpty { get; } = new(null, [], isLegacyTransfer: true);
 
     public string? BackendIdentity { get; }
 
@@ -32,4 +36,6 @@ public sealed class DownloadTransferState
     public string? StatusText { get; }
 
     public long MaximumBytesPerSecond { get; }
+
+    public bool IsLegacyTransfer { get; }
 }

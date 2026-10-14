@@ -37,10 +37,11 @@ internal sealed class DownloadTaskStateWriter
         CancellationToken cancellationToken = default)
     {
         var current = await FindRequiredAsync(taskId, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(current.Transfer.BackendIdentity))
+        if (current.Transfer.IsLegacyTransfer ||
+            !string.IsNullOrWhiteSpace(current.Transfer.BackendIdentity))
         {
             throw new InvalidOperationException(
-                "A legacy transfer cannot be retried until its unpublished artifacts are removed.");
+                "A retired legacy transfer cannot be resumed by the built-in downloader.");
         }
 
         if (current.Phase == DownloadPhase.Queued)
@@ -97,7 +98,7 @@ internal sealed class DownloadTaskStateWriter
             new DownloadFailure(
                 "download.transfer.legacy-backend-removed",
                 "The unfinished legacy download was removed and marked as failed.",
-                true),
+                false),
             cancellationToken);
 
     public Task<DownloadTask> DiscardUnpublishedArtifactsAndFailAsync(

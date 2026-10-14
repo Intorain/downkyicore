@@ -59,9 +59,15 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
             var state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             var blocked = new HashSet<DownloadTaskId>();
             foreach (var task in state.UnfinishedTasks.Where(task =>
+                         task.Transfer.IsLegacyTransfer ||
                          !string.IsNullOrWhiteSpace(task.Transfer.BackendIdentity)))
             {
                 blocked.Add(task.Id);
+                if (IsRetiredLegacyTask(task))
+                {
+                    continue;
+                }
+
                 if (_fileService == null)
                 {
                     await MarkLegacyCleanupFailedAsync(task, cancellationToken).ConfigureAwait(false);
@@ -69,7 +75,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                 }
 
                 var cleanup = await _fileService
-                    .DeleteLegacyUnpublishedArtifactsAsync(task, cancellationToken)
+                    .DeleteLegacyStagingAsync(task, cancellationToken)
                     .ConfigureAwait(false);
                 if (!cleanup.Succeeded)
                 {
@@ -273,6 +279,10 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
         exception is not OutOfMemoryException
             and not StackOverflowException
             and not AccessViolationException;
+
+    private static bool IsRetiredLegacyTask(DownloadTask task) =>
+        task.Phase == DownloadPhase.Failed &&
+        task.Failure?.Code == "download.transfer.legacy-backend-removed";
 
     private async Task QueueStartupTasksAsync(
         IReadOnlyList<DownloadTask> tasks,

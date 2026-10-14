@@ -9,6 +9,8 @@ internal enum LegacyDownloadStoreKind
     AdmissionSafe,
     HistoryContentUpgrade,
     HistoryContentUpgradeWithLegacyHistory,
+    LegacyTransferMarkerUpgrade,
+    LegacyTransferMarkerUpgradeWithLegacyHistory,
     PreviousCurrent,
     PreviousCurrentWithLegacyHistory,
     CurrentWithLegacyHistory,
@@ -30,6 +32,7 @@ internal sealed record LegacyDownloadStoreFormat(
     bool HasPublishedArtifacts,
     bool HasStagingToken,
     bool HasPublishingArtifact,
+    bool HasLegacyTransferMarker,
     IReadOnlyList<string> SchemaDifferences)
 {
     public bool IsNew => Kind == LegacyDownloadStoreKind.New;
@@ -37,6 +40,9 @@ internal sealed record LegacyDownloadStoreFormat(
     public bool IsCurrent => Kind == LegacyDownloadStoreKind.Current;
 
     public bool IsPreviousCurrent => Kind == LegacyDownloadStoreKind.PreviousCurrent;
+
+    public bool IsLegacyTransferMarkerUpgrade =>
+        Kind == LegacyDownloadStoreKind.LegacyTransferMarkerUpgrade;
 
     public bool IsHistoryContentUpgrade => Kind == LegacyDownloadStoreKind.HistoryContentUpgrade;
 
@@ -48,6 +54,7 @@ internal sealed record LegacyDownloadStoreFormat(
 
     public bool RequiresLegacyHistoryRecovery =>
         Kind is LegacyDownloadStoreKind.CurrentWithLegacyHistory
+            or LegacyDownloadStoreKind.LegacyTransferMarkerUpgradeWithLegacyHistory
             or LegacyDownloadStoreKind.PreviousCurrentWithLegacyHistory
             or LegacyDownloadStoreKind.HistoryContentUpgradeWithLegacyHistory;
 

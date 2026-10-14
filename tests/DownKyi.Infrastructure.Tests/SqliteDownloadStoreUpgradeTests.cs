@@ -34,6 +34,9 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
             ],
             await _fixture.ReadTableColumnsAsync("download_history"));
         Assert.True(await _fixture.TableExistsAsync("download_upgrade_admission_gate"));
+        Assert.Contains(
+            "is_legacy_transfer",
+            await _fixture.ReadTableColumnsAsync("downloading"));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(4));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(5));
         Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(8));
@@ -88,6 +91,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         {
             command.CommandText = """
                 PRAGMA user_version = 10;
+                ALTER TABLE downloading DROP COLUMN is_legacy_transfer;
                 DROP INDEX IF EXISTS ix_download_base_output_reservation;
                 CREATE UNIQUE INDEX ux_download_base_output_reservation
                     ON download_base(output_reservation_key)
@@ -120,6 +124,42 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
             "download.db.schema-v10-*.bak"));
+    }
+
+    [Fact]
+    public async Task VersionElevenMarksExistingGidlessTasksAsLegacyTransfers()
+    {
+        var task = _fixture.CreateQueuedTask(
+            "gidless-legacy",
+            Path.Combine(_fixture.TempDirectory, "gidless-legacy"));
+        using (var current = _fixture.CreateStore())
+        {
+            Assert.True((await current.AddAsync(
+                task,
+                TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                PRAGMA user_version = 11;
+                ALTER TABLE downloading DROP COLUMN is_legacy_transfer;
+                """;
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var upgraded = _fixture.CreateStore();
+        await upgraded.InitializeAsync(TestContext.Current.CancellationToken);
+        var restored = Assert.Single(await upgraded.GetUnfinishedAsync(
+            TestContext.Current.CancellationToken));
+
+        Assert.Null(restored.Transfer.BackendIdentity);
+        Assert.True(restored.Transfer.IsLegacyTransfer);
+        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
+        Assert.Single(Directory.GetFiles(
+            Path.Combine(_fixture.TempDirectory, "Backup"),
+            "download.db.schema-v11-*.bak"));
     }
 
     [Fact]
@@ -203,6 +243,9 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 unfinished.Select(task => task.Id.Value).Order(StringComparer.Ordinal));
             var legacyActive = Assert.Single(unfinished, task => task.Id.Value == "legacy-active");
             Assert.True(Guid.TryParseExact(legacyActive.Output.StagingToken, "N", out _));
+            Assert.False(Assert.Single(unfinished, task => task.Id.Value == "current-active")
+                .Transfer.IsLegacyTransfer);
+            Assert.True(legacyActive.Transfer.IsLegacyTransfer);
 
             var history = await recovered.GetHistoryPageAsync(
                 null,
@@ -218,7 +261,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(0, await _fixture.CountDownloadBaseRecordAsync("legacy-history"));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v11-*.bak"));
+            "download.db.schema-v12-*.bak"));
 
         using (var reopened = _fixture.CreateStore())
         {
@@ -227,7 +270,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v11-*.bak"));
+            "download.db.schema-v12-*.bak"));
     }
 
     [Theory]

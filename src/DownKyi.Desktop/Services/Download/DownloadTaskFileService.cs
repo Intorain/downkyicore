@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,88 +50,21 @@ internal sealed class DownloadTaskFileService
         return Task.FromResult(new DownloadFileDeletionResult(0, 0));
     }
 
-    public async Task<DownloadFileDeletionResult> DeleteLegacyUnpublishedArtifactsAsync(
+    public Task<DownloadFileDeletionResult> DeleteLegacyStagingAsync(
         DownloadTask task,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(task);
         cancellationToken.ThrowIfCancellationRequested();
-        var attemptedCount = 0;
-        var failedCount = 0;
-        var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(task.Output.BasePath))
-            ?? throw new ArgumentException(
-                "Output base path must have a directory.", nameof(task));
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-        var published = new HashSet<string>(
-            task.Output.PublishedArtifacts.Values.Select(Path.GetFullPath),
-            comparison);
-
-        foreach (var fileName in task.Plan.TransferFiles.Values.Distinct(StringComparer.Ordinal))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (_staging != null && DownloadTaskStaging.OwnsPath(task, fileName))
-            {
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(fileName) ||
-                fileName is "." or ".." ||
-                fileName != Path.GetFileName(fileName))
-            {
-                failedCount++;
-                _logger.LogWarningMessage(
-                    "Legacy transfer artifact has an invalid recorded file name.");
-                continue;
-            }
-
-            var transferFile = Path.GetFullPath(Path.Combine(outputDirectory, fileName));
-            foreach (var path in new[] { transferFile, $"{transferFile}.aria2", $"{transferFile}.download" })
-            {
-                if (published.Contains(path))
-                {
-                    continue;
-                }
-
-                attemptedCount++;
-                if (!TryDeleteLegacyArtifact(path))
-                {
-                    failedCount++;
-                }
-            }
-        }
-
-        var publishing = task.Output.PublishingArtifact;
-        if (publishing != null)
-        {
-            var destination = Path.GetFullPath(Path.Combine(
-                outputDirectory,
-                publishing.FileName));
-            if (!published.Contains(destination))
-            {
-                attemptedCount++;
-                if (!await TryDeletePendingLegacyPublicationAsync(
-                        destination,
-                        publishing,
-                        cancellationToken).ConfigureAwait(false))
-                {
-                    failedCount++;
-                }
-            }
-        }
-
-        attemptedCount++;
         if (_staging == null)
         {
-            failedCount++;
             _logger.LogWarningMessage("Legacy transfer staging cleanup is unavailable.");
-        }
-        else if (!_staging.CleanupTask(task))
-        {
-            failedCount++;
+            return Task.FromResult(new DownloadFileDeletionResult(1, 1));
         }
 
-        return new DownloadFileDeletionResult(attemptedCount, failedCount);
+        return Task.FromResult(_staging.CleanupTask(task)
+            ? new DownloadFileDeletionResult(1, 0)
+            : new DownloadFileDeletionResult(1, 1));
     }
 
     public Task<DownloadFileDeletionResult> DeleteUnpublishedArtifactsAsync(
@@ -311,72 +242,7 @@ internal sealed class DownloadTaskFileService
         return actual.Length == expected.Length && actual.Sha256 == expected.Sha256;
     }
 
-    private async Task<bool> TryDeletePendingLegacyPublicationAsync(
-        string path,
-        DownloadPublishingArtifact expected,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (!File.Exists(path))
-            {
-                if (Directory.Exists(path))
-                {
-                    _logger.LogWarningMessage(
-                        "Pending legacy publication is an unexpected directory.");
-                    return false;
-                }
-
-                return true;
-            }
-
-            if (!await MatchesFingerprintAsync(path, expected, cancellationToken)
-                    .ConfigureAwait(false))
-            {
-                _logger.LogWarningMessage(
-                    "Pending legacy publication no longer matches its recorded fingerprint.");
-                return false;
-            }
-
-            return TryDeleteLegacyArtifact(path);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarningMessage("Pending legacy publication cleanup failed.", exception);
-            return false;
-        }
-    }
-
     public void CleanupStaging(DownloadTaskId taskId) => _staging?.CleanupTask(taskId);
-
-    private bool TryDeleteLegacyArtifact(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path))
-            {
-                _logger.LogWarningMessage(
-                    "Legacy transfer artifact is an unexpected directory.");
-                return false;
-            }
-
-            File.Delete(path);
-            if (File.Exists(path) || Directory.Exists(path))
-            {
-                _logger.LogWarningMessage(
-                    "Legacy transfer artifact remained after deletion.");
-                return false;
-            }
-
-            return true;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarningMessage("Legacy transfer artifact cleanup failed.", exception);
-            return false;
-        }
-    }
-
 }
 
 internal readonly record struct DownloadFileDeletionResult(int AttemptedCount, int FailedCount)

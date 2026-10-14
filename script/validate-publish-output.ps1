@@ -58,7 +58,7 @@ function ConvertTo-ComparableManifestJson {
 $PublishDirectory = (Resolve-Path -LiteralPath $PublishDirectory).Path
 $userDataDirectoryNames = [Collections.Generic.HashSet[string]]::new(
     [StringComparer]::OrdinalIgnoreCase)
-foreach ($directoryName in @('Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media')) {
+foreach ($directoryName in @('Aria', 'Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media')) {
     [void]$userDataDirectoryNames.Add($directoryName)
 }
 $packagedUserData = @(

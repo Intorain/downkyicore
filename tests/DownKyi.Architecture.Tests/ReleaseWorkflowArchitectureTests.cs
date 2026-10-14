@@ -461,7 +461,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("Get-FileHash", validator, StringComparison.Ordinal);
         Assert.Contains("ExpectedManifestPath", validator, StringComparison.Ordinal);
         Assert.Contains("Published output contains user data paths", validator, StringComparison.Ordinal);
-        Assert.Contains("'Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media'", validator, StringComparison.Ordinal);
+        Assert.Contains("'Aria', 'Logs', 'Storage', 'Config', 'Bilibili', 'Cache', 'Media'", validator, StringComparison.Ordinal);
     }
 
     [Fact]
