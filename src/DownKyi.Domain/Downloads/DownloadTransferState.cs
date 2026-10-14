@@ -38,4 +38,7 @@ public sealed class DownloadTransferState
     public long MaximumBytesPerSecond { get; }
 
     public bool IsLegacyTransfer { get; }
+
+    public bool HasLegacyProvenance =>
+        IsLegacyTransfer || !string.IsNullOrWhiteSpace(BackendIdentity);
 }

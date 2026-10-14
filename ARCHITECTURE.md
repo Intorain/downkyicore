@@ -89,9 +89,9 @@ flowchart LR
 - `ValidateStage` 由實際 published／staged file 證據推導 requested media／subtitle／danmaku／cover 的 `Succeeded`、`NoResource` 或 `Failed`；未 requested 的 action 不建立 result entry，planning 中由使用者跳過的 page 不進入 execution。至少一個 requested action 成功才可進入 finalize。單一 action 無資源不等於 transport／解析／寫入失敗，所有 action 都沒有輸出則以 typed not-found failure 結束，不得寫入成功歷史。
 - Retry 只有一個預算 owner：coordinator 決定 typed retry／refresh／source switch，backend 每次只嘗試一個 URL。不得在 backend、RPC caller 或外層另加 retry，否則預算會相乘。
 - Playback metadata query 的 transient API-code／HTTP retry 只由 `VideoStreamApi` 擁有，最多重送一次；成功 response 缺少 requested quality 是 planning availability，不得由 preparation 再發出五次相同查詢。
-- Built-in resume 必須先比較 resource identity；沒有 validator 時驗證已保存 bytes 的 overlap。Mismatch 回報 `ResumeRejected`，coordinator 清除該 transfer artifacts 後，同地址最多重試一次。
+- Built-in resume 必須先比較 resource identity；沒有 strong validator 時，重用前必須逐段比對所有已保存 bytes。Mismatch 回報 `ResumeRejected`，coordinator 清除該 transfer artifacts 後，同地址最多重試一次。
 - Cancellation 保持 cancellation，不得轉成 failure 或 retry。來源切換前必須停止舊 transfer 並清除該 identity／target／sidecars；teardown 或 cleanup 失敗要 fail closed。
-- 舊 backend identity 只用來辨識升級前未完成工作；bootstrap 必須將該工作標為 `download.transfer.legacy-backend-removed` 並清除 identity，不得讀取、搬移或刪除舊 partial files。
+- `DownloadTransferState.HasLegacyProvenance` 是升級前未完成工作的唯一分類規則；bootstrap 只刪除該 task 的私有 staging 目錄，Canceled task 完成刪除，其餘 task 標為永久 `download.transfer.legacy-backend-removed` Failed history。不得讀取、搬移、刪除或遷移 staging 外的舊 partial files、GID、remote state 或 custom endpoint；resume guard 與 UI action 必須由同一分類規則拒絕此類 task。
 
 ### Artifact 與完成邊界
 

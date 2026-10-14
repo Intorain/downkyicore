@@ -87,9 +87,27 @@ public sealed class DownloadTaskStateMachineTests
         Assert.Same(failure, failed.Failure);
         Assert.Equal(DownloadProgress.None, failed.Progress);
         Assert.Empty(failed.Plan.TransferFiles);
-        Assert.Same(DownloadTransferState.Empty, failed.Transfer);
+        Assert.Same(DownloadTransferState.LegacyEmpty, failed.Transfer);
+        Assert.True(failed.Transfer.HasLegacyProvenance);
         Assert.Null(failed.Output.PublishingArtifact);
         Assert.Equal("published-cover.jpg", failed.Output.PublishedArtifacts["cover"]);
+    }
+
+    [Theory]
+    [InlineData(null, false, false)]
+    [InlineData(null, true, true)]
+    [InlineData("legacy-backend-id", false, true)]
+    public void LegacyProvenanceIncludesTheDurableMarkerOrBackendIdentity(
+        string? backendIdentity,
+        bool isLegacyTransfer,
+        bool expected)
+    {
+        var transfer = new DownloadTransferState(
+            backendIdentity,
+            [],
+            isLegacyTransfer: isLegacyTransfer);
+
+        Assert.Equal(expected, transfer.HasLegacyProvenance);
     }
 
     [Fact]

@@ -246,7 +246,8 @@ public sealed class DownloadTaskApplicationServiceTests
         Assert.Equal(DownloadPhase.Failed, failed.Phase);
         Assert.Same(failure, failed.Failure);
         Assert.Empty(failed.Plan.TransferFiles);
-        Assert.Same(DownloadTransferState.Empty, failed.Transfer);
+        Assert.Same(DownloadTransferState.LegacyEmpty, failed.Transfer);
+        Assert.True(failed.Transfer.HasLegacyProvenance);
     }
 
     [Fact]

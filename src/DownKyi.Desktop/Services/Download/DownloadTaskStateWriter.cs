@@ -10,6 +10,9 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadTaskStateWriter
 {
+    internal const string LegacyBackendRemovedFailureCode =
+        "download.transfer.legacy-backend-removed";
+
     private readonly IDownloadTaskApplicationService _tasks;
 
     public DownloadTaskStateWriter(IDownloadTaskApplicationService tasks)
@@ -37,8 +40,7 @@ internal sealed class DownloadTaskStateWriter
         CancellationToken cancellationToken = default)
     {
         var current = await FindRequiredAsync(taskId, cancellationToken).ConfigureAwait(false);
-        if (current.Transfer.IsLegacyTransfer ||
-            !string.IsNullOrWhiteSpace(current.Transfer.BackendIdentity))
+        if (current.Transfer.HasLegacyProvenance)
         {
             throw new InvalidOperationException(
                 "A retired legacy transfer cannot be resumed by the built-in downloader.");
@@ -96,7 +98,7 @@ internal sealed class DownloadTaskStateWriter
         DiscardUnpublishedArtifactsAndFailAsync(
             taskId,
             new DownloadFailure(
-                "download.transfer.legacy-backend-removed",
+                LegacyBackendRemovedFailureCode,
                 "The unfinished legacy download was removed and marked as failed.",
                 false),
             cancellationToken);

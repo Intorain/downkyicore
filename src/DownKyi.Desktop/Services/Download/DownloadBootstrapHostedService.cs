@@ -59,8 +59,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
             var state = await LoadStartupStateAsync(cancellationToken).ConfigureAwait(false);
             var blocked = new HashSet<DownloadTaskId>();
             foreach (var task in state.UnfinishedTasks.Where(task =>
-                         task.Transfer.IsLegacyTransfer ||
-                         !string.IsNullOrWhiteSpace(task.Transfer.BackendIdentity)))
+                         task.Transfer.HasLegacyProvenance))
             {
                 blocked.Add(task.Id);
                 if (IsRetiredLegacyTask(task))
@@ -282,7 +281,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
 
     private static bool IsRetiredLegacyTask(DownloadTask task) =>
         task.Phase == DownloadPhase.Failed &&
-        task.Failure?.Code == "download.transfer.legacy-backend-removed";
+        task.Failure?.Code == DownloadTaskStateWriter.LegacyBackendRemovedFailureCode;
 
     private async Task QueueStartupTasksAsync(
         IReadOnlyList<DownloadTask> tasks,
