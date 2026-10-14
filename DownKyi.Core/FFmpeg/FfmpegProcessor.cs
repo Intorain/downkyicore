@@ -39,6 +39,13 @@ public interface IFfmpegMediaStreamValidator
         bool requireAudio,
         bool requireVideo,
         CancellationToken cancellationToken = default);
+
+    Task<bool> ValidateRequiredStreamsAsync(
+        string mediaFile,
+        bool requireAudio,
+        bool requireVideo,
+        TimeSpan expectedVideoDuration,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValidator
@@ -79,10 +86,23 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
             loggerFactory.CreateLogger<FfmpegConcatRuntime>());
     }
 
+    public Task<bool> ValidateRequiredStreamsAsync(
+        string mediaFile,
+        bool requireAudio,
+        bool requireVideo,
+        CancellationToken cancellationToken = default) =>
+        ValidateRequiredStreamsAsync(
+            mediaFile,
+            requireAudio,
+            requireVideo,
+            TimeSpan.Zero,
+            cancellationToken);
+
     public async Task<bool> ValidateRequiredStreamsAsync(
         string mediaFile,
         bool requireAudio,
         bool requireVideo,
+        TimeSpan expectedVideoDuration,
         CancellationToken cancellationToken = default)
     {
         using var slot = await _operationGate.EnterAsync(cancellationToken).ConfigureAwait(false);
@@ -90,6 +110,7 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
                 mediaFile,
                 requireAudio,
                 requireVideo,
+                expectedVideoDuration,
                 cancellationToken)
             .ConfigureAwait(false);
     }

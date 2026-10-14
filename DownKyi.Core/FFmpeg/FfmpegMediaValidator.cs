@@ -45,11 +45,6 @@ internal sealed class FfmpegMediaValidator : IFfmpegMediaValidator
             return FfmpegMediaValidationResult.Failure("Output file is missing or empty.");
         }
 
-        if (expectedDuration <= TimeSpan.Zero)
-        {
-            return FfmpegMediaValidationResult.Failure("Expected source duration is missing or invalid.");
-        }
-
         var (document, probeFailure) = await ProbeAsync(mediaFile, cancellationToken)
             .ConfigureAwait(false);
         if (probeFailure != null)
@@ -74,7 +69,10 @@ internal sealed class FfmpegMediaValidator : IFfmpegMediaValidator
         }
 
         var duration = TimeSpan.FromSeconds(durationSeconds);
-        foreach (var position in GetSeekPositions(expectedDuration))
+        var checkpointDuration = expectedDuration > TimeSpan.Zero
+            ? expectedDuration
+            : duration;
+        foreach (var position in GetSeekPositions(checkpointDuration))
         {
             var decode = await _processRunner
                 .RunAsync(FfmpegCommandFactory.BuildSeekDecode(mediaFile, position), ProcessTimeout, cancellationToken)
@@ -88,16 +86,42 @@ internal sealed class FfmpegMediaValidator : IFfmpegMediaValidator
         return new FfmpegMediaValidationResult(true, duration, null);
     }
 
+    public Task<bool> ValidateRequiredStreamsAsync(
+        string mediaFile,
+        bool requireAudio,
+        bool requireVideo,
+        CancellationToken cancellationToken = default) =>
+        ValidateRequiredStreamsAsync(
+            mediaFile,
+            requireAudio,
+            requireVideo,
+            TimeSpan.Zero,
+            cancellationToken);
+
     public async Task<bool> ValidateRequiredStreamsAsync(
         string mediaFile,
         bool requireAudio,
         bool requireVideo,
+        TimeSpan expectedVideoDuration,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mediaFile);
         if (!File.Exists(mediaFile) || new FileInfo(mediaFile).Length == 0)
         {
             return false;
+        }
+
+        if (requireVideo)
+        {
+            var videoValidation = await ValidateAsync(
+                    mediaFile,
+                    expectedVideoDuration,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!videoValidation.IsValid)
+            {
+                return false;
+            }
         }
 
         if (requireAudio && !await CanDecodeRequiredStreamAsync(
@@ -108,10 +132,7 @@ internal sealed class FfmpegMediaValidator : IFfmpegMediaValidator
             return false;
         }
 
-        return !requireVideo || await CanDecodeRequiredStreamAsync(
-                mediaFile,
-                FfmpegMediaStreamKind.Video,
-                cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     internal static IReadOnlyList<TimeSpan> GetSeekPositions(TimeSpan expectedDuration)

@@ -46,12 +46,12 @@ internal sealed class ValidateStage : IDownloadPipelineStage
                     OperationErrorKind.Validation);
             }
 
-            var requireVideoDecode = context.NeedsVideo && !HasDurlConcatVideoEvidence(context);
-            if ((context.NeedsAudio || requireVideoDecode) &&
+            if ((context.NeedsAudio || context.NeedsVideo) &&
                 !await _mediaStreamValidator.ValidateRequiredStreamsAsync(
                     mediaFile!,
                     context.NeedsAudio,
-                    requireVideoDecode,
+                    context.NeedsVideo,
+                    DownloadExpectedDurationResolver.Resolve(context),
                     cancellationToken).ConfigureAwait(true))
             {
                 return DownloadStageResult.Failure(
@@ -111,9 +111,6 @@ internal sealed class ValidateStage : IDownloadPipelineStage
         context.MarkArtifactsValidated();
         return DownloadStageResult.Success(Name);
     }
-
-    private static bool HasDurlConcatVideoEvidence(DownloadExecutionContext context) =>
-        context.MediaKind == DownloadMediaKind.Durl && context.DurlDownloads.Count > 1;
 
     private static bool HasUsableDanmakuOutput(
         DownloadExecutionContext context,

@@ -32,6 +32,25 @@ public sealed class FfmpegMediaValidatorTests : IDisposable
     }
 
     [Fact]
+    public async Task ValidateUsesProbedDurationWhenExpectedDurationIsUnavailable()
+    {
+        var runner = new ProbeProcessRunner("""
+            {"streams":[{"codec_type":"video"}],"format":{"duration":"20.0"}}
+            """);
+        var validator = new FfmpegMediaValidator(runner);
+
+        var result = await validator.ValidateAsync(
+            _mediaFile,
+            TimeSpan.Zero,
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(
+            [TimeSpan.Zero, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(19)],
+            runner.SeekPositions);
+    }
+
+    [Fact]
     public async Task ValidateRejectsTruncatedOutputAtExpectedTailCheckpoint()
     {
         var runner = new ProbeProcessRunner("""
@@ -103,18 +122,22 @@ public sealed class FfmpegMediaValidatorTests : IDisposable
             _mediaFile,
             requireAudio,
             requireVideo,
-            TestContext.Current.CancellationToken);
+            expectedVideoDuration: TimeSpan.FromSeconds(20),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result);
         var expectedOperations = new List<string>();
-        if (requireAudio)
+        if (requireVideo)
         {
-            expectedOperations.Add("decode-required-audio");
+            expectedOperations.Add("probe-media");
+            expectedOperations.AddRange(Enumerable.Repeat(
+                "seek-decode",
+                canDecodeVideo ? 3 : 1));
         }
 
-        if (requireVideo && (!requireAudio || canDecodeAudio))
+        if (requireAudio && (!requireVideo || canDecodeVideo))
         {
-            expectedOperations.Add("decode-required-video");
+            expectedOperations.Add("decode-required-audio");
         }
 
         Assert.Equal(expectedOperations, runner.Operations);
@@ -186,18 +209,28 @@ public sealed class FfmpegMediaValidatorTests : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             Operations.Add(command.Operation);
-            var canDecode = command.Operation switch
+            return command.Operation switch
             {
-                "decode-required-audio" => canDecodeAudio,
-                "decode-required-video" => canDecodeVideo,
+                "decode-required-audio" => Task.FromResult(new FfmpegProcessResult(
+                    true,
+                    0,
+                    $"out_time_us={(canDecodeAudio ? 23_220 : 0)}",
+                    string.Empty,
+                    false)),
+                "probe-media" => Task.FromResult(new FfmpegProcessResult(
+                    true,
+                    0,
+                    """{"streams":[{"codec_type":"video"}],"format":{"duration":"20.0"}}""",
+                    string.Empty,
+                    false)),
+                "seek-decode" => Task.FromResult(new FfmpegProcessResult(
+                    true,
+                    0,
+                    $"frame={(canDecodeVideo ? 1 : 0)}",
+                    string.Empty,
+                    false)),
                 _ => throw new InvalidOperationException($"Unexpected operation: {command.Operation}")
             };
-            return Task.FromResult(new FfmpegProcessResult(
-                true,
-                0,
-                $"out_time_us={(canDecode ? 23_220 : 0)}",
-                string.Empty,
-                false));
         }
     }
 }

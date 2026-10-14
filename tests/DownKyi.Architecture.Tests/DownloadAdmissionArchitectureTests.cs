@@ -56,10 +56,14 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("DownloadContentSelection FinalizedContent", prepared, StringComparison.Ordinal);
         Assert.Contains("DownloadContentConflictChoices choices", resolver, StringComparison.Ordinal);
         Assert.Contains("DownloadContentConflictDialogContract.ShowAsync", resolver, StringComparison.Ordinal);
+        Assert.Contains("ResolveQualitySubstitutionBatchAsync", resolver, StringComparison.Ordinal);
         Assert.Contains("DownloadPlanningStopReason", planner, StringComparison.Ordinal);
+        Assert.Contains("PlanBatchAsync", planner, StringComparison.Ordinal);
+        Assert.Contains("CollectQualitySubstitutionItems", planner, StringComparison.Ordinal);
         Assert.Contains("_conflictResolver", planner, StringComparison.Ordinal);
         Assert.Contains(".ResolveAsync(", planner, StringComparison.Ordinal);
         Assert.Contains("_actionPlanner", content, StringComparison.Ordinal);
+        Assert.Contains(".PlanBatchAsync(", content, StringComparison.Ordinal);
         Assert.Contains("_actionPlanner", video, StringComparison.Ordinal);
         Assert.Contains(
             "DownloadActionCoverage.RemoveCoveredActions",

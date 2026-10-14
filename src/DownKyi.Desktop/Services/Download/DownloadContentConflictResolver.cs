@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Desktop;
@@ -20,6 +21,10 @@ internal sealed record DownloadContentConflict(
     DownloadQualitySubstitutions QualitySubstitutions)
 {
     public bool HasAvailableContent => AvailableContent.HasAnyRequestedAction;
+
+    public bool IsQualitySubstitutionOnly =>
+        QualitySubstitutions.HasAny
+        && AvailableMedia.Supports(RequestedContent);
 
     public static DownloadContentConflict? Find(
         DownloadContentSelection requestedContent,
@@ -148,6 +153,39 @@ internal sealed class DownloadContentConflictResolver
         return action == DownloadContentConflictAction.UseAvailableContent
             ? DownloadPageResolution.Finalized(conflict.AvailableContent)
             : DownloadPageResolution.SkippedByUser();
+    }
+
+    public async Task<DownloadContentConflictAction> ResolveQualitySubstitutionBatchAsync(
+        IReadOnlyList<DownloadContentConflictPromptItem> items,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (items.Count == 0)
+        {
+            throw new ArgumentException(
+                "A quality substitution batch requires at least one item.",
+                nameof(items));
+        }
+
+        if (items.Any(item => !item.Conflict.IsQualitySubstitutionOnly))
+        {
+            throw new ArgumentException(
+                "A quality substitution batch can contain only pure quality substitutions.",
+                nameof(items));
+        }
+
+        var decision = await DownloadContentConflictDialogContract.ShowAsync(
+            _dialogService,
+            DownloadContentConflictPrompt.QualitySubstitutionBatch(items),
+            cancellationToken).ConfigureAwait(true);
+        if (!decision.ApplyToAll)
+        {
+            throw new InvalidOperationException(
+                "A quality substitution batch decision must apply to the whole displayed batch.");
+        }
+
+        return decision.Action;
     }
 
     private async Task<DownloadContentConflictAction> ResolveActionAsync(

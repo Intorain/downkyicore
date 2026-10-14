@@ -50,7 +50,7 @@ public sealed class DownloadContentConflictResolverTests
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.UseAvailableContent,
-                ApplyToAll: false));
+                ApplyToAll: true));
         var requested = DownloadContentSelection.None with
         {
             Video = true,
@@ -78,7 +78,7 @@ public sealed class DownloadContentConflictResolverTests
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.SkipPage,
-                ApplyToAll: false));
+                ApplyToAll: true));
 
         var finalized = await ResolveAsync(
             dialogs,
@@ -340,7 +340,7 @@ public sealed class DownloadContentConflictResolverTests
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.UseAvailableContent,
-                ApplyToAll: false));
+                ApplyToAll: true));
         var requested = DownloadContentSelection.None with { Video = true };
 
         var finalized = await ResolveAsync(
@@ -387,12 +387,71 @@ public sealed class DownloadContentConflictResolverTests
     }
 
     [Fact]
+    public async Task QualitySubstitutionsAcrossPreparedDownloadsUseOneBatchPrompt()
+    {
+        var dialogs = new RecordingDialogService(
+            new DownloadContentConflictDecision(
+                DownloadContentConflictAction.UseAvailableContent,
+                ApplyToAll: true));
+        var planner = new DownloadActionPlanner(new DownloadContentConflictResolver(dialogs));
+        var requested = DownloadContentSelection.None with { Video = true };
+        var first = CreatePreparedDownload(CreateLowerVideoQualityPage(64, "720P 高清"));
+        first.Video.Title = "第一批";
+        var second = CreatePreparedDownload(CreateLowerVideoQualityPage(32, "480P 清晰"));
+        second.Video.Title = "第二批";
+
+        var finalized = await planner.PlanBatchAsync(
+            requested,
+            [first, second],
+            isAll: false,
+            new DownloadContentConflictChoices(),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, finalized.Count);
+        Assert.Equal(64, Assert.Single(Assert.Single(finalized[0].Sections).Pages).VideoQuality!.Quality);
+        Assert.Equal(32, Assert.Single(Assert.Single(finalized[1].Sections).Pages).VideoQuality!.Quality);
+        var prompt = Assert.IsType<DownloadContentConflictPrompt>(
+            Assert.Single(dialogs.Requests).Parameters![DownloadContentConflictDialogContract.PromptParameter]);
+        Assert.Equal(DownloadContentConflictPromptMode.QualitySubstitutionBatch, prompt.Mode);
+        Assert.Equal(
+            ["第一批 · page-64", "第二批 · page-32"],
+            prompt.Items.Select(item => item.PageName).ToArray());
+    }
+
+    [Fact]
+    public async Task BatchQualitySkipOnlyRemovesAffectedPages()
+    {
+        var dialogs = new RecordingDialogService(
+            new DownloadContentConflictDecision(
+                DownloadContentConflictAction.SkipPage,
+                ApplyToAll: true));
+        var planner = new DownloadActionPlanner(new DownloadContentConflictResolver(dialogs));
+        var requested = DownloadContentSelection.None with { Video = true };
+        var prepared = CreatePreparedDownload(
+            CreateLowerVideoQualityPage(64, "720P 高清"),
+            CreatePage(video: true, audio: false));
+
+        var finalized = await planner.PlanBatchAsync(
+            requested,
+            [prepared],
+            isAll: false,
+            new DownloadContentConflictChoices(),
+            TestContext.Current.CancellationToken);
+
+        var page = Assert.Single(Assert.Single(Assert.Single(finalized).Sections).Pages);
+        Assert.Equal(80, page.VideoQuality!.Quality);
+        Assert.Equal(2, Assert.Single(finalized).CandidateCount);
+        Assert.Equal(1, Assert.Single(finalized).SkippedCount);
+        Assert.Single(dialogs.Requests);
+    }
+
+    [Fact]
     public async Task LowerQualitySkipDoesNotFinalizePage()
     {
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.SkipPage,
-                ApplyToAll: false));
+                ApplyToAll: true));
 
         var finalized = await ResolveAsync(
             dialogs,
@@ -404,15 +463,12 @@ public sealed class DownloadContentConflictResolverTests
     }
 
     [Fact]
-    public async Task ApplyToAllSkipRemainsPageScopedForQualitySubstitutions()
+    public async Task BatchSkipAppliesToAllDisplayedQualitySubstitutions()
     {
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.SkipPage,
-                ApplyToAll: true),
-            new DownloadContentConflictDecision(
-                DownloadContentConflictAction.UseAvailableContent,
-                ApplyToAll: false));
+                ApplyToAll: true));
         var requested = DownloadContentSelection.None with { Video = true };
         var prepared = CreatePreparedDownload(
             CreateLowerVideoQualityPage(64, "720P 高清"),
@@ -420,10 +476,8 @@ public sealed class DownloadContentConflictResolverTests
 
         var finalized = await ResolveAsync(dialogs, requested, prepared);
 
-        Assert.Equal(
-            32,
-            Assert.Single(Assert.Single(finalized.Sections).Pages).VideoQuality!.Quality);
-        Assert.Equal(2, dialogs.Requests.Count);
+        Assert.Empty(Assert.Single(finalized.Sections).Pages);
+        Assert.Single(dialogs.Requests);
     }
 
     [Fact]
@@ -432,7 +486,7 @@ public sealed class DownloadContentConflictResolverTests
         var dialogs = new RecordingDialogService(
             new DownloadContentConflictDecision(
                 DownloadContentConflictAction.UseAvailableContent,
-                ApplyToAll: false));
+                ApplyToAll: true));
         var requested = DownloadContentSelection.None with { Video = true };
 
         await ResolveAsync(
