@@ -256,12 +256,47 @@ public sealed class BuiltinRangeDownloaderTests
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(
-                [(4L, 5L), (6L, 7L), (8L, 11L)],
+                [(0L, 3L), (4L, 5L), (6L, 7L), (8L, 11L)],
                 handler.ChunkRanges.OrderBy(static range => range.Start).ToArray());
             Assert.All(handler.IfRangeValues, Assert.Null);
             Assert.Equal(payload, await File.ReadAllBytesAsync(
                 target,
                 TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ResumeWithoutValidatorRejectsMismatchInEarlierScatteredChunk()
+    {
+        var previousPayload = CreatePayload(12);
+        var currentPayload = previousPayload.ToArray();
+        currentPayload[0] = checked((byte)(currentPayload[0] + 32));
+        var directory = CreateTemporaryDirectory("range-scattered-overlap-mismatch");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            await WritePartialAsync(
+                target,
+                previousPayload,
+                ResourceIdentity(strongETag: null),
+                thirdChunkPosition: 4);
+            using var handler = new RangePayloadHandler(currentPayload, entityTag: null);
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 2,
+                segmentSize: 4);
+
+            await Assert.ThrowsAsync<BuiltinResumeRejectedException>(() => downloader.DownloadAsync(
+                target,
+                currentPayload.Length,
+                TestContext.Current.CancellationToken));
+
+            Assert.Equal([(0L, 3L)], handler.ChunkRanges);
+            Assert.True(File.Exists($"{target}.download"));
         }
         finally
         {
@@ -745,7 +780,8 @@ public sealed class BuiltinRangeDownloaderTests
         string target,
         byte[] payload,
         object? resourceIdentity,
-        int secondChunkPosition = 0)
+        int secondChunkPosition = 0,
+        int thirdChunkPosition = 0)
     {
         var metadata = JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -754,7 +790,7 @@ public sealed class BuiltinRangeDownloaderTests
             {
                 new { Start = 0, End = 3, Position = 4 },
                 new { Start = 4, End = 7, Position = secondChunkPosition },
-                new { Start = 8, End = 11, Position = 0 }
+                new { Start = 8, End = 11, Position = thirdChunkPosition }
             },
             ResourceIdentity = resourceIdentity
         });
@@ -771,6 +807,14 @@ public sealed class BuiltinRangeDownloaderTests
             await stream.WriteAsync(
                 payload.AsMemory(0, 4 + secondChunkPosition),
                 TestContext.Current.CancellationToken).ConfigureAwait(false);
+            if (thirdChunkPosition > 0)
+            {
+                stream.Position = 8;
+                await stream.WriteAsync(
+                    payload.AsMemory(8, thirdChunkPosition),
+                    TestContext.Current.CancellationToken).ConfigureAwait(false);
+            }
+
             stream.Position = payload.Length;
             await stream.WriteAsync(
                 metadata,

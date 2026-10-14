@@ -372,7 +372,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                     throw new BuiltinResumeRejectedException(
                         "The built-in resume metadata does not match the media file.");
                 case BuiltinRangeContinuity.Unavailable:
-                    resourceIdentity = await VerifyResumeOverlapAsync(
+                    resourceIdentity = await VerifyResumeOverlapsAsync(
                         stream,
                         chunks,
                         totalBytes,
@@ -436,7 +436,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         long segmentSize) =>
         Math.Min(segmentSize, Math.Max(1, ((totalBytes - 1) / parallelCount) + 1));
 
-    private async Task<BuiltinRangeResourceIdentity> VerifyResumeOverlapAsync(
+    private async Task<BuiltinRangeResourceIdentity> VerifyResumeOverlapsAsync(
         FileStream partialFile,
         BuiltinRangeChunk[] chunks,
         long totalBytes,
@@ -444,9 +444,31 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         BuiltinRangeResourceIdentity resourceIdentity,
         CancellationToken cancellationToken)
     {
-        var resumeChunk = chunks
-            .Where(static chunk => chunk.Position > 0)
-            .MaxBy(static chunk => checked(chunk.Start + chunk.Position))!;
+        var verifiedIdentity = resourceIdentity;
+        foreach (var resumeChunk in chunks
+                     .Where(static chunk => chunk.Position > 0)
+                     .OrderBy(static chunk => chunk.Start))
+        {
+            verifiedIdentity = await VerifyResumeChunkOverlapAsync(
+                partialFile,
+                resumeChunk,
+                totalBytes,
+                persistedIdentity,
+                verifiedIdentity,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return verifiedIdentity;
+    }
+
+    private async Task<BuiltinRangeResourceIdentity> VerifyResumeChunkOverlapAsync(
+        FileStream partialFile,
+        BuiltinRangeChunk resumeChunk,
+        long totalBytes,
+        BuiltinRangeResourceIdentity? persistedIdentity,
+        BuiltinRangeResourceIdentity resourceIdentity,
+        CancellationToken cancellationToken)
+    {
         var resumeOffset = checked(resumeChunk.Start + resumeChunk.Position);
         var overlapStart = Math.Max(resumeChunk.Start, resumeOffset - ResumeOverlapSize);
         var overlapEnd = resumeOffset - 1;

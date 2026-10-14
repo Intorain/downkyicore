@@ -342,7 +342,7 @@ public sealed class DownloadBootstrapHostedServiceTests
     }
 
     [Fact]
-    public async Task StartupDeletesLegacyUnpublishedArtifactsBeforeFailingWithoutPublishing()
+    public async Task StartupDeletesMovedLegacyPendingPublicationBeforeFailing()
     {
         var directory = Path.Combine(
             Path.GetTempPath(),
@@ -403,8 +403,11 @@ public sealed class DownloadBootstrapHostedServiceTests
                 task.Output.BasePath,
                 task.Output.StagingToken);
             var pendingBytes = new byte[] { 9, 10, 11, 12 };
+            var pendingStagedFile = Path.Combine(
+                stagingDirectory,
+                Path.GetFileName(pendingDestination));
             await File.WriteAllBytesAsync(
-                Path.Combine(stagingDirectory, Path.GetFileName(pendingDestination)),
+                pendingStagedFile,
                 pendingBytes,
                 TestContext.Current.CancellationToken);
             Assert.True((await tasks.BeginPublishingArtifactAsync(
@@ -415,6 +418,7 @@ public sealed class DownloadBootstrapHostedServiceTests
                     pendingBytes.Length,
                     Convert.ToHexString(SHA256.HashData(pendingBytes))),
                 TestContext.Current.CancellationToken)).IsSuccess);
+            File.Move(pendingStagedFile, pendingDestination, overwrite: false);
             Assert.True((await tasks.SetBackendIdentityAsync(
                 task.Id,
                 "legacy-execution-id",

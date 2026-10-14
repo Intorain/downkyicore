@@ -52,7 +52,7 @@ internal sealed class DownloadTaskFileService
         return Task.FromResult(new DownloadFileDeletionResult(0, 0));
     }
 
-    public Task<DownloadFileDeletionResult> DeleteLegacyUnpublishedArtifactsAsync(
+    public async Task<DownloadFileDeletionResult> DeleteLegacyUnpublishedArtifactsAsync(
         DownloadTask task,
         CancellationToken cancellationToken = default)
     {
@@ -98,6 +98,25 @@ internal sealed class DownloadTaskFileService
             }
         }
 
+        var publishing = task.Output.PublishingArtifact;
+        if (publishing != null)
+        {
+            var destination = Path.GetFullPath(Path.Combine(
+                outputDirectory,
+                publishing.FileName));
+            if (!published.Contains(destination))
+            {
+                attemptedCount++;
+                if (!await TryDeletePendingLegacyPublicationAsync(
+                        destination,
+                        publishing,
+                        cancellationToken).ConfigureAwait(false))
+                {
+                    failedCount++;
+                }
+            }
+        }
+
         attemptedCount++;
         if (_staging == null)
         {
@@ -109,7 +128,7 @@ internal sealed class DownloadTaskFileService
             failedCount++;
         }
 
-        return Task.FromResult(new DownloadFileDeletionResult(attemptedCount, failedCount));
+        return new DownloadFileDeletionResult(attemptedCount, failedCount);
     }
 
     public Task<DownloadFileDeletionResult> DeleteUnpublishedArtifactsAsync(
@@ -285,6 +304,42 @@ internal sealed class DownloadTaskFileService
         var actual = await FingerprintAsync(expected.Key, path, cancellationToken)
             .ConfigureAwait(false);
         return actual.Length == expected.Length && actual.Sha256 == expected.Sha256;
+    }
+
+    private async Task<bool> TryDeletePendingLegacyPublicationAsync(
+        string path,
+        DownloadPublishingArtifact expected,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                if (Directory.Exists(path))
+                {
+                    _logger.LogWarningMessage(
+                        "Pending legacy publication is an unexpected directory.");
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (!await MatchesFingerprintAsync(path, expected, cancellationToken)
+                    .ConfigureAwait(false))
+            {
+                _logger.LogWarningMessage(
+                    "Pending legacy publication no longer matches its recorded fingerprint.");
+                return false;
+            }
+
+            return TryDeleteLegacyArtifact(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarningMessage("Pending legacy publication cleanup failed.", exception);
+            return false;
+        }
     }
 
     public void CleanupStaging(DownloadTaskId taskId) => _staging?.CleanupTask(taskId);
