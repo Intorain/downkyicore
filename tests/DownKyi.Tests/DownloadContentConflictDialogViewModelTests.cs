@@ -66,6 +66,38 @@ public sealed class DownloadContentConflictDialogViewModelTests
     }
 
     [Fact]
+    public void QualityBatchSummarizesOutcomesAndKeepsEveryAffectedTitle()
+    {
+        var viewModel = new DownloadContentConflictDialogViewModel();
+
+        viewModel.OnDialogOpened(DownloadContentConflictDialogContract.CreateRequest(
+            CreateQualityBatchPrompt()));
+
+        Assert.True(viewModel.IsQualitySubstitutionBatch);
+        Assert.False(viewModel.ShowApplyToAll);
+        Assert.Equal(
+            ["第一批 · 第一集", "第二批 · 第一集", "第三批 · 第一集"],
+            viewModel.QualitySubstitutionItems.Select(item => item.PageName).ToArray());
+    }
+
+    [Fact]
+    public void QualityBatchDecisionAlwaysAppliesToDisplayedItems()
+    {
+        var viewModel = new DownloadContentConflictDialogViewModel();
+        AppDialogResult? result = null;
+        viewModel.CloseRequested += (_, value) => result = value;
+        viewModel.OnDialogOpened(DownloadContentConflictDialogContract.CreateRequest(
+            CreateQualityBatchPrompt()));
+
+        viewModel.SkipPageCommand.Execute(null);
+
+        var decision = Assert.IsType<DownloadContentConflictDecision>(
+            Assert.IsType<AppDialogResult>(result).Parameters[DownloadContentConflictDialogContract.DecisionParameter]);
+        Assert.Equal(DownloadContentConflictAction.SkipPage, decision.Action);
+        Assert.True(decision.ApplyToAll);
+    }
+
+    [Fact]
     public async Task NonAcceptedResultFailsClosed()
     {
         var dialogs = new StubDialogService(new AppDialogResult(
@@ -101,6 +133,33 @@ public sealed class DownloadContentConflictDialogViewModelTests
             new DownloadMediaCapabilities(DownloadMediaOutputModes.VideoOnly),
             DownloadContentSelection.All with { Audio = false },
             substitutions ?? DownloadQualitySubstitutions.None));
+
+    private static DownloadContentConflictPrompt CreateQualityBatchPrompt()
+    {
+        static DownloadContentConflictPromptItem CreateItem(
+            string pageName,
+            int selectedQuality,
+            string selectedName) => new(
+            pageName,
+            new DownloadContentConflict(
+                DownloadContentSelection.None with { Video = true },
+                new DownloadMediaCapabilities(DownloadMediaOutputModes.VideoOnly),
+                DownloadContentSelection.None with { Video = true },
+                new DownloadQualitySubstitutions(
+                    new DownloadQualitySubstitution(
+                        80,
+                        "1080P 高清",
+                        selectedQuality,
+                        selectedName),
+                    Audio: null)));
+
+        return DownloadContentConflictPrompt.QualitySubstitutionBatch(
+        [
+            CreateItem("第一批 · 第一集", 64, "720P 高清"),
+            CreateItem("第二批 · 第一集", 64, "720P 高清"),
+            CreateItem("第三批 · 第一集", 32, "480P 清晰")
+        ]);
+    }
 
     private sealed class StubDialogService(AppDialogResult result) : IAppDialogService
     {

@@ -144,7 +144,7 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
 
     private Task<ContentDownloadBatchResult> AddItemsAsync(
         IAddToDownloadSession addToDownloadSession,
-        IReadOnlyList<ContentDownloadItem> items,
+        ContentDownloadItem[] items,
         DownloadAddSelection selection,
         CancellationToken cancellationToken)
     {
@@ -154,7 +154,7 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
             var skippedCount = 0;
             var duplicateCount = 0;
             var failedCount = 0;
-            var conflictChoices = new DownloadContentConflictChoices();
+            var preparedDownloads = new List<PreparedDownload>(items.Length);
             foreach (var item in items)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -185,15 +185,20 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
                     continue;
                 }
 
+                preparedDownloads.Add(preparedDownload);
+            }
+
+            var finalizedDownloads = await _actionPlanner
+                .PlanBatchAsync(
+                    selection.RequestedContent,
+                    preparedDownloads,
+                    isAll: false,
+                    new DownloadContentConflictChoices(),
+                    cancellationToken)
+                .ConfigureAwait(true);
+            foreach (var finalizedDownload in finalizedDownloads)
+            {
                 cancellationToken.ThrowIfCancellationRequested();
-                var finalizedDownload = await _actionPlanner
-                    .PlanAsync(
-                        selection.RequestedContent,
-                        preparedDownload,
-                        isAll: false,
-                        conflictChoices,
-                        cancellationToken)
-                    .ConfigureAwait(true);
                 var addResult = await addToDownloadSession
                     .AddToDownload(selection.Directory, finalizedDownload, cancellationToken)
                     .ConfigureAwait(false);
