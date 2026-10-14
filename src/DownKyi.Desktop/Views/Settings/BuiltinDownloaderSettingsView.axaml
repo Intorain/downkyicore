@@ -58,6 +58,69 @@
             </StackPanel>
         </Grid>
 
+        <TextBlock
+            Margin="0,20,0,0"
+            FontSize="{DynamicResource DownKyiFontSizeCaption}"
+            Foreground="{DynamicResource BrushTextSecondary}"
+            Text="{DynamicResource ZeroMeansUnlimited}" />
+
+        <Grid
+            Margin="0,8,0,0"
+            ColumnDefinitions="*,24,*"
+            ToolTip.Tip="{DynamicResource PressEnterToApplySettingTip}">
+            <StackPanel Grid.Column="0">
+                <TextBlock
+                    FontSize="{DynamicResource DownKyiFontSizeBody}"
+                    Foreground="{DynamicResource BrushTextDark}"
+                    Text="{DynamicResource MaxOverallDownloadLimit}" />
+                <TextBlock
+                    Margin="0,3,0,0"
+                    FontSize="{DynamicResource DownKyiFontSizeCaption}"
+                    Foreground="{DynamicResource BrushTextSecondary}"
+                    Text="{DynamicResource MaxOverallDownloadLimitDescription}" />
+                <TextBox
+                    Name="NameMaxOverallDownloadLimit"
+                    Width="180"
+                    Margin="0,6,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Center"
+                    Text="{Binding MaxOverallDownloadLimit}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding
+                            Command="{Binding MaxOverallDownloadLimitCommand}"
+                            CommandParameter="{Binding #NameMaxOverallDownloadLimit.Text}"
+                            Gesture="Enter" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <TextBlock
+                    FontSize="{DynamicResource DownKyiFontSizeBody}"
+                    Foreground="{DynamicResource BrushTextDark}"
+                    Text="{DynamicResource MaxDownloadLimit}" />
+                <TextBlock
+                    Margin="0,3,0,0"
+                    FontSize="{DynamicResource DownKyiFontSizeCaption}"
+                    Foreground="{DynamicResource BrushTextSecondary}"
+                    Text="{DynamicResource MaxDownloadLimitDescription}" />
+                <TextBox
+                    Name="NameMaxDownloadLimit"
+                    Width="180"
+                    Margin="0,6,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Center"
+                    Text="{Binding MaxDownloadLimit}">
+                    <TextBox.KeyBindings>
+                        <KeyBinding
+                            Command="{Binding MaxDownloadLimitCommand}"
+                            CommandParameter="{Binding #NameMaxDownloadLimit.Text}"
+                            Gesture="Enter" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+            </StackPanel>
+        </Grid>
+
         <CheckBox
             Name="NameIsHttpProxy"
             Margin="0,18,0,0"

@@ -61,6 +61,8 @@ public partial class SettingsManager
                 GetCustomProxy(),
                 GetMaxCurrentDownloads(),
                 GetSplit(),
+                GetMaxOverallDownloadLimit(),
+                GetMaxDownloadLimit(),
                 GetIsHttpProxy(),
                 GetHttpProxy(),
                 GetHttpProxyListenPort()),
@@ -145,6 +147,8 @@ public partial class SettingsManager
                     value => _appSettings.Network.CustomNetworkProxy = value);
                 SetMaxCurrentDownloads(validated.Network.MaxCurrentDownloads);
                 SetSplit(validated.Network.Split);
+                SetMaxOverallDownloadLimit(validated.Network.MaxOverallDownloadLimit);
+                SetMaxDownloadLimit(validated.Network.MaxDownloadLimit);
                 SetIsHttpProxy(validated.Network.IsHttpProxy);
                 SetHttpProxy(validated.Network.HttpProxy);
                 SetHttpProxyListenPort(validated.Network.HttpProxyListenPort);

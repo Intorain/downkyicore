@@ -219,6 +219,8 @@ public sealed class SettingsRoundtripCompletenessTests
             {
                 "Network.MaxCurrentDownloads" => 4,
                 "Network.Split" => 9,
+                "Network.MaxOverallDownloadLimit" => 17,
+                "Network.MaxDownloadLimit" => 23,
                 "Network.HttpProxyListenPort" => 18081,
                 "Video.VideoCodecs" => 12,
                 "Video.Quality" => 80,

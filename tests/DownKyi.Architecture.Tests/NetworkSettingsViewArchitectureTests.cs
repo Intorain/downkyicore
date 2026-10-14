@@ -52,11 +52,11 @@ public sealed class NetworkSettingsViewArchitectureTests
     {
         var source = string.Join(Environment.NewLine, ViewNames.Select(Read));
 
-        Assert.Equal(32, Count(source, @"\{Binding\s+([^},]+)"));
-        Assert.Equal(27, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
-        Assert.Equal(41, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
+        Assert.Equal(38, Count(source, @"\{Binding\s+([^},]+)"));
+        Assert.Equal(29, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
+        Assert.Equal(57, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
         Assert.Equal(4, Count(source, @"\{StaticResource\s+([^}]+)\}"));
-        Assert.Equal(9, Count(source, @"CommandParameter=""([^""]+)"""));
+        Assert.Equal(11, Count(source, @"CommandParameter=""([^""]+)"""));
     }
 
     [Fact]

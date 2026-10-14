@@ -37,6 +37,15 @@ public class NetworkSettings
 
     public int MaxCurrentDownloads { get; set; } = -1;
     public int Split { get; set; } = -1;
+
+    // Keep the persisted aria2 keys so an existing user's limits migrate to the
+    // built-in downloader without maintaining a second settings owner.
+    [JsonProperty("AriaMaxOverallDownloadLimit")]
+    public int MaxOverallDownloadLimit { get; set; } = -1;
+
+    [JsonProperty("AriaMaxDownloadLimit")]
+    public int MaxDownloadLimit { get; set; } = -1;
+
     public AllowStatus IsHttpProxy { get; set; } = AllowStatus.None;
     public string? HttpProxy { get; set; }
     public int HttpProxyListenPort { get; set; } = -1;

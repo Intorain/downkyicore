@@ -553,6 +553,10 @@ public sealed class SettingsComboBoxLayoutTests
         var maxCurrentDownloads = Assert.IsType<ComboBox>(
             view.FindControl<ComboBox>("NameMaxCurrentDownloads"));
         var splits = Assert.IsType<ComboBox>(view.FindControl<ComboBox>("NameSplits"));
+        var overallLimit = Assert.IsType<TextBox>(
+            view.FindControl<TextBox>("NameMaxOverallDownloadLimit"));
+        var transferLimit = Assert.IsType<TextBox>(
+            view.FindControl<TextBox>("NameMaxDownloadLimit"));
         var proxy = Assert.IsType<CheckBox>(view.FindControl<CheckBox>("NameIsHttpProxy"));
         var window = new Window
         {
@@ -569,11 +573,15 @@ public sealed class SettingsComboBoxLayoutTests
             var parametersOrigin = Assert.NotNull(parametersTitle.TranslatePoint(default, window));
             var maxOrigin = Assert.NotNull(maxCurrentDownloads.TranslatePoint(default, window));
             var splitOrigin = Assert.NotNull(splits.TranslatePoint(default, window));
+            var overallLimitOrigin = Assert.NotNull(overallLimit.TranslatePoint(default, window));
+            var transferLimitOrigin = Assert.NotNull(transferLimit.TranslatePoint(default, window));
             var proxyOrigin = Assert.NotNull(proxy.TranslatePoint(default, window));
 
             Assert.Equal(maxOrigin.Y, splitOrigin.Y, 0.5);
+            Assert.Equal(overallLimitOrigin.Y, transferLimitOrigin.Y, 0.5);
             Assert.True(maxOrigin.Y > parametersOrigin.Y + parametersTitle.Bounds.Height);
-            Assert.True(proxyOrigin.Y > maxOrigin.Y + maxCurrentDownloads.Bounds.Height);
+            Assert.True(overallLimitOrigin.Y > maxOrigin.Y + maxCurrentDownloads.Bounds.Height);
+            Assert.True(proxyOrigin.Y > overallLimitOrigin.Y + overallLimit.Bounds.Height);
             Assert.True(maxCurrentDownloads.Bounds.Width >= 180);
             Assert.True(splits.Bounds.Width >= 180);
             Assert.Equal(

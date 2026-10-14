@@ -20,6 +20,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
     private readonly ISettingsStore _settingsStore;
     private readonly DownloadDiagnosticLogger _diagnosticLogger;
     private readonly ILogger<BuiltinTransferBackend> _logger;
+    private readonly DownloadBandwidthLimiter _bandwidthLimiter;
 
     public BuiltinTransferBackend(
         ISettingsStore settingsStore,
@@ -29,6 +30,15 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _diagnosticLogger = diagnosticLogger ?? throw new ArgumentNullException(nameof(diagnosticLogger));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _bandwidthLimiter = new DownloadBandwidthLimiter(
+            () =>
+            {
+                var network = _settingsStore.Current.Network;
+                return DownloadBandwidthLimits.FromKilobytesPerSecond(
+                    network.MaxOverallDownloadLimit,
+                    network.MaxDownloadLimit);
+            },
+            TimeProvider.System);
     }
 
     public string Name => "built-in";
@@ -139,6 +149,7 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 network);
 
             using var handler = CreateHttpHandler(network, proxyAddress);
+            var bandwidthLease = _bandwidthLimiter.CreateTransferLease();
             using var downloader = new BuiltinRangeDownloader(
                 handler,
                 resolvedAddress,
@@ -146,7 +157,8 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 network.Split,
                 ReportProgress,
                 _logger,
-                disposeHandler: false);
+                disposeHandler: false,
+                bandwidthLimiter: bandwidthLease);
             using var transferCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                 request.CancellationToken);
             var transferTask = downloader.DownloadAsync(

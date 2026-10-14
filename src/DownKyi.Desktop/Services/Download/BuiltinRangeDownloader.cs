@@ -43,6 +43,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     private readonly Action<long, long> _progress;
     private readonly TimeSpan _readStallTimeout;
     private readonly long _segmentSize;
+    private readonly DownloadBandwidthLimiter.TransferLease? _bandwidthLimiter;
     private readonly SemaphoreSlim _checkpointGate = new(1, 1);
     private long _lastCheckpointTimestamp;
     private bool _disposed;
@@ -56,7 +57,8 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         ILogger logger,
         long segmentSize = DefaultSegmentSize,
         TimeSpan? readStallTimeout = null,
-        bool disposeHandler = true)
+        bool disposeHandler = true,
+        DownloadBandwidthLimiter.TransferLease? bandwidthLimiter = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _address = address ?? throw new ArgumentNullException(nameof(address));
@@ -67,6 +69,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _parallelCount = parallelCount;
         _segmentSize = segmentSize;
+        _bandwidthLimiter = bandwidthLimiter;
         _readStallTimeout = readStallTimeout ?? DefaultReadStallTimeout;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
             _readStallTimeout,
@@ -502,7 +505,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         var offset = 0;
         while (offset < remoteBytes.Length)
         {
-            var read = await ReadWithStallTimeoutAsync(
+            var read = await ReadWithBandwidthLimitAsync(
                 source,
                 remoteBytes.AsMemory(offset),
                 cancellationToken).ConfigureAwait(false);
@@ -633,7 +636,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         {
             while (remaining > 0)
             {
-                var read = await ReadWithStallTimeoutAsync(
+                var read = await ReadWithBandwidthLimitAsync(
                     source,
                     buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)),
                     cancellationToken).ConfigureAwait(false);
@@ -750,6 +753,36 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             throw new TimeoutException(
                 "The media response stopped producing data.",
                 exception);
+        }
+    }
+
+    private async ValueTask<int> ReadWithBandwidthLimitAsync(
+        Stream source,
+        Memory<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        if (_bandwidthLimiter == null)
+        {
+            return await ReadWithStallTimeoutAsync(source, buffer, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var permit = await _bandwidthLimiter
+            .AcquireAsync(buffer.Length, cancellationToken)
+            .ConfigureAwait(false);
+        var unusedBytes = permit.ByteCount;
+        try
+        {
+            var read = await ReadWithStallTimeoutAsync(
+                source,
+                buffer[..permit.ByteCount],
+                cancellationToken).ConfigureAwait(false);
+            unusedBytes -= read;
+            return read;
+        }
+        finally
+        {
+            _bandwidthLimiter.ReturnUnused(permit, unusedBytes);
         }
     }
 

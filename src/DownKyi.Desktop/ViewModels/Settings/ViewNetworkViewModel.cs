@@ -58,6 +58,10 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         // builtin最大线程数
         SelectedSplit = network.Split;
 
+        MaxOverallDownloadLimit = network.MaxOverallDownloadLimit;
+
+        MaxDownloadLimit = network.MaxDownloadLimit;
+
         // 是否开启builtin http代理
         var isHttpProxy = network.IsHttpProxy;
         IsHttpProxy = isHttpProxy == AllowStatus.Yes;
@@ -177,6 +181,43 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         ApplyNetwork(
             settings => settings with { Split = SelectedSplit },
             settings => settings.Split == SelectedSplit);
+    }
+
+    private RelayCommand<string>? _maxOverallDownloadLimitCommand;
+
+    public RelayCommand<string> MaxOverallDownloadLimitCommand =>
+        _maxOverallDownloadLimitCommand ??= RequiredParameterCommand.Create<string>(
+            ExecuteMaxOverallDownloadLimitCommand);
+
+    private void ExecuteMaxOverallDownloadLimitCommand(string parameter)
+    {
+        MaxOverallDownloadLimit = (int)Math.Clamp(
+            Number.GetInt(parameter),
+            0,
+            int.MaxValue);
+        ApplyNetwork(
+            settings => settings with
+            {
+                MaxOverallDownloadLimit = MaxOverallDownloadLimit
+            },
+            settings => settings.MaxOverallDownloadLimit == MaxOverallDownloadLimit);
+    }
+
+    private RelayCommand<string>? _maxDownloadLimitCommand;
+
+    public RelayCommand<string> MaxDownloadLimitCommand =>
+        _maxDownloadLimitCommand ??= RequiredParameterCommand.Create<string>(
+            ExecuteMaxDownloadLimitCommand);
+
+    private void ExecuteMaxDownloadLimitCommand(string parameter)
+    {
+        MaxDownloadLimit = (int)Math.Clamp(
+            Number.GetInt(parameter),
+            0,
+            int.MaxValue);
+        ApplyNetwork(
+            settings => settings with { MaxDownloadLimit = MaxDownloadLimit },
+            settings => settings.MaxDownloadLimit == MaxDownloadLimit);
     }
 
     // 是否开启builtin http代理事件

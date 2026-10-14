@@ -101,6 +101,52 @@ public sealed class BuiltinRangeDownloaderTests
     }
 
     [Fact]
+    public async Task DownloadBodyReadsUseTheSharedBandwidthLease()
+    {
+        var payload = Enumerable.Range(0, 2048)
+            .Select(static value => checked((byte)(value % 251)))
+            .ToArray();
+        using var handler = new RangePayloadHandler(payload);
+        var clock = new AdvancingTimeProvider(DateTimeOffset.UnixEpoch);
+        var delays = new List<TimeSpan>();
+        var limiter = new DownloadBandwidthLimiter(
+            static () => new DownloadBandwidthLimits(0, 10 * 1024),
+            clock,
+            (delay, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                delays.Add(delay);
+                clock.Advance(delay);
+                return Task.CompletedTask;
+            });
+        var directory = CreateTemporaryDirectory("range-bandwidth-limit");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: payload.Length,
+                bandwidthLimiter: limiter.CreateTransferLease());
+
+            var result = await downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(payload.Length, result.ReceivedBytes);
+            Assert.Equal(TimeSpan.FromMilliseconds(100), Assert.Single(delays));
+            Assert.Equal(payload, await File.ReadAllBytesAsync(
+                target,
+                TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task MultiRangeCheckpointIsRejectedWhenServerStopsSupportingRanges()
     {
         var payload = CreatePayload(12);
@@ -745,7 +791,8 @@ public sealed class BuiltinRangeDownloaderTests
         int parallelCount,
         long segmentSize,
         TimeSpan? readStallTimeout = null,
-        Uri? address = null)
+        Uri? address = null,
+        DownloadBandwidthLimiter.TransferLease? bandwidthLimiter = null)
     {
         return new BuiltinRangeDownloader(
             handler,
@@ -759,11 +806,30 @@ public sealed class BuiltinRangeDownloaderTests
             NullLogger.Instance,
             segmentSize,
             readStallTimeout,
-            disposeHandler: false);
+            disposeHandler: false,
+            bandwidthLimiter: bandwidthLimiter);
     }
 
     private static byte[] CreatePayload(int length) =>
         Enumerable.Range(0, length).Select(static value => checked((byte)value)).ToArray();
+
+    private sealed class AdvancingTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        private DateTimeOffset _utcNow = utcNow;
+        private long _timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public override long GetTimestamp() => _timestamp;
+
+        public void Advance(TimeSpan elapsed)
+        {
+            _utcNow += elapsed;
+            _timestamp += elapsed.Ticks;
+        }
+    }
 
     private static readonly Uri MediaAddress = new("https://media.invalid/file");
 

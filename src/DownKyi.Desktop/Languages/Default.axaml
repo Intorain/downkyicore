@@ -247,6 +247,10 @@
     <system:String x:Key="HttpProxyPort">端口：</system:String>
     <system:String x:Key="MaxCurrentDownloads">同时下载数：</system:String>
     <system:String x:Key="Split">最大线程数：</system:String>
+    <system:String x:Key="MaxOverallDownloadLimit">全局下载速度限制</system:String>
+    <system:String x:Key="MaxOverallDownloadLimitDescription">限制所有下载任务的合计速度</system:String>
+    <system:String x:Key="MaxDownloadLimit">单任务下载速度限制</system:String>
+    <system:String x:Key="MaxDownloadLimitDescription">限制每一个下载任务的速度</system:String>
     <system:String x:Key="Video">视频</system:String>
     <system:String x:Key="VideoDownloadPreferences">下载偏好</system:String>
     <system:String x:Key="VideoPostProcessing">下载后处理</system:String>

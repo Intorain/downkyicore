@@ -53,6 +53,8 @@ public sealed record NetworkApplicationSettings(
     string CustomNetworkProxy,
     int MaxCurrentDownloads,
     int Split,
+    int MaxOverallDownloadLimit,
+    int MaxDownloadLimit,
     AllowStatus IsHttpProxy,
     string HttpProxy,
     int HttpProxyListenPort);
@@ -161,6 +163,8 @@ internal static class ApplicationSettingsValidator
             CustomNetworkProxy = customProxy,
             MaxCurrentDownloads = Range(settings.Network.MaxCurrentDownloads, 1, 16, 3, "Network.MaxCurrentDownloads", corrections),
             Split = Range(settings.Network.Split, 1, 32, 8, "Network.Split", corrections),
+            MaxOverallDownloadLimit = NonNegative(settings.Network.MaxOverallDownloadLimit, "Network.MaxOverallDownloadLimit", corrections),
+            MaxDownloadLimit = NonNegative(settings.Network.MaxDownloadLimit, "Network.MaxDownloadLimit", corrections),
             IsHttpProxy = AllowValue(settings.Network.IsHttpProxy, AllowStatus.No, "Network.IsHttpProxy", corrections),
             HttpProxy = settings.Network.HttpProxy ?? string.Empty,
             HttpProxyListenPort = Range(settings.Network.HttpProxyListenPort, 0, 65535, 0, "Network.HttpProxyListenPort", corrections)

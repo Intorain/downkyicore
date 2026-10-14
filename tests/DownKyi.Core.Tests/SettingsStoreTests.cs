@@ -233,6 +233,50 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public async Task LegacyAriaRateLimitsAreOwnedByBuiltInDownloaderSettings()
+    {
+        const string legacySettings =
+            """{"Network":{"AriaMaxOverallDownloadLimit":321,"AriaMaxDownloadLimit":123}}""";
+        var directory = CreateTestDirectory();
+        var settingsPath = Path.Combine(directory, "settings.json");
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                settingsPath,
+                legacySettings,
+                TestContext.Current.CancellationToken);
+            using var store = new SettingsStore(settingsPath);
+
+            Assert.Equal(321, store.Current.Network.MaxOverallDownloadLimit);
+            Assert.Equal(123, store.Current.Network.MaxDownloadLimit);
+
+            store.Update(settings => settings with
+            {
+                Network = settings.Network with
+                {
+                    MaxOverallDownloadLimit = 654,
+                    MaxDownloadLimit = 456
+                }
+            });
+            await store.FlushAsync(TestContext.Current.CancellationToken);
+
+            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
+                settingsPath,
+                TestContext.Current.CancellationToken));
+            var network = document.RootElement.GetProperty("Network");
+            Assert.Equal(654, network.GetProperty("AriaMaxOverallDownloadLimit").GetInt32());
+            Assert.Equal(456, network.GetProperty("AriaMaxDownloadLimit").GetInt32());
+            Assert.False(network.TryGetProperty("MaxOverallDownloadLimit", out _));
+            Assert.False(network.TryGetProperty("MaxDownloadLimit", out _));
+        }
+        finally
+        {
+            DeleteDirectory(directory);
+        }
+    }
+
+    [Fact]
     public async Task InvalidSettingsArePreservedBeforeDefaultsAreWritten()
     {
         const string invalidSettings = "not-json-or-legacy-settings";

@@ -72,6 +72,22 @@ internal partial class ViewNetworkViewModel
         set => SetProperty(ref _selectedSplit, value);
     }
 
+    private int _maxOverallDownloadLimit;
+
+    public int MaxOverallDownloadLimit
+    {
+        get => _maxOverallDownloadLimit;
+        set => SetProperty(ref _maxOverallDownloadLimit, value);
+    }
+
+    private int _maxDownloadLimit;
+
+    public int MaxDownloadLimit
+    {
+        get => _maxDownloadLimit;
+        set => SetProperty(ref _maxDownloadLimit, value);
+    }
+
     private bool _isHttpProxy;
 
     public bool IsHttpProxy

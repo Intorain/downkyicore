@@ -37,7 +37,9 @@ internal sealed class DownloadDiagnosticLogger
             $"highSpeed={IsHighSpeedEnabled(settings)}; " +
             $"urlCount={urlCount}; " +
             $"chunkCount={chunkCount}; " +
-            $"parallelCount={parallelCount}");
+            $"parallelCount={parallelCount}; " +
+            $"globalLimit={settings.MaxOverallDownloadLimit}KB/s; " +
+            $"taskLimit={settings.MaxDownloadLimit}KB/s");
     }
 
     public void LogSpeed(string source, string taskId, long completedLength, long totalLength, long bytesPerSecond)
