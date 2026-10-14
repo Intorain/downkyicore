@@ -113,6 +113,7 @@ public sealed class ContentDownloadCoordinatorTests
         Assert.Equal(1, session.DirectorySelectionCount);
         Assert.Equal(2, session.PrepareCount);
         Assert.Equal(2, session.AddCount);
+        Assert.Equal(2, session.PrepareCountWhenFirstAdded);
         Assert.Equal(
             [DownloadInfoKind.Video, DownloadInfoKind.Bangumi],
             infoServiceFactory.CreatedKinds);
@@ -178,7 +179,7 @@ public sealed class ContentDownloadCoordinatorTests
     [Theory]
     [InlineData(nameof(VideoInfo.VideoViewInfoAsync), -101)]
     [InlineData("OtherOperation", 62002)]
-    public async Task OtherBilibiliApiFailuresStillStopTheBatch(string operation, int code)
+    public async Task OtherBilibiliApiFailuresStopTheBatchBeforeQueueMutation(string operation, int code)
     {
         const string failingSource = "BV1failure";
         var session = new RecordingSession(@"D:\Downloads");
@@ -202,7 +203,7 @@ public sealed class ContentDownloadCoordinatorTests
 
         Assert.Equal(code, exception.Code);
         Assert.Equal(1, session.PrepareCount);
-        Assert.Equal(1, session.AddCount);
+        Assert.Equal(0, session.AddCount);
         Assert.Equal(
             ["BV17x411w7KC", failingSource],
             infoServiceFactory.CreatedSources);
@@ -277,7 +278,7 @@ public sealed class ContentDownloadCoordinatorTests
             cancellation.Token));
 
         Assert.Equal(1, session.AddCount);
-        Assert.Equal(1, session.PrepareCount);
+        Assert.Equal(2, session.PrepareCount);
     }
 
     private sealed class RecordingFactory(IAddToDownloadSession session) : IAddToDownloadServiceFactory
@@ -308,6 +309,8 @@ public sealed class ContentDownloadCoordinatorTests
         public int PrepareCount { get; private set; }
 
         public int AddCount { get; private set; }
+
+        public int? PrepareCountWhenFirstAdded { get; private set; }
 
         public Task<DownloadAdmissionOutcome> EnsureAdmissionAsync(
             CancellationToken cancellationToken = default)
@@ -370,6 +373,7 @@ public sealed class ContentDownloadCoordinatorTests
             cancellationToken.ThrowIfCancellationRequested();
             Assert.Equal(directory, selectedDirectory);
             Assert.NotNull(finalizedDownload);
+            PrepareCountWhenFirstAdded ??= PrepareCount;
             AddCount++;
             afterAdd?.Invoke(AddCount);
             return Task.FromResult(DownloadAddResult.FromCounts(

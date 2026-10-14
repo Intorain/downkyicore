@@ -472,6 +472,13 @@
     <system:String x:Key="ApplyToAllSameContentConflict">应用到具有相同冲突的所有页面</system:String>
     <system:String x:Key="ApplyToAllQualitySubstitution">一鍵確定</system:String>
     <system:String x:Key="ApplyToAllQualitySubstitutionExplanation">「一鍵確定」表示對本次批次中的每一集，分別使用該集實際可取得、最接近原設定的替代品質。&#x000A;&#x000A;不同集數可能使用不同畫質或音質，不會強制全部使用相同品質，也不會增加原本未勾選的下載內容。&#x000A;&#x000A;使用者仍可選擇跳過下載。</system:String>
+    <system:String x:Key="DownloadQualityBatchTitle">下載品質需要確認</system:String>
+    <system:String x:Key="DownloadQualityBatchMessage">本次下載清單中有 {0} 部影片無法取得偏好品質。確認後會依下列實際品質下載。</system:String>
+    <system:String x:Key="DownloadQualityBatchGroup">{0}（{1} 部）</system:String>
+    <system:String x:Key="DownloadQualityBatchAffectedItems">查看受影響的 {0} 部影片</system:String>
+    <system:String x:Key="DownloadQualityBatchSettingsHint">若經常出現此提醒，可到「設定 → 影片」調整優先下載畫質與音質。</system:String>
+    <system:String x:Key="UseAvailableQualityBatch">依清單品質下載（{0} 部）</system:String>
+    <system:String x:Key="SkipQualityBatch">略過這 {0} 部</system:String>
     
     
     <!-- CustomControl -->

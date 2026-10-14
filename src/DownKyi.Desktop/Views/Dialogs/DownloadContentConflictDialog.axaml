@@ -16,36 +16,106 @@
             </Grid>
 
             <StackPanel Grid.Row="1"
-                        MinWidth="420"
-                        MaxWidth="620"
+                        MinWidth="520"
+                        MaxWidth="720"
                         Margin="24,20"
-                        Spacing="18">
+                        Spacing="16">
                 <TextBlock Foreground="{DynamicResource BrushTextDark}"
+                           FontSize="14"
                            Text="{Binding Message}"
                            TextWrapping="Wrap" />
                 <TextBlock Foreground="{DynamicResource BrushTextDark}"
-                           IsVisible="{Binding HasQualitySubstitution}"
+                           IsVisible="{Binding HasSingleQualitySubstitution}"
                            Text="{Binding QualitySubstitution}"
+                           TextWrapping="Wrap" />
+                <Border Padding="14,12"
+                        Background="{DynamicResource BrushBackgroundGreyTranslucent}"
+                        BorderBrush="{DynamicResource BrushWindowBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        IsVisible="{Binding IsQualitySubstitutionBatch}">
+                    <ItemsControl x:Name="QualitySubstitutionGroupsList"
+                                  ItemsSource="{Binding QualitySubstitutionGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="0,3"
+                                           Foreground="{DynamicResource BrushTextDark}"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding}"
+                                           TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+                <Expander x:Name="AffectedQualityItemsExpander"
+                          Header="{Binding AffectedItemsHeader}"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch"
+                          IsVisible="{Binding IsQualitySubstitutionBatch}">
+                    <Border Margin="0,8,0,0"
+                            BorderBrush="{DynamicResource BrushWindowBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <ScrollViewer MaxHeight="280"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="AffectedQualityItemsList"
+                                          ItemsSource="{Binding QualitySubstitutionItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vmd:DownloadQualitySubstitutionItemViewModel">
+                                        <Border Padding="12,10"
+                                                BorderBrush="{DynamicResource BrushWindowBorder}"
+                                                BorderThickness="0,0,0,1">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Foreground="{DynamicResource BrushTextDark}"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding PageName}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Foreground="{DynamicResource BrushTextGrey}"
+                                                           FontSize="12"
+                                                           Text="{Binding Description}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Expander>
+                <TextBlock Foreground="{DynamicResource BrushTextGrey}"
+                           FontSize="12"
+                           IsVisible="{Binding IsQualitySubstitutionBatch}"
+                           Text="{Binding SettingsHint}"
                            TextWrapping="Wrap" />
                 <CheckBox Content="{Binding ApplyToAllText}"
                           Foreground="{DynamicResource BrushTextDark}"
+                          IsVisible="{Binding ShowApplyToAll}"
                           IsChecked="{Binding ApplyToAll, Mode=TwoWay}" />
                 <TextBlock MaxWidth="560"
                            Foreground="{DynamicResource BrushTextDark}"
-                           IsVisible="{Binding HasQualitySubstitution}"
+                           IsVisible="{Binding HasSingleQualitySubstitution}"
                            Text="{DynamicResource ApplyToAllQualitySubstitutionExplanation}"
                            TextWrapping="Wrap" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
                     <Button x:Name="UseAvailableContentButton"
                             Grid.Column="0"
                             Command="{Binding UseAvailableContentCommand}"
-                            Content="{Binding UseAvailableContent}"
-                            Theme="{StaticResource BtnPrimaryStyle}" />
+                            MinHeight="40"
+                            Theme="{StaticResource BtnPrimaryStyle}">
+                        <TextBlock Text="{Binding UseAvailableContent}"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Button>
                     <Button x:Name="SkipDownloadPageButton"
                             Grid.Column="1"
                             Command="{Binding SkipPageCommand}"
-                            Content="{DynamicResource SkipDownloadPage}"
-                            Theme="{StaticResource BtnBorderStyle}" />
+                            MinHeight="40"
+                            Theme="{StaticResource BtnBorderStyle}">
+                        <TextBlock Text="{Binding SkipPageText}"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Button>
                 </Grid>
             </StackPanel>
         </Grid>
