@@ -138,16 +138,6 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
             var headers = resolution.Headers
                 ?? throw new InvalidOperationException(
                     "The accepted built-in download headers are missing.");
-            _diagnosticLogger.LogBuiltInTaskStart(
-                Name,
-                request.FileName,
-                request.Urls.Count,
-                BuiltinRangeDownloader.CalculateAdaptiveSegmentCount(
-                    request.ExpectedBytes,
-                    network.Split),
-                network.Split,
-                network);
-
             using var handler = CreateHttpHandler(network, proxyAddress);
             var bandwidthLease = _bandwidthLimiter.CreateTransferLease();
             using var downloader = new BuiltinRangeDownloader(
@@ -158,7 +148,14 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 ReportProgress,
                 _logger,
                 disposeHandler: false,
-                bandwidthLimiter: bandwidthLease);
+                bandwidthLimiter: bandwidthLease,
+                planCreated: chunkCount => _diagnosticLogger.LogBuiltInTaskStart(
+                    Name,
+                    request.FileName,
+                    request.Urls.Count,
+                    chunkCount,
+                    network.Split,
+                    network));
             using var transferCancellation = CancellationTokenSource.CreateLinkedTokenSource(
                 request.CancellationToken);
             var transferTask = downloader.DownloadAsync(

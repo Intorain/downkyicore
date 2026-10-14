@@ -38,6 +38,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     private readonly HttpMessageInvoker _http;
     private readonly DownloadRequestHeaders _headers;
     private readonly ILogger _logger;
+    private readonly Action<int>? _planCreated;
     private readonly int _parallelCount;
     private readonly Action<long, long> _progress;
     private readonly TimeSpan _readStallTimeout;
@@ -57,7 +58,8 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         long segmentSize = DefaultSegmentSize,
         TimeSpan? readStallTimeout = null,
         bool disposeHandler = true,
-        DownloadBandwidthLimiter.TransferLease? bandwidthLimiter = null)
+        DownloadBandwidthLimiter.TransferLease? bandwidthLimiter = null,
+        Action<int>? planCreated = null)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _address = address ?? throw new ArgumentNullException(nameof(address));
@@ -66,6 +68,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
         _progress = progress ?? throw new ArgumentNullException(nameof(progress));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _planCreated = planCreated;
         _parallelCount = parallelCount;
         _segmentSize = segmentSize;
         _bandwidthLimiter = bandwidthLimiter;
@@ -107,6 +110,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             probe.SupportsRanges,
             probe.ResourceIdentity,
             cancellationToken).ConfigureAwait(false);
+        _planCreated?.Invoke(state.Chunks.Length);
         var receivedBytes = state.Chunks.Sum(static chunk => chunk.Position);
         _progress(receivedBytes, probe.TotalBytes);
 
@@ -410,7 +414,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             totalBytes,
             _parallelCount,
             _segmentSize);
-        var chunks = supportsRanges
+        var chunks = supportsRanges && resourceIdentity.HasContinuityValidator
             ? CreateChunks(totalBytes, adaptiveSegmentSize).ToArray()
             : [new BuiltinRangeChunk(0, totalBytes - 1, position: 0)];
         var stream = new FileStream(
@@ -1078,6 +1082,8 @@ internal sealed record BuiltinRangeResourceIdentity(
         TimeSpan.FromSeconds(60);
 
     public string? IfRangeValue => StrongETag ?? LastModified?.ToString("R");
+
+    public bool HasContinuityValidator => !string.IsNullOrWhiteSpace(IfRangeValue);
 
     public static BuiltinRangeResourceIdentity Create(
         Uri address,
