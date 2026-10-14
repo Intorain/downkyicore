@@ -33,6 +33,14 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         set => SetProperty(ref _percent, value);
     }
 
+    private bool _isProgressVisible;
+
+    public bool IsProgressVisible
+    {
+        get => _isProgressVisible;
+        private set => SetProperty(ref _isProgressVisible, value);
+    }
+
     private string? _message;
 
     public string? Message
@@ -104,6 +112,8 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         }
 
         _stopTask = null;
+        Percent = 0;
+        IsProgressVisible = false;
         IsMigrationActive = true;
         CancelConfirmationVisible = false;
         _upgradeCancellation = new CancellationTokenSource();
@@ -146,6 +156,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
                 case LegacyUpgradeOutcome.Completed:
                     FinishMigrationActivity();
                     Percent = 100;
+                    IsProgressVisible = true;
                     Message = "下载信息迁移完成";
                     RestartVisible = true;
                     break;
@@ -193,6 +204,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         if (progress.Percent is { } percent)
         {
             Percent = percent;
+            IsProgressVisible = true;
         }
     }
 
