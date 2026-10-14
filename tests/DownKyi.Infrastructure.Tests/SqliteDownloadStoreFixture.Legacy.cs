@@ -29,6 +29,97 @@ internal sealed partial class SqliteDownloadStoreFixture
             4).ConfigureAwait(false);
     }
 
+    internal async Task CreateArchiveV1024DatabaseAsync()
+    {
+        // archive/v1.0.24 commit 0ee21336bab983668396c61d435a376f5eb07f71
+        // created this unversioned relational schema in DownloadStorageService.EnsureSchema.
+        using var connection = await OpenNewDatabaseAsync().ConfigureAwait(false);
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            PRAGMA foreign_keys = ON;
+
+            CREATE TABLE IF NOT EXISTS download_base (
+                id                    TEXT PRIMARY KEY,
+                need_download_content TEXT NOT NULL DEFAULT '{}',
+                bvid                  TEXT NOT NULL DEFAULT '',
+                avid                  INTEGER NOT NULL DEFAULT 0,
+                cid                   INTEGER NOT NULL DEFAULT 0,
+                episode_id            INTEGER NOT NULL DEFAULT 0,
+                cover_url             TEXT NOT NULL DEFAULT '',
+                page_cover_url        TEXT NOT NULL DEFAULT '',
+                zone_id               INTEGER NOT NULL DEFAULT 0,
+                [order]               INTEGER NOT NULL DEFAULT 0,
+                main_title            TEXT NOT NULL DEFAULT '',
+                name                  TEXT NOT NULL DEFAULT '',
+                duration              TEXT NOT NULL DEFAULT '',
+                video_codec_name      TEXT NOT NULL DEFAULT '',
+                resolution            TEXT NOT NULL DEFAULT '{}',
+                audio_codec           TEXT,
+                file_path             TEXT NOT NULL DEFAULT '',
+                file_size             TEXT,
+                page                  INTEGER NOT NULL DEFAULT 1
+            );
+
+            CREATE TABLE IF NOT EXISTS downloading (
+                id                    TEXT PRIMARY KEY REFERENCES download_base(id) ON DELETE CASCADE,
+                gid                   TEXT,
+                download_files        TEXT NOT NULL DEFAULT '{}',
+                downloaded_files      TEXT NOT NULL DEFAULT '[]',
+                play_stream_type      INTEGER NOT NULL DEFAULT 0,
+                download_status       INTEGER NOT NULL DEFAULT 0,
+                download_content      TEXT,
+                download_status_title TEXT,
+                progress              REAL NOT NULL DEFAULT 0,
+                downloading_file_size TEXT,
+                max_speed             INTEGER NOT NULL DEFAULT 0,
+                speed_display         TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS downloaded (
+                id                    TEXT PRIMARY KEY REFERENCES download_base(id) ON DELETE CASCADE,
+                max_speed_display     TEXT,
+                finished_timestamp    INTEGER NOT NULL DEFAULT 0,
+                finished_time         TEXT NOT NULL DEFAULT ''
+            );
+
+            INSERT INTO download_base
+                (id, need_download_content, bvid, avid, cid, episode_id,
+                 cover_url, page_cover_url, zone_id, [order], main_title, name,
+                 duration, video_codec_name, resolution, audio_codec,
+                 file_path, file_size, page)
+            VALUES
+                ('v1024-active',
+                 '{"downloadAudio":true,"downloadVideo":true,"downloadDanmaku":true,"downloadSubtitle":true,"downloadCover":true}',
+                 'BV1V1024ACTIVE', 1024, 10241, 0,
+                 'active-cover', 'active-page-cover', 17, 2, 'v1.0.24', 'Active',
+                 '00:42', 'AVC', '{"Id":80,"Name":"1080P"}',
+                 '{"Id":30280,"Name":"192K"}', @active_path, '1.25 GiB', 2),
+                ('v1024-history',
+                 '{"downloadAudio":true,"downloadVideo":true,"downloadDanmaku":false,"downloadSubtitle":false,"downloadCover":true}',
+                 'BV1V1024HISTORY', 1025, 10242, 0,
+                 'history-cover', 'history-page-cover', 24, 1, 'v1.0.24', 'History',
+                 '01:23', 'HEVC', '{"Id":120,"Name":"4K"}',
+                 '{"Id":30280,"Name":"192K"}', @history_path, '2.5 GiB', 1);
+
+            INSERT INTO downloading
+                (id, gid, download_files, downloaded_files, play_stream_type,
+                 download_status, download_content, download_status_title,
+                 progress, downloading_file_size, max_speed, speed_display)
+            VALUES
+                ('v1024-active', 'v1024-aria-gid',
+                 '{"video":"video.m4s","audio":"audio.m4s"}', '["cover"]', 1,
+                 3, 'video', 'Paused', 42.5, '425 MiB / 1 GiB', 4000000, '24 Mbps');
+
+            INSERT INTO downloaded
+                (id, max_speed_display, finished_timestamp, finished_time)
+            VALUES
+                ('v1024-history', '32 Mbps', 1735689600, '2025-01-01 00:00:00');
+            """;
+        command.Parameters.AddWithValue("@active_path", Path.Combine(_directory, "v1024-active"));
+        command.Parameters.AddWithValue("@history_path", Path.Combine(_directory, "v1024-history"));
+        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken).ConfigureAwait(false);
+    }
+
     internal async Task SimulateLegacyVersionWriteAsync()
     {
         using var connection = await OpenConnectionAsync(readOnly: false).ConfigureAwait(false);

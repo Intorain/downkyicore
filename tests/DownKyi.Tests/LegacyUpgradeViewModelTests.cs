@@ -63,6 +63,51 @@ public sealed class LegacyUpgradeViewModelTests
     }
 
     [Fact]
+    public async Task ProgressBarRemainsHiddenUntilMigrationReportsDeterminateProgress()
+    {
+        var coordinator = new BlockingLegacyUpgradeCoordinator();
+        var viewModel = CreateViewModel(coordinator);
+        await using var viewModelScope = viewModel.ConfigureAwait(true);
+        var unknownProgressApplied = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var determinateProgressApplied = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ViewUpgradingDialogViewModel.Message)
+                && viewModel.Message == "正在讀取舊資料")
+            {
+                unknownProgressApplied.TrySetResult();
+            }
+
+            if (args.PropertyName == nameof(ViewUpgradingDialogViewModel.IsProgressVisible)
+                && viewModel.IsProgressVisible)
+            {
+                determinateProgressApplied.TrySetResult();
+            }
+        };
+
+        viewModel.OnDialogOpened(new AppDialogRequest(AppDialog.LegacyUpgrade));
+        await coordinator.Started.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(viewModel.IsProgressVisible);
+        coordinator.ReportProgress(new LegacyUpgradeProgress("正在讀取舊資料"));
+        await unknownProgressApplied.Task
+            .WaitAsync(TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        Assert.False(viewModel.IsProgressVisible);
+
+        coordinator.ReportProgress(new LegacyUpgradeProgress("正在遷移下載記錄（37/100）", 37));
+        await determinateProgressApplied.Task
+            .WaitAsync(TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        Assert.Equal(37, viewModel.Percent);
+        Assert.True(viewModel.IsProgressVisible);
+
+        await StopMigrationAsync(viewModel, coordinator).ConfigureAwait(true);
+    }
+
+    [Fact]
     public async Task ConfirmedCancellationAwaitsTerminationBeforeRequestingClose()
     {
         var coordinator = new BlockingLegacyUpgradeCoordinator();
@@ -123,6 +168,7 @@ public sealed class LegacyUpgradeViewModelTests
         viewModel.OnDialogOpened(new AppDialogRequest(AppDialog.LegacyUpgrade));
 
         Assert.Equal(100, viewModel.Percent);
+        Assert.True(viewModel.IsProgressVisible);
         Assert.True(viewModel.RestartVisible);
         Assert.False(viewModel.IsMigrationActive);
 
@@ -196,6 +242,8 @@ public sealed class LegacyUpgradeViewModelTests
 
     private sealed class BlockingLegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
     {
+        private IProgress<LegacyUpgradeProgress>? _progress;
+
         public bool IsUpgradeRequired() => true;
 
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -210,6 +258,7 @@ public sealed class LegacyUpgradeViewModelTests
             IProgress<LegacyUpgradeProgress> progress,
             CancellationToken cancellationToken)
         {
+            _progress = progress;
             Started.TrySetResult();
             try
             {
@@ -223,6 +272,12 @@ public sealed class LegacyUpgradeViewModelTests
             }
 
             throw new InvalidOperationException("The blocking migration unexpectedly completed.");
+        }
+
+        public void ReportProgress(LegacyUpgradeProgress progress)
+        {
+            (_progress ?? throw new InvalidOperationException("Migration has not started."))
+                .Report(progress);
         }
     }
 

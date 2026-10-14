@@ -216,6 +216,63 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task InitializeUpgradesArchiveVersion1024RelationalDatabaseToCurrent()
+    {
+        await _fixture.CreateArchiveV1024DatabaseAsync();
+        using (var store = _fixture.CreateStore())
+        {
+            await store.InitializeAsync(TestContext.Current.CancellationToken);
+
+            var active = Assert.Single(await store.GetUnfinishedAsync(
+                TestContext.Current.CancellationToken));
+            Assert.Equal("v1024-active", active.Id.Value);
+            Assert.Equal(DownloadPhase.Paused, active.Phase);
+            Assert.Equal("v1024-aria-gid", active.Transfer.BackendIdentity);
+            Assert.True(active.Transfer.IsLegacyTransfer);
+            Assert.Equal(DownloadContentSelection.All, active.Plan.RequestedContent);
+            Assert.Equal("video.m4s", active.Plan.TransferFiles["video"]);
+            Assert.Equal("audio.m4s", active.Plan.TransferFiles["audio"]);
+            Assert.Equal("cover", Assert.Single(active.Transfer.CompletedFileKeys));
+            Assert.Equal(42.5, active.Progress.Percentage);
+            Assert.Equal("1080P", active.Metadata.Resolution.Name);
+            Assert.Equal("192K", active.Metadata.AudioCodec.Name);
+
+            var history = Assert.Single((await store.GetHistoryPageAsync(
+                null,
+                10,
+                TestContext.Current.CancellationToken)).Items);
+            Assert.Equal("v1024-history", history.Id.Value);
+            Assert.Equal("History", history.Name);
+            Assert.Equal(1735689600, history.FinishedTimestamp);
+            Assert.Equal("32 Mbps", history.MaximumSpeedText);
+            Assert.Null(history.RequestedContent);
+        }
+
+        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
+        Assert.False(await _fixture.TableExistsAsync("downloaded"));
+        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
+        Assert.Single(Directory.GetFiles(
+            Path.Combine(_fixture.TempDirectory, "Backup"),
+            "download.db.schema-v0-*.bak"));
+
+        using var reopened = _fixture.CreateStore();
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(
+            "v1024-active",
+            Assert.Single(await reopened.GetUnfinishedAsync(
+                TestContext.Current.CancellationToken)).Id.Value);
+        Assert.Equal(
+            "v1024-history",
+            Assert.Single((await reopened.GetHistoryPageAsync(
+                null,
+                10,
+                TestContext.Current.CancellationToken)).Items).Id.Value);
+        Assert.Single(Directory.GetFiles(
+            Path.Combine(_fixture.TempDirectory, "Backup"),
+            "download.db.schema-v0-*.bak"));
+    }
+
+    [Fact]
     public async Task InitializeRecoversCurrentSchemaAfterLegacyVersionRecreatesDownloadedTable()
     {
         var currentTask = _fixture.CreatePausedTask("current-active");
