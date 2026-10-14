@@ -404,8 +404,11 @@ public sealed class DownloadPipelineStageTests
         }
     }
 
-    [Fact]
-    public async Task ValidateStageUsesPersistedDurationWhenPlaybackWasReused()
+    [Theory]
+    [InlineData("22m35s")]
+    [InlineData("22:35")]
+    [InlineData("00:22:35")]
+    public async Task ValidateStageUsesPersistedDurationWhenPlaybackWasReused(string durationText)
     {
         var mediaFile = Path.Combine(
             Path.GetTempPath(),
@@ -420,7 +423,7 @@ public sealed class DownloadPipelineStageTests
             var context = CreateContext(
                 settings.Store.Current,
                 DownloadContentSelection.None with { Video = true },
-                durationText: "22m35s");
+                durationText: durationText);
             context.OutputMedia = mediaFile;
             context.MediaSucceeded = true;
             var validator = new StubFfmpegMediaStreamValidator();

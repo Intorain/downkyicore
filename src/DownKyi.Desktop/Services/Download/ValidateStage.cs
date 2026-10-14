@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -163,6 +164,12 @@ internal sealed class ValidateStage : IDownloadPipelineStage
             return TimeSpan.Zero;
         }
 
+        var trimmedDuration = durationText.Trim();
+        if (trimmedDuration.Contains(':', StringComparison.Ordinal))
+        {
+            return ParseColonDuration(trimmedDuration);
+        }
+
         long totalSeconds = 0;
         long component = 0;
         var hasDigits = false;
@@ -170,7 +177,7 @@ internal sealed class ValidateStage : IDownloadPipelineStage
         {
             checked
             {
-                foreach (var character in durationText.Trim())
+                foreach (var character in trimmedDuration)
                 {
                     if (char.IsAsciiDigit(character))
                     {
@@ -210,6 +217,43 @@ internal sealed class ValidateStage : IDownloadPipelineStage
         return !hasDigits
             ? CreateDurationFromSeconds(totalSeconds)
             : TimeSpan.Zero;
+    }
+
+    private static TimeSpan ParseColonDuration(string durationText)
+    {
+        var components = durationText.Split(':');
+        if (components.Length is < 2 or > 3 ||
+            components.Any(component => component.Length == 0) ||
+            !components.All(component => long.TryParse(
+                component,
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out _)))
+        {
+            return TimeSpan.Zero;
+        }
+
+        var hours = components.Length == 3
+            ? long.Parse(components[0], CultureInfo.InvariantCulture)
+            : 0;
+        var minutes = long.Parse(components[^2], CultureInfo.InvariantCulture);
+        var seconds = long.Parse(components[^1], CultureInfo.InvariantCulture);
+        if (minutes >= 60 || seconds >= 60)
+        {
+            return TimeSpan.Zero;
+        }
+
+        try
+        {
+            checked
+            {
+                return CreateDurationFromSeconds(hours * 60L * 60L + minutes * 60L + seconds);
+            }
+        }
+        catch (OverflowException)
+        {
+            return TimeSpan.Zero;
+        }
     }
 
     private static TimeSpan CreateDurationFromSeconds(long seconds) =>
