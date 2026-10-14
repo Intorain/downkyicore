@@ -473,6 +473,7 @@ public sealed class DownloadRuntimeArchitectureTests
             "DownloadArtifactsStage.cs",
             "DownloadArtifactWriter.cs",
             "MuxStage.cs",
+            "DownloadExpectedDurationResolver.cs",
             "ValidateStage.cs",
             "FinalizeStage.cs"
         ];

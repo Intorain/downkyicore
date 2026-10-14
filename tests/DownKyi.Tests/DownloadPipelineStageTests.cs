@@ -365,7 +365,85 @@ public sealed class DownloadPipelineStageTests
     }
 
     [Fact]
-    public async Task ValidateStageDoesNotRepeatMultiSegmentDurlVideoDecode()
+    public async Task ValidateStageUsesDashDurationForThreePointVideoValidation()
+    {
+        var mediaFile = Path.Combine(
+            Path.GetTempPath(),
+            $"downkyi-validated-dash-{Guid.NewGuid():N}.mp4");
+        try
+        {
+            await File.WriteAllBytesAsync(
+                mediaFile,
+                [1, 2, 3],
+                TestContext.Current.CancellationToken);
+            using var settings = new TestSettingsStore();
+            var context = CreateContext(
+                settings.Store.Current,
+                DownloadContentSelection.None with { Video = true },
+                playUrl: new PlayUrl
+                {
+                    Dash = new PlayUrlDash { Duration = 1_355 }
+                });
+            context.MediaKind = DownloadMediaKind.Dash;
+            context.OutputMedia = mediaFile;
+            context.MediaSucceeded = true;
+            var validator = new StubFfmpegMediaStreamValidator();
+
+            var result = await new ValidateStage(validator).ExecuteAsync(
+                context,
+                TestContext.Current.CancellationToken);
+
+            Assert.True(result.IsSuccess);
+            var call = Assert.Single(validator.Calls);
+            Assert.True(call.RequireVideo);
+            Assert.Equal(TimeSpan.FromSeconds(1_355), call.ExpectedVideoDuration);
+        }
+        finally
+        {
+            File.Delete(mediaFile);
+        }
+    }
+
+    [Theory]
+    [InlineData("22m35s")]
+    [InlineData("22:35")]
+    [InlineData("00:22:35")]
+    public async Task ValidateStageUsesPersistedDurationWhenPlaybackWasReused(string durationText)
+    {
+        var mediaFile = Path.Combine(
+            Path.GetTempPath(),
+            $"downkyi-validated-retry-{Guid.NewGuid():N}.mp4");
+        try
+        {
+            await File.WriteAllBytesAsync(
+                mediaFile,
+                [1, 2, 3],
+                TestContext.Current.CancellationToken);
+            using var settings = new TestSettingsStore();
+            var context = CreateContext(
+                settings.Store.Current,
+                DownloadContentSelection.None with { Video = true },
+                durationText: durationText);
+            context.OutputMedia = mediaFile;
+            context.MediaSucceeded = true;
+            var validator = new StubFfmpegMediaStreamValidator();
+
+            var result = await new ValidateStage(validator).ExecuteAsync(
+                context,
+                TestContext.Current.CancellationToken);
+
+            Assert.True(result.IsSuccess);
+            var call = Assert.Single(validator.Calls);
+            Assert.Equal(TimeSpan.FromSeconds(1_355), call.ExpectedVideoDuration);
+        }
+        finally
+        {
+            File.Delete(mediaFile);
+        }
+    }
+
+    [Fact]
+    public async Task ValidateStageRequiresThreePointVideoValidationForMultiSegmentDurl()
     {
         var mediaFile = Path.Combine(
             Path.GetTempPath(),
@@ -389,8 +467,14 @@ public sealed class DownloadPipelineStageTests
             context.MediaSucceeded = true;
             context.DurlDownloads =
             [
-                new DurlDownloadResult(new PlayUrlDurl { Order = 1 }, "segment-1", "key-1"),
-                new DurlDownloadResult(new PlayUrlDurl { Order = 2 }, "segment-2", "key-2")
+                new DurlDownloadResult(
+                    new PlayUrlDurl { Order = 1, Length = 10_000 },
+                    "segment-1",
+                    "key-1"),
+                new DurlDownloadResult(
+                    new PlayUrlDurl { Order = 2, Length = 20_000 },
+                    "segment-2",
+                    "key-2")
             ];
             var validator = new StubFfmpegMediaStreamValidator(result: false);
 
@@ -398,8 +482,12 @@ public sealed class DownloadPipelineStageTests
                 context,
                 TestContext.Current.CancellationToken);
 
-            Assert.True(result.IsSuccess);
-            Assert.Empty(validator.Calls);
+            Assert.False(result.IsSuccess);
+            Assert.Equal("download.validate.media", result.Error?.Code);
+            var call = Assert.Single(validator.Calls);
+            Assert.False(call.RequireAudio);
+            Assert.True(call.RequireVideo);
+            Assert.Equal(TimeSpan.FromSeconds(30), call.ExpectedVideoDuration);
         }
         finally
         {
@@ -408,7 +496,7 @@ public sealed class DownloadPipelineStageTests
     }
 
     [Fact]
-    public async Task ValidateStageOnlyDecodesAudioAfterMultiSegmentDurlVideoValidation()
+    public async Task ValidateStageChecksAudioAndThreeVideoPointsForMultiSegmentDurl()
     {
         var mediaFile = Path.Combine(
             Path.GetTempPath(),
@@ -433,8 +521,14 @@ public sealed class DownloadPipelineStageTests
             context.MediaSucceeded = true;
             context.DurlDownloads =
             [
-                new DurlDownloadResult(new PlayUrlDurl { Order = 1 }, "segment-1", "key-1"),
-                new DurlDownloadResult(new PlayUrlDurl { Order = 2 }, "segment-2", "key-2")
+                new DurlDownloadResult(
+                    new PlayUrlDurl { Order = 1, Length = 10_000 },
+                    "segment-1",
+                    "key-1"),
+                new DurlDownloadResult(
+                    new PlayUrlDurl { Order = 2, Length = 20_000 },
+                    "segment-2",
+                    "key-2")
             ];
             var validator = new StubFfmpegMediaStreamValidator();
 
@@ -445,7 +539,8 @@ public sealed class DownloadPipelineStageTests
             Assert.True(result.IsSuccess);
             var call = Assert.Single(validator.Calls);
             Assert.True(call.RequireAudio);
-            Assert.False(call.RequireVideo);
+            Assert.True(call.RequireVideo);
+            Assert.Equal(TimeSpan.FromSeconds(30), call.ExpectedVideoDuration);
         }
         finally
         {
@@ -1415,7 +1510,8 @@ public sealed class DownloadPipelineStageTests
         string videoCodecName = "",
         int audioCodecId = 0,
         PlayUrl? playUrl = null,
-        PlayStreamType streamType = PlayStreamType.None)
+        PlayStreamType streamType = PlayStreamType.None,
+        string durationText = "")
     {
         var taskId = new DownloadTaskId("stage-test");
         var selection = requestedContent ?? DownloadContentSelection.All;
@@ -1437,6 +1533,7 @@ public sealed class DownloadPipelineStageTests
             Id = taskId.Value,
             FilePath = Path.Combine(Path.GetTempPath(), "downkyi-stage-test"),
             NeedDownloadContent = selection,
+            Duration = durationText,
             VideoCodecName = videoCodecName
         };
         downloadBase.Resolution.Id = resolutionId;
