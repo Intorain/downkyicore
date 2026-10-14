@@ -92,12 +92,21 @@ internal sealed class DownloadTaskStateWriter
     public Task<DownloadTask> FailLegacyBackendAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken = default) =>
-        RequireAsync(_tasks.DiscardUnpublishedArtifactsAndFailAsync(
+        DiscardUnpublishedArtifactsAndFailAsync(
             taskId,
             new DownloadFailure(
                 "download.transfer.legacy-backend-removed",
                 "The unfinished legacy download was removed and marked as failed.",
                 true),
+            cancellationToken);
+
+    public Task<DownloadTask> DiscardUnpublishedArtifactsAndFailAsync(
+        DownloadTaskId taskId,
+        DownloadFailure failure,
+        CancellationToken cancellationToken = default) =>
+        RequireAsync(_tasks.DiscardUnpublishedArtifactsAndFailAsync(
+            taskId,
+            failure,
             cancellationToken));
 
     public Task<DownloadTask> CompleteAsync(

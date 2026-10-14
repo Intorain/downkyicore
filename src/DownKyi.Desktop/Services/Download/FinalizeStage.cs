@@ -45,6 +45,14 @@ internal sealed class FinalizeStage : IDownloadPipelineStage
     {
         ArgumentNullException.ThrowIfNull(context);
         context.EnsureActive(cancellationToken);
+        if (!context.ArtifactsValidated)
+        {
+            return DownloadStageResult.Failure(
+                "download.finalize.unvalidated",
+                "Download artifacts cannot be published before validation succeeds.",
+                OperationErrorKind.Validation);
+        }
+
         DownloadActionResultEvaluator.Evaluate(context);
         if (!context.ActionResults.HasSucceeded)
         {
@@ -52,6 +60,24 @@ internal sealed class FinalizeStage : IDownloadPipelineStage
                 "download.finalize.no-output",
                 "A download cannot complete without a successful requested action.",
                 OperationErrorKind.NotFound);
+        }
+
+        foreach (var artifact in context.UnpublishedArtifacts)
+        {
+            if (context.HasPublished(artifact.Key))
+            {
+                continue;
+            }
+
+            var published = await _fileService.PublishAsync(
+                context,
+                artifact.Key,
+                artifact.Value,
+                cancellationToken).ConfigureAwait(true);
+            if (!published.IsSuccess)
+            {
+                return OperationResult.Failure<DownloadStageResult>(published.Error!);
+            }
         }
 
         if (context.NeedsMedia && !context.HasPublished("media"))

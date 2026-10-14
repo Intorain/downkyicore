@@ -112,6 +112,23 @@ internal sealed class DownloadTaskFileService
         return Task.FromResult(new DownloadFileDeletionResult(attemptedCount, failedCount));
     }
 
+    public Task<DownloadFileDeletionResult> DeleteUnpublishedArtifactsAsync(
+        DownloadTaskId taskId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(taskId);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_staging == null)
+        {
+            _logger.LogWarningMessage("Task-private staging cleanup is unavailable.");
+            return Task.FromResult(new DownloadFileDeletionResult(1, 1));
+        }
+
+        return Task.FromResult(_staging.CleanupTask(taskId)
+            ? new DownloadFileDeletionResult(1, 0)
+            : new DownloadFileDeletionResult(1, 1));
+    }
+
     public async Task<OperationResult> PublishAsync(
         DownloadExecutionContext context,
         string key,
@@ -126,6 +143,14 @@ internal sealed class DownloadTaskFileService
             throw new InvalidOperationException("Task-private staging is required for publication.");
         }
 
+        if (!context.ArtifactsValidated)
+        {
+            return OperationResult.Failure(new OperationError(
+                "download.publish.unvalidated",
+                "Only validated download artifacts may be published.",
+                OperationErrorKind.Validation));
+        }
+
         var fullSource = Path.GetFullPath(stagedFile);
         var stagingPath = Path.GetFullPath(context.StagingDirectory);
         var comparison = OperatingSystem.IsWindows()
@@ -133,6 +158,14 @@ internal sealed class DownloadTaskFileService
         if (!string.Equals(Path.GetDirectoryName(fullSource), stagingPath, comparison))
         {
             throw new InvalidOperationException("Only a task-private staged file may be published.");
+        }
+
+        if (!DownloadFileIntegrity.Check(fullSource).IsUsable)
+        {
+            return OperationResult.Failure(new OperationError(
+                "download.publish.invalid",
+                "An invalid staged artifact cannot be published.",
+                OperationErrorKind.Validation));
         }
 
         var outputRoot = Path.GetDirectoryName(Path.GetFullPath(context.Input.OutputBasePath))!;

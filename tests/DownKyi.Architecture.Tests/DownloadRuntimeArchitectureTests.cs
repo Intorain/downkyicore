@@ -135,9 +135,10 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.DoesNotContain("DownloadingItem", stateSource, StringComparison.Ordinal);
         Assert.Contains("new DownloadArtifactWriter(", factorySource, StringComparison.Ordinal);
         Assert.Contains(
-            "new DownloadArtifactsStage(artifactWriter, presenter, _fileService)",
+            "new DownloadArtifactsStage(artifactWriter, presenter)",
             factorySource,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("_fileService.PublishAsync", artifactStageSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -649,6 +650,36 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.DoesNotContain("DeleteTransferFilesAsync", finalizeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CleanupStale", bootstrapSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CleanupStale", stagingSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidationOwnsThePermanentPublicationGateAndInvalidArtifactCleanup()
+    {
+        var directory = Path.Combine(
+            RepositoryRoot,
+            "src", "DownKyi.Desktop", "Services", "Download");
+        var artifactStage = File.ReadAllText(Path.Combine(directory, "DownloadArtifactsStage.cs"));
+        var validateStage = File.ReadAllText(Path.Combine(directory, "ValidateStage.cs"));
+        var finalizeStage = File.ReadAllText(Path.Combine(directory, "FinalizeStage.cs"));
+        var pipeline = File.ReadAllText(Path.Combine(directory, "DownloadPipeline.cs"));
+        var fileService = File.ReadAllText(Path.Combine(directory, "DownloadTaskFileService.cs"));
+        var factory = File.ReadAllText(Path.Combine(directory, "DownloadRuntimeFactory.cs"));
+
+        Assert.Contains("context.RecordUnpublishedArtifact", artifactStage, StringComparison.Ordinal);
+        Assert.DoesNotContain("PublishAsync(", artifactStage, StringComparison.Ordinal);
+        Assert.Contains("OperationErrorKind.Validation", validateStage, StringComparison.Ordinal);
+        Assert.Contains("context.UnpublishedArtifacts", validateStage, StringComparison.Ordinal);
+        Assert.Contains("context.MarkArtifactsValidated()", validateStage, StringComparison.Ordinal);
+        Assert.Contains("context.UnpublishedArtifacts", finalizeStage, StringComparison.Ordinal);
+        Assert.Contains("if (!context.ArtifactsValidated)", finalizeStage, StringComparison.Ordinal);
+        Assert.Contains("_fileService.PublishAsync", finalizeStage, StringComparison.Ordinal);
+        Assert.Contains("if (!context.ArtifactsValidated)", fileService, StringComparison.Ordinal);
+        Assert.Contains("download.publish.invalid", fileService, StringComparison.Ordinal);
+        Assert.Contains("DeleteUnpublishedArtifactsAsync", pipeline, StringComparison.Ordinal);
+        Assert.Contains("DiscardUnpublishedArtifactsAndFailAsync", pipeline, StringComparison.Ordinal);
+        Assert.True(
+            factory.IndexOf("new ValidateStage", StringComparison.Ordinal) <
+            factory.IndexOf("new FinalizeStage", StringComparison.Ordinal));
     }
 
     private static string FindRepositoryRoot()

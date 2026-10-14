@@ -33,6 +33,34 @@ public sealed class DownloadPipelineCommitBoundaryTests
     }
 
     [Fact]
+    public async Task ValidationFailureDeletesUnpublishedArtifactsAndFailsWithoutCompletion()
+    {
+        using var harness = await CommitBoundaryHarness.CreateAsync().ConfigureAwait(true);
+        await harness.StateWriter.ClaimTransferFileAsync(
+            harness.Context.TaskId,
+            "video-source",
+            Path.GetFileName(harness.Video),
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+        await harness.StateWriter.CompleteTransferFileAsync(
+            harness.Context.TaskId,
+            "video-source",
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+        using var pipeline = harness.CreatePipeline(new ValidationFailureStage());
+
+        await pipeline.ExecuteAsync(
+            harness.Context.TaskId,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(File.Exists(harness.Output));
+        Assert.False(File.Exists(harness.PublishedOutput));
+        harness.AssertSourcesAndSidecarsDeleted();
+        Assert.Equal(DownloadPhase.Failed, harness.Store.Current?.Phase);
+        Assert.Empty(harness.Store.Current!.Plan.TransferFiles);
+        Assert.Empty(harness.Store.Current.Transfer.CompletedFileKeys);
+        Assert.Null(harness.Store.History);
+    }
+
+    [Fact]
     public async Task DurableCompletionFailurePreservesSourcesAndRetryCheckpoint()
     {
         using var harness = await CommitBoundaryHarness.CreateAsync(
@@ -44,6 +72,47 @@ public sealed class DownloadPipelineCommitBoundaryTests
                 TestContext.Current.CancellationToken)).ConfigureAwait(true);
 
         harness.AssertSourcesAndSidecarsExist();
+        Assert.Equal(DownloadPhase.Downloading, harness.Store.Current?.Phase);
+    }
+
+    [Fact]
+    public async Task FinalizeRejectsUnvalidatedArtifactsWithoutPublishing()
+    {
+        using var harness = await CommitBoundaryHarness.CreateAsync(
+            markArtifactsValidated: false).ConfigureAwait(true);
+
+        var result = await harness.FinalizeStage.ExecuteAsync(
+            harness.Context,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.finalize.unvalidated", result.Error?.Code);
+        Assert.Equal(OperationErrorKind.Validation, result.Error?.Kind);
+        Assert.True(File.Exists(harness.Output));
+        Assert.False(File.Exists(harness.PublishedOutput));
+        Assert.Equal(DownloadPhase.Downloading, harness.Store.Current?.Phase);
+    }
+
+    [Fact]
+    public async Task PublishRejectsArtifactThatBecameInvalidAfterValidation()
+    {
+        using var harness = await CommitBoundaryHarness.CreateAsync().ConfigureAwait(true);
+        await File.WriteAllBytesAsync(
+            harness.Output,
+            [],
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        var result = await harness.FileService.PublishAsync(
+            harness.Context,
+            "media",
+            harness.Output,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.publish.invalid", result.Error?.Code);
+        Assert.Equal(OperationErrorKind.Validation, result.Error?.Kind);
+        Assert.True(File.Exists(harness.Output));
+        Assert.False(File.Exists(harness.PublishedOutput));
         Assert.Equal(DownloadPhase.Downloading, harness.Store.Current?.Phase);
     }
 
@@ -81,6 +150,29 @@ public sealed class DownloadPipelineCommitBoundaryTests
             harness.Store.History.PublishedArtifacts["media"]);
         Assert.Empty(harness.Lists.Downloading);
         Assert.Single(harness.Lists.Downloaded);
+    }
+
+    [Fact]
+    public async Task FinalizePublishesValidatedAuxiliaryArtifactsOnlyAtCommitBoundary()
+    {
+        using var harness = await CommitBoundaryHarness.CreateAsync().ConfigureAwait(true);
+        var stagedNfo = Path.Combine(harness.Context.StagingDirectory!, "output.nfo");
+        var publishedNfo = Path.Combine(Path.GetDirectoryName(harness.PublishedOutput)!, "output.nfo");
+        await File.WriteAllTextAsync(
+            stagedNfo,
+            "<movie><title>validated</title></movie>",
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+        harness.Context.RecordUnpublishedArtifact("nfo", stagedNfo);
+        harness.Context.MarkArtifactsValidated();
+        Assert.False(File.Exists(publishedNfo));
+
+        var result = await harness.FinalizeStage.ExecuteAsync(
+            harness.Context,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.True(File.Exists(publishedNfo));
+        Assert.Equal(publishedNfo, harness.Store.History?.PublishedArtifacts["nfo"]);
     }
 
     [Fact]
@@ -140,6 +232,23 @@ public sealed class DownloadPipelineCommitBoundaryTests
         }
     }
 
+    private sealed class ValidationFailureStage : IDownloadPipelineStage
+    {
+        public string Name => "validation";
+
+        public Task<OperationResult<DownloadStageResult>> ExecuteAsync(
+            DownloadExecutionContext context,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(DownloadStageResult.Failure(
+                "download.validate.synthetic-corruption",
+                "Synthetic corrupt staged product.",
+                OperationErrorKind.Validation));
+        }
+    }
+
     private sealed class CommitBoundaryHarness : IDisposable
     {
         private readonly string _directory;
@@ -156,6 +265,8 @@ public sealed class DownloadPipelineCommitBoundaryTests
             DownloadListState lists,
             DownloadExecutionContext context,
             FinalizeStage finalizeStage,
+            DownloadTaskStateWriter stateWriter,
+            DownloadTaskFileService fileService,
             string audio,
             string video,
             string output,
@@ -170,6 +281,8 @@ public sealed class DownloadPipelineCommitBoundaryTests
             Lists = lists;
             Context = context;
             FinalizeStage = finalizeStage;
+            StateWriter = stateWriter;
+            FileService = fileService;
             Audio = audio;
             Video = video;
             Output = output;
@@ -185,6 +298,10 @@ public sealed class DownloadPipelineCommitBoundaryTests
 
         public FinalizeStage FinalizeStage { get; }
 
+        public DownloadTaskStateWriter StateWriter { get; }
+
+        public DownloadTaskFileService FileService { get; }
+
         public string Audio { get; }
 
         public string Video { get; }
@@ -197,7 +314,8 @@ public sealed class DownloadPipelineCommitBoundaryTests
 
         public static async Task<CommitBoundaryHarness> CreateAsync(
             bool rejectCompletion = false,
-            bool rejectPublishingStart = false)
+            bool rejectPublishingStart = false,
+            bool markArtifactsValidated = true)
         {
             var directory = Path.Combine(
                 Path.GetTempPath(),
@@ -260,6 +378,10 @@ public sealed class DownloadPipelineCommitBoundaryTests
             context.VideoFile = video;
             context.OutputMedia = output;
             context.MediaSucceeded = true;
+            if (markArtifactsValidated)
+            {
+                context.MarkArtifactsValidated();
+            }
             var fileService = new DownloadTaskFileService(
                 NullLogger<DownloadTaskFileService>.Instance,
                 staging,
@@ -283,11 +405,25 @@ public sealed class DownloadPipelineCommitBoundaryTests
                 lists,
                 context,
                 finalizeStage,
+                stateWriter,
+                fileService,
                 audio,
                 video,
                 output,
                 publishedOutput,
                 staging);
+        }
+
+        public DownloadPipeline CreatePipeline(params IDownloadPipelineStage[] stages)
+        {
+            return new DownloadPipeline(
+                new DownloadExecutionContextFactory(_projectionStore, _settings, Staging),
+                stages,
+                StateWriter,
+                FileService,
+                new DownloadTaskShutdownRecovery(_tasks, StateWriter),
+                NoopTransferBackend.Instance,
+                NullLogger.Instance);
         }
 
         public void AssertSourcesAndSidecarsExist()
@@ -325,6 +461,31 @@ public sealed class DownloadPipelineCommitBoundaryTests
             File.WriteAllBytes(path, [1, 2, 3]);
             File.WriteAllBytes($"{path}.download", [5]);
             return path;
+        }
+    }
+
+    private sealed class NoopTransferBackend : ITransferBackend
+    {
+        public static NoopTransferBackend Instance { get; } = new();
+
+        private NoopTransferBackend()
+        {
+        }
+
+        public string Name => "noop";
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(DownloadTransferResult.Succeeded());
+
+        public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request) =>
+            Task.FromResult(DownloadTransferResult.Succeeded());
+
+        public void Dispose()
+        {
         }
     }
 

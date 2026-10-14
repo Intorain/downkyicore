@@ -42,7 +42,8 @@ internal sealed class ValidateStage : IDownloadPipelineStage
             {
                 return DownloadStageResult.Failure(
                     "download.validate.media",
-                    "The finalized media file is missing or invalid.");
+                    "The finalized media file is missing or invalid.",
+                    OperationErrorKind.Validation);
             }
 
             var requireVideoDecode = context.NeedsVideo && !HasDurlConcatVideoEvidence(context);
@@ -55,7 +56,8 @@ internal sealed class ValidateStage : IDownloadPipelineStage
             {
                 return DownloadStageResult.Failure(
                     "download.validate.media",
-                    "The finalized media file has a missing or undecodable required audio or video stream.");
+                    "The finalized media file has a missing or undecodable required audio or video stream.",
+                    OperationErrorKind.Validation);
             }
 
         }
@@ -64,25 +66,38 @@ internal sealed class ValidateStage : IDownloadPipelineStage
             DownloadArtifactsStage.GetDanmakuOutputs(
                     context.WorkingBasePath,
                     context.Input.DanmakuSettings.OutputFormat)
-                .Any(output => !context.HasPublished(output.Key) && !File.Exists(output.File)))
+                .Any(output => !HasUsableDanmakuOutput(context, output)))
         {
             return DownloadStageResult.Failure(
                 "download.validate.danmaku",
-                "The requested danmaku file was not created.");
+                "The requested danmaku file was not created or is invalid.",
+                OperationErrorKind.Validation);
         }
 
         if (context.NeedsSubtitle && !HasCompleteSubtitleOutput(context))
         {
             return DownloadStageResult.Failure(
                 "download.validate.subtitle",
-                "One or more requested subtitle files were not created.");
+                "One or more requested subtitle files were not created.",
+                OperationErrorKind.Validation);
         }
 
-        if (context.PublishedArtifacts.Values.Any(path => !File.Exists(path)))
+        if (context.PublishedArtifacts.Values.Any(path =>
+                !DownloadFileIntegrity.Check(path).IsUsable))
         {
             return DownloadStageResult.Failure(
                 "download.validate.published-missing",
-                "A recorded published artifact is missing.");
+                "A recorded published artifact is missing or invalid.",
+                OperationErrorKind.Validation);
+        }
+
+        if (context.UnpublishedArtifacts.Values.Any(path =>
+                !DownloadFileIntegrity.Check(path).IsUsable))
+        {
+            return DownloadStageResult.Failure(
+                "download.validate.unpublished-invalid",
+                "An unpublished download artifact is missing or invalid.",
+                OperationErrorKind.Validation);
         }
 
         if (!context.ActionResults.HasSucceeded)
@@ -93,11 +108,24 @@ internal sealed class ValidateStage : IDownloadPipelineStage
                 OperationErrorKind.NotFound);
         }
 
+        context.MarkArtifactsValidated();
         return DownloadStageResult.Success(Name);
     }
 
     private static bool HasDurlConcatVideoEvidence(DownloadExecutionContext context) =>
         context.MediaKind == DownloadMediaKind.Durl && context.DurlDownloads.Count > 1;
+
+    private static bool HasUsableDanmakuOutput(
+        DownloadExecutionContext context,
+        DanmakuOutput output)
+    {
+        var path = context.PublishedArtifacts.TryGetValue(output.Key, out var published)
+            ? published
+            : output.File;
+        return output.Key == DownloadArtifactWriter.DanmakuXmlTransferKey
+            ? DownloadFileIntegrity.CheckXml(path, "i").IsUsable
+            : DownloadFileIntegrity.Check(path).IsUsable;
+    }
 
     private static bool HasCompleteSubtitleOutput(DownloadExecutionContext context)
     {

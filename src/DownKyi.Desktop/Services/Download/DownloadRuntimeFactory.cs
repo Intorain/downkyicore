@@ -114,7 +114,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 playbackResolver,
                 presenter,
                 _loggerFactory.CreateLogger<DownloadMediaStage>()),
-            new DownloadArtifactsStage(artifactWriter, presenter, _fileService),
+            new DownloadArtifactsStage(artifactWriter, presenter),
             new MuxStage(
                 presenter,
                 _ffmpegProcessor,
@@ -133,6 +133,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 contextFactory,
                 stages,
                 _stateWriter,
+                _fileService,
                 shutdownRecovery,
                 transferBackend,
                 _loggerFactory.CreateLogger<DownloadPipeline>());

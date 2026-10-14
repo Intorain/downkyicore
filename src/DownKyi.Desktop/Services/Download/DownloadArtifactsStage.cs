@@ -13,16 +13,13 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 {
     private readonly DownloadArtifactWriter _artifactWriter;
     private readonly DownloadActivityPresenter _presenter;
-    private readonly DownloadTaskFileService? _fileService;
 
     public DownloadArtifactsStage(
         DownloadArtifactWriter artifactWriter,
-        DownloadActivityPresenter presenter,
-        DownloadTaskFileService? fileService = null)
+        DownloadActivityPresenter presenter)
     {
         _artifactWriter = artifactWriter ?? throw new ArgumentNullException(nameof(artifactWriter));
         _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
-        _fileService = fileService;
     }
 
     public string Name => nameof(DownloadArtifactsStage);
@@ -36,7 +33,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
         if (input.NfoRequest != null)
         {
             var nfoFile = $"{context.WorkingBasePath}.nfo";
-            var nfoResult = await ProduceAndPublishAsync(
+            var nfoResult = await ProduceAndStageAsync(
                 context, "nfo", nfoFile,
                 () => _artifactWriter.GenerateNfoFileAsync(
                     context.TaskId, context.WorkingBasePath, input.NfoRequest, cancellationToken),
@@ -79,12 +76,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 
             foreach (var output in danmakuOutputs)
             {
-                var published = await PublishAsync(
-                    context, output.Key, output.File, cancellationToken).ConfigureAwait(true);
-                if (!published.IsSuccess)
-                {
-                    return StageFailure(published.Error);
-                }
+                context.RecordUnpublishedArtifact(output.Key, output.File);
             }
 
             context.DanmakuFile = input.DanmakuSettings.OutputFormat.IncludesAss()
@@ -111,28 +103,16 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 
             foreach (var subtitle in subtitles.TrackFiles)
             {
-                var published = await PublishAsync(
-                    context,
+                context.RecordUnpublishedArtifact(
                     DownloadArtifactWriter.GetSubtitleArtifactKey(subtitle.Key),
-                    subtitle.Value,
-                    cancellationToken).ConfigureAwait(true);
-                if (!published.IsSuccess)
-                {
-                    return StageFailure(published.Error);
-                }
+                    subtitle.Value);
             }
 
             if (subtitles.DefaultFile != null)
             {
-                var published = await PublishAsync(
-                    context,
+                context.RecordUnpublishedArtifact(
                     DownloadArtifactWriter.DefaultSubtitleArtifactKey,
-                    subtitles.DefaultFile,
-                    cancellationToken).ConfigureAwait(true);
-                if (!published.IsSuccess)
-                {
-                    return StageFailure(published.Error);
-                }
+                    subtitles.DefaultFile);
             }
 
             context.SubtitleFiles = subtitles.Files;
@@ -149,7 +129,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 cancellationToken).ConfigureAwait(true);
             var pageCoverFileName =
                 $"{context.WorkingBasePath}.{GetImageExtension(input.Metadata.PageCoverAddress)}";
-            var pageCoverResult = await ProduceAndPublishAsync(
+            var pageCoverResult = await ProduceAndStageAsync(
                 context, "page-cover", pageCoverFileName,
                 () => _artifactWriter.DownloadCoverAsync(
                     context.TaskId, input.Metadata.PageCoverAddress, pageCoverFileName,
@@ -168,7 +148,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 cancellationToken).ConfigureAwait(true);
             var coverFileName =
                 $"{context.WorkingBasePath}.Cover.{GetImageExtension(input.Metadata.CoverAddress)}";
-            var coverResult = await ProduceAndPublishAsync(
+            var coverResult = await ProduceAndStageAsync(
                 context, "cover", coverFileName,
                 () => _artifactWriter.DownloadCoverAsync(
                     context.TaskId, input.Metadata.CoverAddress, coverFileName,
@@ -186,7 +166,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
         return DownloadStageResult.Success(Name);
     }
 
-    private async Task<OperationResult<DownloadArtifactWriteResult>> ProduceAndPublishAsync(
+    private static async Task<OperationResult<DownloadArtifactWriteResult>> ProduceAndStageAsync(
         DownloadExecutionContext context,
         string key,
         string stagedFile,
@@ -208,24 +188,11 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 
         foreach (var file in artifact.Files)
         {
-            var published = await PublishAsync(context, key, file, cancellationToken).ConfigureAwait(true);
-            if (!published.IsSuccess)
-            {
-                return OperationResult.Failure<DownloadArtifactWriteResult>(published.Error!);
-            }
+            context.RecordUnpublishedArtifact(key, file);
         }
 
         return result;
     }
-
-    private Task<OperationResult> PublishAsync(
-        DownloadExecutionContext context,
-        string key,
-        string file,
-        CancellationToken cancellationToken) =>
-        context.HasPublished(key) || _fileService == null
-            ? Task.FromResult(OperationResult.Success())
-            : _fileService.PublishAsync(context, key, file, cancellationToken);
 
     private static bool TryGetReusableSubtitles(
         DownloadExecutionContext context,
