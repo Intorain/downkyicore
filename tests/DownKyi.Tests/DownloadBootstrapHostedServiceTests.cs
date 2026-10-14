@@ -402,6 +402,16 @@ public sealed class DownloadBootstrapHostedServiceTests
                 task.Id,
                 task.Output.BasePath,
                 task.Output.StagingToken);
+            var stagedNfo = Path.Combine(stagingDirectory, "metadata.nfo");
+            await File.WriteAllBytesAsync(
+                stagedNfo,
+                [13, 14, 15, 16],
+                TestContext.Current.CancellationToken);
+            Assert.True((await tasks.RecordTransferFileAsync(
+                task.Id,
+                "nfo",
+                stagedNfo,
+                TestContext.Current.CancellationToken)).IsSuccess);
             var pendingBytes = new byte[] { 9, 10, 11, 12 };
             var pendingStagedFile = Path.Combine(
                 stagingDirectory,
@@ -568,6 +578,9 @@ public sealed class DownloadBootstrapHostedServiceTests
             historyService,
             clock);
         var task = CreateTask("legacy-cleanup-failure");
+        var outsideClaim = Path.GetFullPath(Path.Combine(
+            Path.GetTempPath(),
+            "outside-task-boundary.m4s"));
         Assert.True((await tasks.AddAsync(
             task,
             TestContext.Current.CancellationToken)).IsSuccess);
@@ -577,7 +590,7 @@ public sealed class DownloadBootstrapHostedServiceTests
         Assert.True((await tasks.RecordTransferFileAsync(
             task.Id,
             "video-1",
-            "../outside-task-boundary.m4s",
+            outsideClaim,
             TestContext.Current.CancellationToken)).IsSuccess);
         Assert.True((await tasks.SetBackendIdentityAsync(
             task.Id,
@@ -610,7 +623,7 @@ public sealed class DownloadBootstrapHostedServiceTests
         Assert.Equal("download.transfer.legacy-cleanup-failed", failed.Failure?.Code);
         Assert.Equal("legacy-execution-id", failed.Transfer.BackendIdentity);
         Assert.Equal(
-            "../outside-task-boundary.m4s",
+            outsideClaim,
             failed.Plan.TransferFiles["video-1"]);
         Assert.Empty(runtime.Enqueued);
         await Assert.ThrowsAsync<InvalidOperationException>(() => stateWriter.ResumeAsync(

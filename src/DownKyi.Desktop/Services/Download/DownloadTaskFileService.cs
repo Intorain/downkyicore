@@ -72,6 +72,11 @@ internal sealed class DownloadTaskFileService
         foreach (var fileName in task.Plan.TransferFiles.Values.Distinct(StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (_staging != null && DownloadTaskStaging.OwnsPath(task, fileName))
+            {
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(fileName) ||
                 fileName is "." or ".." ||
                 fileName != Path.GetFileName(fileName))
