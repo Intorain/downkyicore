@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
 using DownKyi.Domain.Downloads;
@@ -104,6 +106,44 @@ public sealed class DownloadContentConflictDialogPresentationTests
         });
     }
 
+    [AvaloniaFact]
+    public Task ManyDistinctQualityGroupsUseBoundedSummaryOutsideDecisionActions()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var viewModel = new DownloadContentConflictDialogViewModel();
+            viewModel.OnDialogOpened(DownloadContentConflictDialogContract.CreateRequest(
+                CreateQualityBatchPromptWithDistinctGroups(24)));
+            var view = new DownloadContentConflictDialog
+            {
+                DataContext = viewModel
+            };
+
+            var groupsScroll = Assert.IsType<ScrollViewer>(
+                view.FindControl<ScrollViewer>("QualitySubstitutionGroupsScrollViewer"));
+            var groups = Assert.IsType<ItemsControl>(
+                view.FindControl<ItemsControl>("QualitySubstitutionGroupsList"));
+            var useAvailable = Assert.IsType<Button>(
+                view.FindControl<Button>("UseAvailableContentButton"));
+            var skip = Assert.IsType<Button>(
+                view.FindControl<Button>("SkipDownloadPageButton"));
+
+            Assert.Equal(24, viewModel.QualitySubstitutionGroups.Count);
+            Assert.Same(viewModel.QualitySubstitutionGroups, groups.ItemsSource);
+            Assert.Equal(160, groupsScroll.MaxHeight);
+            Assert.Equal(
+                ScrollBarVisibility.Disabled,
+                groupsScroll.HorizontalScrollBarVisibility);
+            Assert.Equal(
+                ScrollBarVisibility.Auto,
+                groupsScroll.VerticalScrollBarVisibility);
+            Assert.Contains(groupsScroll, groups.GetLogicalAncestors());
+            Assert.DoesNotContain(groupsScroll, useAvailable.GetLogicalAncestors());
+            Assert.DoesNotContain(groupsScroll, skip.GetLogicalAncestors());
+        });
+    }
+
     private static DownloadContentConflictPrompt CreateQualityBatchPrompt()
     {
         static DownloadContentConflictPromptItem CreateItem(
@@ -130,4 +170,26 @@ public sealed class DownloadContentConflictDialogPresentationTests
             CreateItem("第三批 · 第一集", 32, "480P 清晰")
         ]);
     }
+
+    private static DownloadContentConflictPrompt CreateQualityBatchPromptWithDistinctGroups(
+        int count)
+    {
+        return DownloadContentConflictPrompt.QualitySubstitutionBatch(
+            Enumerable.Range(1, count)
+                .Select(index => new DownloadContentConflictPromptItem(
+                    $"第 {index} 部影片",
+                    new DownloadContentConflict(
+                        DownloadContentSelection.None with { Video = true },
+                        new DownloadMediaCapabilities(DownloadMediaOutputModes.VideoOnly),
+                        DownloadContentSelection.None with { Video = true },
+                        new DownloadQualitySubstitutions(
+                            new DownloadQualitySubstitution(
+                                80,
+                                "1080P 高清",
+                                index,
+                                $"替代畫質 {index}"),
+                            Audio: null))))
+                .ToArray());
+    }
+
 }

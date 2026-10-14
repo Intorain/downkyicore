@@ -34,18 +34,23 @@
                         BorderThickness="1"
                         CornerRadius="6"
                         IsVisible="{Binding IsQualitySubstitutionBatch}">
-                    <ItemsControl x:Name="QualitySubstitutionGroupsList"
-                                  ItemsSource="{Binding QualitySubstitutionGroups}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Margin="0,3"
-                                           Foreground="{DynamicResource BrushTextDark}"
-                                           FontWeight="SemiBold"
-                                           Text="{Binding}"
-                                           TextWrapping="Wrap" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <ScrollViewer x:Name="QualitySubstitutionGroupsScrollViewer"
+                                  MaxHeight="160"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="QualitySubstitutionGroupsList"
+                                      ItemsSource="{Binding QualitySubstitutionGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,3"
+                                               Foreground="{DynamicResource BrushTextDark}"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding}"
+                                               TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Border>
                 <Expander x:Name="AffectedQualityItemsExpander"
                           Header="{Binding AffectedItemsHeader}"
