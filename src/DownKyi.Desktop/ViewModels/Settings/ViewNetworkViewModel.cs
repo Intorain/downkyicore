@@ -191,10 +191,7 @@ internal partial class ViewNetworkViewModel : ViewModelBase
 
     private void ExecuteMaxOverallDownloadLimitCommand(string parameter)
     {
-        MaxOverallDownloadLimit = (int)Math.Clamp(
-            Number.GetInt(parameter),
-            0,
-            int.MaxValue);
+        MaxOverallDownloadLimit = ParseDownloadLimit(parameter);
         ApplyNetwork(
             settings => settings with
             {
@@ -211,10 +208,7 @@ internal partial class ViewNetworkViewModel : ViewModelBase
 
     private void ExecuteMaxDownloadLimitCommand(string parameter)
     {
-        MaxDownloadLimit = (int)Math.Clamp(
-            Number.GetInt(parameter),
-            0,
-            int.MaxValue);
+        MaxDownloadLimit = ParseDownloadLimit(parameter);
         ApplyNetwork(
             settings => settings with { MaxDownloadLimit = MaxDownloadLimit },
             settings => settings.MaxDownloadLimit == MaxDownloadLimit);
@@ -279,6 +273,33 @@ internal partial class ViewNetworkViewModel : ViewModelBase
         Func<NetworkApplicationSettings, bool> isApplied)
     {
         _coordinator.Apply(update, isApplied, showFeedback: !_isOnNavigatedTo);
+    }
+
+    private static int ParseDownloadLimit(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return 0;
+        }
+
+        var result = 0;
+        foreach (var character in value)
+        {
+            if (character is < '0' or > '9')
+            {
+                return 0;
+            }
+
+            var digit = character - '0';
+            if (result > (int.MaxValue - digit) / 10)
+            {
+                return int.MaxValue;
+            }
+
+            result = (result * 10) + digit;
+        }
+
+        return result;
     }
 
     private Task<bool> ApplyNetworkWithRestartPromptAsync(

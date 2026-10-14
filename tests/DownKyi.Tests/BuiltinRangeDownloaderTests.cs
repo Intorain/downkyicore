@@ -351,6 +351,44 @@ public sealed class BuiltinRangeDownloaderTests
     }
 
     [Fact]
+    public async Task ResumeWithoutValidatorValidatesBytesBeforeTheFormerOverlapWindow()
+    {
+        var previousPayload = Enumerable.Range(0, 128 * 1024)
+            .Select(static value => (byte)(value % 251))
+            .ToArray();
+        var currentPayload = previousPayload.ToArray();
+        currentPayload[0] = checked((byte)(currentPayload[0] + 1));
+        const int retainedLength = 96 * 1024;
+        var directory = CreateTemporaryDirectory("range-full-retained-mismatch");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            await WriteSingleChunkPartialAsync(
+                target,
+                previousPayload,
+                ResourceIdentity(strongETag: null),
+                retainedLength);
+            using var handler = new RangePayloadHandler(currentPayload, entityTag: null);
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: currentPayload.Length);
+
+            await Assert.ThrowsAsync<BuiltinResumeRejectedException>(() => downloader.DownloadAsync(
+                target,
+                currentPayload.Length,
+                TestContext.Current.CancellationToken));
+
+            Assert.Equal([(0L, retainedLength - 1L)], handler.ChunkRanges);
+            Assert.True(File.Exists($"{target}.download"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ResumeWithoutValidatorRejectsMismatchingOverlapBytes()
     {
         var previousPayload = CreatePayload(12);
@@ -881,6 +919,41 @@ public sealed class BuiltinRangeDownloaderTests
                     TestContext.Current.CancellationToken).ConfigureAwait(false);
             }
 
+            stream.Position = payload.Length;
+            await stream.WriteAsync(
+                metadata,
+                TestContext.Current.CancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task WriteSingleChunkPartialAsync(
+        string target,
+        byte[] payload,
+        object? resourceIdentity,
+        int retainedLength)
+    {
+        var metadata = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            TotalFileSize = payload.Length,
+            Chunks = new[]
+            {
+                new { Start = 0, End = payload.Length - 1, Position = retainedLength }
+            },
+            ResourceIdentity = resourceIdentity
+        });
+        var stream = new FileStream(
+            $"{target}.download",
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.Asynchronous);
+        await using (var streamLifetime = stream.ConfigureAwait(false))
+        {
+            stream.SetLength(payload.Length);
+            await stream.WriteAsync(
+                payload.AsMemory(0, retainedLength),
+                TestContext.Current.CancellationToken).ConfigureAwait(false);
             stream.Position = payload.Length;
             await stream.WriteAsync(
                 metadata,

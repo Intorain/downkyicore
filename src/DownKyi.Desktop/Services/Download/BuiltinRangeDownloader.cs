@@ -28,7 +28,6 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     internal static readonly TimeSpan DefaultReadStallTimeout = TimeSpan.FromSeconds(60);
 
     private const int BufferSize = 256 * 1024;
-    private const int ResumeOverlapSize = 64 * 1024;
     private const int MaximumResumeMetadataBytes = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions ResumeJsonOptions = new()
     {
@@ -375,7 +374,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                     throw new BuiltinResumeRejectedException(
                         "The built-in resume metadata does not match the media file.");
                 case BuiltinRangeContinuity.Unavailable:
-                    resourceIdentity = await VerifyResumeOverlapsAsync(
+                    resourceIdentity = await VerifyRetainedRangesAsync(
                         stream,
                         chunks,
                         totalBytes,
@@ -439,7 +438,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         long segmentSize) =>
         Math.Min(segmentSize, Math.Max(1, ((totalBytes - 1) / parallelCount) + 1));
 
-    private async Task<BuiltinRangeResourceIdentity> VerifyResumeOverlapsAsync(
+    private async Task<BuiltinRangeResourceIdentity> VerifyRetainedRangesAsync(
         FileStream partialFile,
         BuiltinRangeChunk[] chunks,
         long totalBytes,
@@ -452,7 +451,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                      .Where(static chunk => chunk.Position > 0)
                      .OrderBy(static chunk => chunk.Start))
         {
-            verifiedIdentity = await VerifyResumeChunkOverlapAsync(
+            verifiedIdentity = await VerifyRetainedChunkAsync(
                 partialFile,
                 resumeChunk,
                 totalBytes,
@@ -464,7 +463,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         return verifiedIdentity;
     }
 
-    private async Task<BuiltinRangeResourceIdentity> VerifyResumeChunkOverlapAsync(
+    private async Task<BuiltinRangeResourceIdentity> VerifyRetainedChunkAsync(
         FileStream partialFile,
         BuiltinRangeChunk resumeChunk,
         long totalBytes,
@@ -472,63 +471,93 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         BuiltinRangeResourceIdentity resourceIdentity,
         CancellationToken cancellationToken)
     {
-        var resumeOffset = checked(resumeChunk.Start + resumeChunk.Position);
-        var overlapStart = Math.Max(resumeChunk.Start, resumeOffset - ResumeOverlapSize);
-        var overlapEnd = resumeOffset - 1;
-        var overlapLength = checked((int)(overlapEnd - overlapStart + 1));
-        var localBytes = new byte[overlapLength];
-        partialFile.Position = overlapStart;
-        await partialFile.ReadExactlyAsync(localBytes, cancellationToken).ConfigureAwait(false);
-
-        using var request = CreateRequest(overlapStart, overlapEnd);
+        var retainedStart = resumeChunk.Start;
+        var retainedEnd = checked(retainedStart + resumeChunk.Position - 1);
+        using var request = CreateRequest(retainedStart, retainedEnd);
         using var response = await SendWithStallTimeoutAsync(request, cancellationToken)
             .ConfigureAwait(false);
         ValidateChunkResponse(
             response,
-            overlapStart,
-            overlapEnd,
+            retainedStart,
+            retainedEnd,
             totalBytes,
             supportsRanges: true,
             resourceIdentity);
-        var overlapIdentity = BuiltinRangeResourceIdentity.Create(_address, response);
-        if (persistedIdentity?.CompareContinuity(overlapIdentity)
+        var retainedIdentity = BuiltinRangeResourceIdentity.Create(_address, response);
+        if (persistedIdentity?.CompareContinuity(retainedIdentity)
             == BuiltinRangeContinuity.Mismatch)
         {
             throw new BuiltinResumeRejectedException(
-                "The persisted resource identity changed before overlap verification.");
+                "The persisted resource identity changed before retained-range verification.");
         }
 
         var source = await response.Content
             .ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using var sourceLifetime = source.ConfigureAwait(false);
-        var remoteBytes = new byte[overlapLength];
-        var offset = 0;
-        while (offset < remoteBytes.Length)
+        var localBytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+        var remoteBytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+        try
         {
-            var read = await ReadWithBandwidthLimitAsync(
-                source,
-                remoteBytes.AsMemory(offset),
-                cancellationToken).ConfigureAwait(false);
-            if (read == 0)
+            var remaining = resumeChunk.Position;
+            var fileOffset = retainedStart;
+            while (remaining > 0)
             {
-                throw new HttpIOException(
-                    HttpRequestError.ResponseEnded,
-                    "The media overlap response ended before verification completed.");
+                var blockLength = checked((int)Math.Min(BufferSize, remaining));
+                var localOffset = 0;
+                while (localOffset < blockLength)
+                {
+                    var read = await RandomAccess.ReadAsync(
+                        partialFile.SafeFileHandle,
+                        localBytes.AsMemory(localOffset, blockLength - localOffset),
+                        checked(fileOffset + localOffset),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new EndOfStreamException(
+                            "The local partial media ended before verification completed.");
+                    }
+
+                    localOffset += read;
+                }
+
+                var remoteOffset = 0;
+                while (remoteOffset < blockLength)
+                {
+                    var read = await ReadWithBandwidthLimitAsync(
+                        source,
+                        remoteBytes.AsMemory(remoteOffset, blockLength - remoteOffset),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new HttpIOException(
+                            HttpRequestError.ResponseEnded,
+                            "The media retained-range response ended before verification completed.");
+                    }
+
+                    remoteOffset += read;
+                }
+
+                if (!localBytes.AsSpan(0, blockLength)
+                        .SequenceEqual(remoteBytes.AsSpan(0, blockLength)))
+                {
+                    throw new BuiltinResumeRejectedException(
+                        "The persisted partial media does not match the current resource.");
+                }
+
+                fileOffset = checked(fileOffset + blockLength);
+                remaining -= blockLength;
             }
-
-            offset += read;
         }
-
-        if (!localBytes.AsSpan().SequenceEqual(remoteBytes))
+        finally
         {
-            throw new BuiltinResumeRejectedException(
-                "The persisted partial media does not match the current resource.");
+            ArrayPool<byte>.Shared.Return(localBytes);
+            ArrayPool<byte>.Shared.Return(remoteBytes);
         }
 
         return resourceIdentity with
         {
-            StrongETag = overlapIdentity.StrongETag ?? resourceIdentity.StrongETag,
-            LastModified = overlapIdentity.LastModified ?? resourceIdentity.LastModified
+            StrongETag = retainedIdentity.StrongETag ?? resourceIdentity.StrongETag,
+            LastModified = retainedIdentity.LastModified ?? resourceIdentity.LastModified
         };
     }
 
