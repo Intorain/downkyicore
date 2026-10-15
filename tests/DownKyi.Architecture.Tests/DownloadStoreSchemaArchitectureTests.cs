@@ -11,7 +11,10 @@ public sealed class DownloadStoreSchemaArchitectureTests
     {
         var source = ReadDownloadSource("DownloadStoreSchema.cs");
 
-        Assert.Contains("public const int CurrentVersion = 12", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "public const int CurrentVersion = LegacyTransferMarkerVersion",
+            source,
+            StringComparison.Ordinal);
         Assert.Contains("LegacyDownloadStoreFormatDetector", source, StringComparison.Ordinal);
         Assert.Contains("LegacyDownloadStoreReader", source, StringComparison.Ordinal);
         Assert.Contains("LegacyDownloadStoreNormalizer", source, StringComparison.Ordinal);
@@ -36,6 +39,7 @@ public sealed class DownloadStoreSchemaArchitectureTests
         Assert.Contains("LegacyDownloadStoreKind.Stateful", source, StringComparison.Ordinal);
         Assert.Contains("LegacyDownloadStoreKind.Reserved", source, StringComparison.Ordinal);
         Assert.Contains("LegacyDownloadStoreKind.AdmissionSafe", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentVersion -", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ALTER TABLE", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE TABLE", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("UPDATE download", source, StringComparison.OrdinalIgnoreCase);
@@ -84,11 +88,32 @@ public sealed class DownloadStoreSchemaArchitectureTests
         Assert.Contains("ApplyPhaseUpdatesAsync", source, StringComparison.Ordinal);
         Assert.Contains("ApplyReservationUpdatesAsync", source, StringComparison.Ordinal);
         Assert.Contains("ApplyQuarantineAsync", source, StringComparison.Ordinal);
-        Assert.Contains("SetUserVersionAsync", source, StringComparison.Ordinal);
+        Assert.Contains("SetCurrentVersionAsync", source, StringComparison.Ordinal);
         Assert.DoesNotContain("format.UserVersion", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadStoreSchemaV", source, StringComparison.Ordinal);
         Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
         Assert.DoesNotContain("SET source_table = 'downloading'", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SchemaLifecycleFailsClosedWhenTheCurrentVersionHasNoMatchingPragmaWriter()
+    {
+        var source = ReadDownloadSource("DownloadStoreSchemaLifecycle.cs");
+
+        Assert.Contains(
+            "private const string SetCurrentVersionStatement = \"PRAGMA user_version = 12\"",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "$\" = {DownloadStoreSchema.CurrentVersion}\"",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SetCurrentVersionStatement.EndsWith(expectedSuffix",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains("throw new InvalidOperationException", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("#pragma warning disable", source, StringComparison.Ordinal);
     }
 
     [Fact]
