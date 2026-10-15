@@ -902,7 +902,18 @@ jobs:
       - name: Release
         uses: $/.github/actions/release
         with:
-          allowUpdates: true
-          replacesArtifacts: true
+          allowUpdates: false
+          artifactErrorsFailBuild: true
           artifacts: artifacts/release-assets/*
           body: ${{ needs.changelog.outputs.release_body }}
+          immutableCreate: true
+          replacesArtifacts: false
+      - name: Verify immutable release publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            --jq 'if .immutable == true then .tag_name else error("published release is not immutable") end'

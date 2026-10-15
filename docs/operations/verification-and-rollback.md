@@ -143,7 +143,10 @@ pwsh ./script/assemble-release-assets.ps1 `
 輸出必須只包含各平台 installer 與單一 `DownKyi-<version>-verification.zip`；
 目前共九個 installer 加一個 ZIP，合計十個公開附件。ZIP 根目錄保存原有的
 九份 `.sha256` 與九份 `publish-manifest-*.json`，檔名及內容逐位元組保留，
-不合併或重新序列化 manifest。GitHub Release 不再單獨上傳這些驗證檔。
+不合併或重新序列化 manifest。GitHub Release 不再單獨上傳這些驗證檔。正式
+發布先建立 Draft Release、上傳完整集合，再一次發布；workflow 必須回讀
+`immutable=true` 才算成功。不得更新或覆寫已發布的 immutable release；若在
+發布前中斷，只能先人工檢查並移除未發布 draft，再從相同 exact-head run 重跑。
 
 macOS artifact 另需確認 x64 與 arm64 final app 均已完成簽章並
 通過 `codesign --verify --deep --strict`；缺少 Apple credentials 時使用 ad-hoc
