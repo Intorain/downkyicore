@@ -161,6 +161,56 @@ public sealed class AvaloniaApplicationLifecycleTests
     }
 
     [Fact]
+    public async Task RestartCleanupTimeoutKeepsTheLaunchedHelperAuthoritative()
+    {
+        var directory = CreateTemporaryDirectory();
+        var settingsStore = new SettingsStore(Path.Combine(directory, "settings.json"));
+        var hostedService = new BlockingStopHostedService();
+        using var host = DownKyiHost.Create(services =>
+            services.AddSingleton<IHostedService>(hostedService));
+        var logService = new RecordingLogService();
+        var restartLauncher = new StubRestartLauncher(true);
+        var desktopShutdownCount = 0;
+        var lifecycle = CreateLifecycle(
+            host,
+            settingsStore,
+            logService,
+            restartLauncher,
+            TimeSpan.Zero,
+            () =>
+            {
+                desktopShutdownCount++;
+                return Task.CompletedTask;
+            });
+        lifecycle.AttachHost(host);
+
+        try
+        {
+            await lifecycle.StartHostAsync().ConfigureAwait(true);
+
+            var firstRestart = lifecycle.RestartAsync(TestContext.Current.CancellationToken);
+            var secondRestart = lifecycle.RestartAsync(TestContext.Current.CancellationToken);
+
+            Assert.Same(firstRestart, secondRestart);
+            Assert.True(await firstRestart.ConfigureAwait(true));
+            Assert.Equal(1, restartLauncher.StartCount);
+            Assert.Equal(1, desktopShutdownCount);
+            Assert.Equal(1, logService.FlushCount);
+            Assert.True(host.Services
+                .GetRequiredService<ApplicationCancellation>()
+                .ShutdownToken
+                .IsCancellationRequested);
+        }
+        finally
+        {
+            hostedService.AllowStop.TrySetResult();
+            await host.StopAsync(CancellationToken.None).ConfigureAwait(true);
+            await settingsStore.DisposeAsync().ConfigureAwait(true);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task HostedServiceStopFailureDoesNotBlockShutdownCompletion()
     {
         var directory = CreateTemporaryDirectory();
@@ -197,7 +247,8 @@ public sealed class AvaloniaApplicationLifecycleTests
         ISettingsStore settingsStore,
         IApplicationLogService logService,
         IProcessRestartLauncher restartLauncher,
-        TimeSpan? cleanupTimeout = null)
+        TimeSpan? cleanupTimeout = null,
+        Func<Task>? shutdownDesktopAsync = null)
     {
         return cleanupTimeout is { } timeout
             ? new AvaloniaApplicationLifecycle(
@@ -208,7 +259,8 @@ public sealed class AvaloniaApplicationLifecycleTests
                 host.Services.GetRequiredService<ApplicationCancellation>(),
                 new NoOpDownloadEmergencyCleanup(),
                 NullLogger<AvaloniaApplicationLifecycle>.Instance,
-                timeout)
+                timeout,
+                shutdownDesktopAsync)
             : new AvaloniaApplicationLifecycle(
                 new AvaloniaDesktopContext(),
                 restartLauncher,
