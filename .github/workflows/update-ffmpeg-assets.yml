@@ -21,8 +21,9 @@ on:
         default: ''
         type: string
 
-# This workflow never pushes to main.  The two scoped secrets below are used
-# only in the jobs that need them; the default token remains read-only.
+# This workflow never pushes to main. The default token is read-only except in
+# the mirror job, where it publishes a same-repository non-Latest release. The
+# administration-read secret is used only to fail closed on immutable settings.
 permissions:
   contents: read
 
@@ -123,13 +124,16 @@ jobs:
     needs: [discover, validate]
     if: needs.discover.outputs.no_op != 'true'
     runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
+    permissions:
+      contents: write
     env:
-      RUNTIME_ASSETS_REPOSITORY: crazysmile-PhD/downkyi-runtime-assets
-      RUNTIME_ASSETS_TOKEN: ${{ secrets.RUNTIME_ASSETS_TOKEN }}
+      MIRROR_REPOSITORY: ${{ github.repository }}
       DOWNKYI_AUTOMATION_TOKEN: ${{ secrets.DOWNKYI_AUTOMATION_TOKEN }}
     steps:
       - name: Checkout
         uses: $/.github/actions/checkout
+        with:
+          persist-credentials: false
       - name: Install Python
         uses: $/.github/actions/setup-python
         with:
@@ -155,44 +159,67 @@ jobs:
       - name: Create a new immutable mirror release or resume exact immutable evidence
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.RUNTIME_ASSETS_TOKEN }}
+          IMMUTABLE_RELEASES_READ_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
         run: |
-          if [[ -z "$RUNTIME_ASSETS_TOKEN" ]]; then
-            echo 'RUNTIME_ASSETS_TOKEN is required and must only have Contents: write on the runtime-assets repository.' >&2
+          if [[ -z "$IMMUTABLE_RELEASES_READ_TOKEN" ]]; then
+            echo 'IMMUTABLE_RELEASES_READ_TOKEN is required and must have Administration: read on the DownKyiCore repository.' >&2
             exit 1
           fi
-          immutable_enabled=$(gh api \
+          if [[ -z "$RELEASE_TOKEN" ]]; then
+            echo 'The job-scoped GITHUB_TOKEN is required to publish the same-repository mirror release.' >&2
+            exit 1
+          fi
+          immutable_enabled=$(GH_TOKEN="$IMMUTABLE_RELEASES_READ_TOKEN" gh api \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2026-03-10' \
-            "repos/$RUNTIME_ASSETS_REPOSITORY/immutable-releases" \
+            "repos/$MIRROR_REPOSITORY/immutable-releases" \
             --jq '.enabled')
           if [[ "$immutable_enabled" != "true" ]]; then
-            echo "Immutable releases must be enabled for $RUNTIME_ASSETS_REPOSITORY before mirroring." >&2
+            echo "Immutable releases must be enabled for $MIRROR_REPOSITORY before mirroring." >&2
             exit 1
           fi
-          if gh release view '${{ needs.discover.outputs.mirror_tag }}' --repo "$RUNTIME_ASSETS_REPOSITORY" >/dev/null 2>&1; then
+          previous_latest_tag=$(GH_TOKEN="$RELEASE_TOKEN" gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$MIRROR_REPOSITORY/releases/latest" \
+            --jq '.tag_name')
+          if GH_TOKEN="$RELEASE_TOKEN" gh release view '${{ needs.discover.outputs.mirror_tag }}' --repo "$MIRROR_REPOSITORY" >/dev/null 2>&1; then
             echo 'An existing release will not be modified; exact immutable asset read-back is required before manifest mutation.'
           else
-            gh release create '${{ needs.discover.outputs.mirror_tag }}' \
-              --repo "$RUNTIME_ASSETS_REPOSITORY" \
+            GH_TOKEN="$RELEASE_TOKEN" gh release create '${{ needs.discover.outputs.mirror_tag }}' \
+              --repo "$MIRROR_REPOSITORY" \
               --title 'DownKyi FFmpeg ${{ needs.discover.outputs.mirror_tag }}' \
               --notes-file .ffmpeg-update/candidates.json \
-              --draft
-            gh release upload '${{ needs.discover.outputs.mirror_tag }}' .ffmpeg-update/mirror/* \
-              --repo "$RUNTIME_ASSETS_REPOSITORY"
-            gh release edit '${{ needs.discover.outputs.mirror_tag }}' \
-              --repo "$RUNTIME_ASSETS_REPOSITORY" \
-              --draft=false
+              --draft \
+              --prerelease \
+              --latest=false
+            GH_TOKEN="$RELEASE_TOKEN" gh release upload '${{ needs.discover.outputs.mirror_tag }}' .ffmpeg-update/mirror/* \
+              --repo "$MIRROR_REPOSITORY"
+            GH_TOKEN="$RELEASE_TOKEN" gh release edit '${{ needs.discover.outputs.mirror_tag }}' \
+              --repo "$MIRROR_REPOSITORY" \
+              --draft=false \
+              --prerelease \
+              --latest=false
+          fi
+          current_latest_tag=$(GH_TOKEN="$RELEASE_TOKEN" gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$MIRROR_REPOSITORY/releases/latest" \
+            --jq '.tag_name')
+          if [[ "$current_latest_tag" != "$previous_latest_tag" ]]; then
+            echo "Mirror publication changed Latest from $previous_latest_tag to $current_latest_tag." >&2
+            exit 1
           fi
       - name: Read back immutable mirror release evidence and update the manifest in the PR workspace
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.RUNTIME_ASSETS_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           previous_version=$(python -c 'import json; print(json.load(open("script/assets/external-assets.json"))["ffmpeg"]["version"])')
           python script/ffmpeg-assets.py read-mirror-evidence \
             --candidates .ffmpeg-update/candidates.json \
-            --repository "$RUNTIME_ASSETS_REPOSITORY" \
+            --repository "$MIRROR_REPOSITORY" \
             --tag '${{ needs.discover.outputs.mirror_tag }}' \
             --output .ffmpeg-update/mirror-result.json
           python script/ffmpeg-assets.py apply-update \

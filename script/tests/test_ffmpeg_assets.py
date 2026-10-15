@@ -34,7 +34,7 @@ def valid_manifest(version: str = "btbn-autobuild-2026-08-12-13-15") -> dict:
     for rid in ffmpeg_assets.EXPECTED_RIDS:
         archive_name = f"ffmpeg-{rid}-{digest(rid)[:16]}.zip"
         entry = {
-            "url": f"https://github.com/crazysmile-PhD/downkyi-runtime-assets/releases/download/ffmpeg-{version}/{archive_name}",
+            "url": f"https://github.com/crazysmile-PhD/downkyicore/releases/download/ffmpeg-{version}/{archive_name}",
             "sha256": digest(rid),
             "fileName": archive_name,
             "provenance": {
@@ -49,7 +49,7 @@ def valid_manifest(version: str = "btbn-autobuild-2026-08-12-13-15") -> dict:
         if rid.startswith("osx-"):
             probe_name = f"ffprobe-{rid}-{digest(rid + '-probe')[:16]}.zip"
             entry.update({
-                "ffprobeUrl": f"https://github.com/crazysmile-PhD/downkyi-runtime-assets/releases/download/ffmpeg-{version}/{probe_name}",
+                "ffprobeUrl": f"https://github.com/crazysmile-PhD/downkyicore/releases/download/ffmpeg-{version}/{probe_name}",
                 "ffprobeSha256": digest(rid + "-probe"),
                 "ffprobeFileName": probe_name,
             })
@@ -59,7 +59,7 @@ def valid_manifest(version: str = "btbn-autobuild-2026-08-12-13-15") -> dict:
             "version": version,
             "requiredRids": list(ffmpeg_assets.EXPECTED_RIDS),
             "mirror": {
-                "repository": "crazysmile-PhD/downkyi-runtime-assets",
+                "repository": "crazysmile-PhD/downkyicore",
                 "retention": "never-delete",
                 "tagPrefix": "ffmpeg-",
             },
@@ -151,7 +151,7 @@ class FfmpegAssetsTests(unittest.TestCase):
     def test_manifest_rejects_mutable_latest_url(self) -> None:
         manifest = valid_manifest()
         manifest["ffmpeg"]["assets"]["win-x64"]["url"] = (
-            "https://github.com/crazysmile-PhD/downkyi-runtime-assets/releases/download/latest/ffmpeg.zip"
+            "https://github.com/crazysmile-PhD/downkyicore/releases/download/latest/ffmpeg.zip"
         )
         with self.assertRaisesRegex(ffmpeg_assets.AssetError, "fixed project-owned"):
             ffmpeg_assets.validate_manifest(manifest)
@@ -267,14 +267,14 @@ class FfmpegAssetsTests(unittest.TestCase):
         before = copy.deepcopy(manifest)
         with self.assertRaisesRegex(ffmpeg_assets.AssetError, "read-back evidence is missing"):
             ffmpeg_assets.apply_update(manifest, candidate_for(), {
-                "repository": "crazysmile-PhD/downkyi-runtime-assets",
+                "repository": "crazysmile-PhD/downkyicore",
                 "tag": "ffmpeg-btbn-autobuild-2026-08-12-13-15",
                 "assets": {},
             })
         self.assertEqual(before, manifest)
 
     def test_mutable_mirror_release_cannot_produce_manifest_evidence(self) -> None:
-        repository = "crazysmile-PhD/downkyi-runtime-assets"
+        repository = "crazysmile-PhD/downkyicore"
         tag = "ffmpeg-btbn-autobuild-2026-08-12-13-15"
         candidate = candidate_for()
         release = release_readback_for(candidate, repository, tag)
@@ -293,7 +293,7 @@ class FfmpegAssetsTests(unittest.TestCase):
         manifest = valid_manifest()
         before = copy.deepcopy(manifest)
         candidate = candidate_for()
-        repository = "crazysmile-PhD/downkyi-runtime-assets"
+        repository = "crazysmile-PhD/downkyicore"
         tag = "ffmpeg-btbn-autobuild-2026-08-12-13-15"
         mirror = ffmpeg_assets.collect_mirror_evidence(
             candidate,
@@ -313,11 +313,11 @@ class FfmpegAssetsTests(unittest.TestCase):
         candidate = candidate_for()
         mirror = ffmpeg_assets.collect_mirror_evidence(
             candidate,
-            "crazysmile-PhD/downkyi-runtime-assets",
+            "crazysmile-PhD/downkyicore",
             "ffmpeg-btbn-autobuild-2026-08-12-13-15",
             release_readback_for(
                 candidate,
-                "crazysmile-PhD/downkyi-runtime-assets",
+                "crazysmile-PhD/downkyicore",
                 "ffmpeg-btbn-autobuild-2026-08-12-13-15",
             ),
             "2026-08-13T00:00:00Z",
@@ -327,7 +327,7 @@ class FfmpegAssetsTests(unittest.TestCase):
         self.assertEqual(manifest["ffmpeg"]["assets"]["linux-x64"], updated["ffmpeg"]["assets"]["linux-x64"])
 
     def test_readback_mismatches_reject_manifest_mutation(self) -> None:
-        repository = "crazysmile-PhD/downkyi-runtime-assets"
+        repository = "crazysmile-PhD/downkyicore"
         tag = "ffmpeg-btbn-autobuild-2026-08-12-13-15"
         candidate = candidate_for()
         file_name = candidate["assets"]["win-x64"]["files"][0]["mirroredFileName"]

@@ -169,11 +169,38 @@ public sealed class AgentEnvironmentArchitectureTests
         Assert.Equal("appimagetool-x86_64.AppImage", appImageToolAsset.GetProperty("fileName").GetString());
         Assert.Matches(@"^[0-9a-f]{64}$", appImageToolAsset.GetProperty("sha256").GetString());
         Assert.StartsWith(
-            "https://github.com/crazysmile-PhD/downkyi-runtime-assets/releases/download/appimagetool-",
+            "https://github.com/crazysmile-PhD/downkyicore/releases/download/runtime-assets-",
             appImageToolAsset.GetProperty("url").GetString(),
             StringComparison.Ordinal);
         Assert.Contains("external-assets.json", Read("script/install-appimagetool.ps1"), StringComparison.Ordinal);
         Assert.Contains("install-appimagetool.ps1", workflowSources, StringComparison.Ordinal);
+
+        var updaterWorkflow = Read(".github/workflows/update-ffmpeg-assets.yml");
+        var historicalAssets = Read("script/historical-rebuild/runtime-assets.json");
+        var appImageToolInstaller = Read("script/install-appimagetool.ps1");
+        var productionAssets = Read("script/assets/external-assets.json");
+        foreach (var dependencySource in new[]
+                 {
+                     updaterWorkflow,
+                     historicalAssets,
+                     appImageToolInstaller,
+                     productionAssets
+                 })
+        {
+            Assert.DoesNotContain("crazysmile-PhD/downkyi-runtime-assets/releases/download/", dependencySource, StringComparison.Ordinal);
+        }
+        Assert.DoesNotContain("crazysmile-PhD/downkyi-aria2-static-build/releases/download/", historicalAssets, StringComparison.Ordinal);
+        Assert.DoesNotContain("RUNTIME_ASSETS_TOKEN", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("IMMUTABLE_RELEASES_READ_TOKEN", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("MIRROR_REPOSITORY: ${{ github.repository }}", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("RELEASE_TOKEN: ${{ github.token }}", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--prerelease", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--latest=false", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("releases/latest", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "  ffmpeg-asset-updater:\n    name: Update mirrored FFmpeg assets\n    needs: ffmpeg-tooling\n    if: ${{ inputs.update_ffmpeg_assets }}\n    permissions:\n      contents: write\n    uses: ./.github/workflows/update-ffmpeg-assets.yml",
+            Read(".github/workflows/build.yml").Replace("\r\n", "\n", StringComparison.Ordinal),
+            StringComparison.Ordinal);
 
         Assert.DoesNotMatch(@"\.nuget/packages/grpc\.tools/\d", workflowSources);
         Assert.Contains("-getProperty:PkgGrpc_Tools", workflowSources, StringComparison.Ordinal);
