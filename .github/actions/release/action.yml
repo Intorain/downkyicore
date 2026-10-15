@@ -30,6 +30,10 @@ inputs:
     description: Whether the release is a draft.
     required: false
     default: ''
+  immutableCreate:
+    description: Create a draft, upload every asset, then publish it as an immutable release.
+    required: false
+    default: 'false'
   makeLatest:
     description: Whether the release is marked latest.
     required: false
@@ -64,6 +68,7 @@ runs:
         bodyFile: ${{ inputs.bodyFile }}
         commit: ${{ inputs.commit }}
         draft: ${{ inputs.draft }}
+        immutableCreate: ${{ inputs.immutableCreate }}
         makeLatest: ${{ inputs.makeLatest }}
         name: ${{ inputs.name }}
         prerelease: ${{ inputs.prerelease }}

@@ -899,10 +899,38 @@ jobs:
             -ArtifactsDirectory artifacts `
             -ExpectedVersion $version `
             -OutputDirectory artifacts/release-assets
+      - name: Verify immutable release configuration
+        env:
+          GH_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo 'IMMUTABLE_RELEASES_READ_TOKEN is required with Administration: read access to this repository.' >&2
+            exit 1
+          fi
+          immutable_enabled=$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/immutable-releases" \
+            --jq '.enabled')
+          if [[ "$immutable_enabled" != "true" ]]; then
+            echo "Immutable releases must be enabled for $GITHUB_REPOSITORY before publication." >&2
+            exit 1
+          fi
       - name: Release
         uses: $/.github/actions/release
         with:
-          allowUpdates: true
-          replacesArtifacts: true
+          allowUpdates: false
+          artifactErrorsFailBuild: true
           artifacts: artifacts/release-assets/*
           body: ${{ needs.changelog.outputs.release_body }}
+          immutableCreate: true
+          replacesArtifacts: false
+      - name: Verify immutable release publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            --jq 'if .immutable == true then .tag_name else error("published release is not immutable") end'

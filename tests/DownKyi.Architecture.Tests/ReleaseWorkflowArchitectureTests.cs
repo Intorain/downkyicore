@@ -30,6 +30,17 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("./script/assemble-release-assets.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("script/release-package-catalog.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("artifacts: artifacts/release-assets/*", workflow, StringComparison.Ordinal);
+        Assert.Contains("immutableCreate: true", workflow, StringComparison.Ordinal);
+        Assert.Contains("artifactErrorsFailBuild: true", workflow, StringComparison.Ordinal);
+        Assert.Contains("allowUpdates: false", workflow, StringComparison.Ordinal);
+        Assert.Contains("replacesArtifacts: false", workflow, StringComparison.Ordinal);
+        Assert.Contains("Verify immutable release configuration", workflow, StringComparison.Ordinal);
+        Assert.Contains("GH_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}", workflow, StringComparison.Ordinal);
+        Assert.Contains("IMMUTABLE_RELEASES_READ_TOKEN is required", workflow, StringComparison.Ordinal);
+        Assert.Contains("repos/$GITHUB_REPOSITORY/immutable-releases", workflow, StringComparison.Ordinal);
+        Assert.Contains("Immutable releases must be enabled", workflow, StringComparison.Ordinal);
+        Assert.Contains("Verify immutable release publication", workflow, StringComparison.Ordinal);
+        Assert.Contains(".immutable == true", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("artifacts: artifacts/*", workflow, StringComparison.Ordinal);
     }
 
@@ -110,7 +121,9 @@ public sealed class ReleaseWorkflowArchitectureTests
             string.Join('\n', release),
             "./script/validate-build-run-artifacts.ps1",
             "./script/assemble-release-assets.ps1",
-            "artifacts: artifacts/release-assets/*");
+            "Verify immutable release configuration",
+            "artifacts: artifacts/release-assets/*",
+            "Verify immutable release publication");
     }
 
     [Fact]
