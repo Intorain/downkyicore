@@ -30,10 +30,18 @@ foreach ($version in $versions) {
 }
 Assert-True ($commitCount -eq 25) 'Not all historical tags were validated.'
 
-$runtimeManifest = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'script/historical-rebuild/runtime-assets.json') -Raw | ConvertFrom-Json
+$runtimeManifestText = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'script/historical-rebuild/runtime-assets.json') -Raw
+$runtimeManifest = $runtimeManifestText | ConvertFrom-Json
 $appImageToolAsset = $runtimeManifest.appimagetool.assets.'linux-x64'
 Assert-True ($null -ne $appImageToolAsset) 'Missing pinned appimagetool asset for linux-x64.'
 Assert-True (([string]$appImageToolAsset.sha256) -match '^[0-9a-f]{64}$') 'Invalid appimagetool checksum for linux-x64.'
+Assert-True ($runtimeManifest.aria2.sourceArchive.url -eq 'https://github.com/crazysmile-PhD/downkyicore/releases/download/v1.3.0/aria2-source.zip') 'The final aria2 source archive must be owned by the v1.3.0 release.'
+Assert-True ($runtimeManifest.aria2.buildInfo.url -eq 'https://github.com/crazysmile-PhD/downkyicore/releases/download/v1.3.0/aria2-build-info.txt') 'The final aria2 build information must be owned by the v1.3.0 release.'
+Assert-True (([string]$runtimeManifest.aria2.sourceArchive.sha256) -match '^[0-9a-f]{64}$') 'Invalid archived aria2 source checksum.'
+Assert-True (([string]$runtimeManifest.aria2.buildInfo.sha256) -match '^[0-9a-f]{64}$') 'Invalid archived aria2 build-info checksum.'
+Assert-True ($runtimeManifest.aria2.mirror.repository -eq 'crazysmile-PhD/downkyicore') 'Historical aria2 binaries must use the DownKyiCore release mirror.'
+Assert-True ($runtimeManifest.aria2.mirror.retention -eq 'never-delete') 'Historical aria2 mirror retention must be never-delete.'
+Assert-True ($runtimeManifestText -notmatch 'crazysmile-PhD/downkyi-(?:runtime-assets|aria2-static-build)/releases/download/') 'Historical runtime downloads must not depend on the retired asset repositories.'
 foreach ($rid in $platforms.Rid) {
     Assert-True ($null -ne $runtimeManifest.aria2.assets.$rid) "Missing pinned aria2 asset for $rid."
     Assert-True ($null -ne $runtimeManifest.ffmpeg.assets.$rid) "Missing pinned FFmpeg asset for $rid."

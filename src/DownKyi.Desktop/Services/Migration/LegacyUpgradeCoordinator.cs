@@ -190,6 +190,20 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
         }
 
         progress.Report(new LegacyUpgradeProgress("正在迁移登录信息"));
+        var cookies = ReadLegacyCookies(stream, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!LoginHelper.SaveLoginInfoCookies(cookies))
+        {
+            throw new IOException("Legacy login cookies could not be persisted.");
+        }
+        progress.Report(new LegacyUpgradeProgress("登录信息迁移完成"));
+    }
+
+    internal static IReadOnlyList<DownKyiCookie> ReadLegacyCookies(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
         var cookies = new List<DownKyiCookie>();
         var cookieRecord = NrbfDecoder.DecodeClassRecord(stream);
         if (cookieRecord.TypeNameMatches(typeof(CookieContainer)))
@@ -197,9 +211,10 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             var values = cookieRecord
                 .GetClassRecord("m_domainTable")?
                 .GetArrayRecord("Values")?
-                .GetArray(typeof(object[]))
-                .Cast<ClassRecord>();
-            foreach (var value in values ?? Array.Empty<ClassRecord>())
+                .GetArray(typeof(object[]));
+            foreach (var value in EnumerateClassRecords(
+                         values,
+                         "CookieContainer.m_domainTable.Values"))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var valueObjects = value
@@ -207,14 +222,17 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                     .GetClassRecord("_list")?
                     .GetArrayRecord("values")?
                     .GetArray(typeof(object[]));
-                foreach (var valueObject in valueObjects?.Cast<ClassRecord>() ?? Array.Empty<ClassRecord>())
+                foreach (var valueObject in EnumerateClassRecords(
+                             valueObjects,
+                             "PathList.m_list._list.values"))
                 {
                     var records = valueObject
                         .GetClassRecord("m_list")?
                         .GetArrayRecord("_items")?
-                        .GetArray(typeof(object[]))
-                        .Cast<ClassRecord>();
-                    foreach (var cookie in records ?? Array.Empty<ClassRecord>())
+                        .GetArray(typeof(object[]));
+                    foreach (var cookie in EnumerateClassRecords(
+                                 records,
+                                 "CookieCollection.m_list._items"))
                     {
                         cookies.Add(new DownKyiCookie(
                             cookie.GetString("m_name") ?? string.Empty,
@@ -225,12 +243,34 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             }
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!LoginHelper.SaveLoginInfoCookies(cookies))
+        return cookies;
+    }
+
+    internal static IEnumerable<ClassRecord> EnumerateClassRecords(
+        Array? records,
+        string source)
+    {
+        if (records == null)
         {
-            throw new IOException("Legacy login cookies could not be persisted.");
+            yield break;
         }
-        progress.Report(new LegacyUpgradeProgress("登录信息迁移完成"));
+
+        foreach (var record in records)
+        {
+            if (record == null)
+            {
+                continue;
+            }
+
+            if (record is not ClassRecord classRecord)
+            {
+                throw new InvalidDataException(
+                    $"Legacy NRBF array '{source}' contained an unexpected "
+                    + $"'{record.GetType().FullName}' record.");
+            }
+
+            yield return classRecord;
+        }
     }
 
     private static string? FindLegacyDatabase()

@@ -24,8 +24,10 @@ internal sealed class AvaloniaApplicationLifecycle : IApplicationLifecycle
     private readonly IDownloadEmergencyCleanup _downloadEmergencyCleanup;
     private readonly ILogger<AvaloniaApplicationLifecycle> _logger;
     private readonly TimeSpan _cleanupTimeout;
+    private readonly Func<Task> _shutdownDesktopAsync;
     private IHost? _host;
     private Task? _hostStartupTask;
+    private Task<bool>? _restartTask;
     private Task? _shutdownTask;
 
     public AvaloniaApplicationLifecycle(
@@ -56,7 +58,8 @@ internal sealed class AvaloniaApplicationLifecycle : IApplicationLifecycle
         ApplicationCancellation applicationCancellation,
         IDownloadEmergencyCleanup downloadEmergencyCleanup,
         ILogger<AvaloniaApplicationLifecycle> logger,
-        TimeSpan cleanupTimeout)
+        TimeSpan cleanupTimeout,
+        Func<Task>? shutdownDesktopAsync = null)
     {
         _desktopContext = desktopContext ?? throw new ArgumentNullException(nameof(desktopContext));
         _restartLauncher = restartLauncher ?? throw new ArgumentNullException(nameof(restartLauncher));
@@ -69,6 +72,7 @@ internal sealed class AvaloniaApplicationLifecycle : IApplicationLifecycle
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         ArgumentOutOfRangeException.ThrowIfLessThan(cleanupTimeout, TimeSpan.Zero);
         _cleanupTimeout = cleanupTimeout;
+        _shutdownDesktopAsync = shutdownDesktopAsync ?? _desktopContext.ShutdownAsync;
     }
 
     public CancellationToken ShutdownToken => _applicationCancellation.ShutdownToken;
@@ -110,15 +114,40 @@ internal sealed class AvaloniaApplicationLifecycle : IApplicationLifecycle
         await _desktopContext.ShutdownAsync().ConfigureAwait(false);
     }
 
-    public async Task<bool> RestartAsync(CancellationToken cancellationToken = default)
+    public Task<bool> RestartAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_restartLauncher.TryStartHelper(Environment.ProcessId))
+        lock (_sync)
         {
-            return false;
+            if (_restartTask != null)
+            {
+                return _restartTask;
+            }
+
+            if (!_restartLauncher.TryStartHelper(Environment.ProcessId))
+            {
+                return Task.FromResult(false);
+            }
+
+            _restartTask = CompleteRestartHandoffAsync();
+            return _restartTask;
+        }
+    }
+
+    private async Task<bool> CompleteRestartHandoffAsync()
+    {
+        try
+        {
+            await RequestShutdownAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (TimeoutException e)
+        {
+            _logger.LogErrorMessage(
+                "Application cleanup timed out after the restart helper started; continuing shutdown.",
+                e);
         }
 
-        await ExitAsync(CancellationToken.None).ConfigureAwait(false);
+        await _shutdownDesktopAsync().ConfigureAwait(false);
         return true;
     }
 

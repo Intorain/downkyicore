@@ -186,7 +186,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         {
             return;
         }
-        catch (Exception e) when (LegacyUpgradeCoordinator.IsMigrationException(e))
+        catch (Exception e) when (IsRecoverableUiFailure(e))
         {
             _logger.LogErrorMessage("Legacy data migration dialog failed.", e);
             FinishMigrationActivity();
@@ -216,11 +216,29 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
 
     private async Task ExecuteRestartAsync()
     {
-        if (!await _applicationLifecycle.RestartAsync().ConfigureAwait(true))
+        Message = "正在重新启动应用";
+        RestartVisible = false;
+        try
         {
-            Message = "无法重新启动应用，请查看日志";
-            RestartVisible = true;
+            if (await _applicationLifecycle.RestartAsync().ConfigureAwait(true))
+            {
+                return;
+            }
         }
+        catch (Exception e) when (IsRecoverableUiFailure(e))
+        {
+            _logger.LogErrorMessage("Application restart failed after legacy data migration.", e);
+        }
+
+        Message = "无法重新启动应用，请查看日志";
+        RestartVisible = true;
+    }
+
+    private static bool IsRecoverableUiFailure(Exception exception)
+    {
+        return exception is not OutOfMemoryException
+            and not StackOverflowException
+            and not AccessViolationException;
     }
 
     private void ShowCancelConfirmation()

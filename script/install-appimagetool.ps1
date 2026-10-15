@@ -28,9 +28,18 @@ $sha256 = ([string]$asset.sha256).ToLowerInvariant()
 $fileName = [string]$asset.fileName
 $expectedSize = [long]$asset.size
 
-$mirrorPrefix = "https://github.com/crazysmile-PhD/downkyi-runtime-assets/releases/download/appimagetool-"
+$mirrorRepository = [string]$appImageTool.mirror.repository
+$mirrorTagPrefix = [string]$appImageTool.mirror.tagPrefix
+if ($mirrorRepository -ne "crazysmile-PhD/downkyicore") {
+    throw "appimagetool must use the DownKyiCore release mirror."
+}
+if ([string]::IsNullOrWhiteSpace($mirrorTagPrefix)) {
+    throw "appimagetool mirror tagPrefix is required."
+}
+
+$mirrorPrefix = "https://github.com/$mirrorRepository/releases/download/$mirrorTagPrefix"
 if (-not $url.StartsWith($mirrorPrefix, [StringComparison]::Ordinal)) {
-    throw "appimagetool must come from the fixed DownKyi runtime-assets mirror."
+    throw "appimagetool must come from a fixed DownKyiCore release mirror."
 }
 if ($fileName -ne "appimagetool-x86_64.AppImage") {
     throw "Unexpected appimagetool file name: $fileName"

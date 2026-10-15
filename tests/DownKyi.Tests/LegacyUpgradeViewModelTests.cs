@@ -200,6 +200,50 @@ public sealed class LegacyUpgradeViewModelTests
     }
 
     [Fact]
+    public async Task RestartFailureRevealsActionableStateInsteadOfLeavingCompletionFrozen()
+    {
+        var lifecycle = new StubApplicationLifecycle(
+            new TimeoutException("Restart cleanup timed out."));
+        var viewModel = new ViewUpgradingDialogViewModel(
+            new CompletedLegacyUpgradeCoordinator(),
+            lifecycle,
+            NullLogger<ViewUpgradingDialogViewModel>.Instance);
+        await using var viewModelScope = viewModel.ConfigureAwait(true);
+        var sawRestartingState = false;
+        var failureVisible = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ViewUpgradingDialogViewModel.Message)
+                && viewModel.Message == "正在重新启动应用")
+            {
+                sawRestartingState = true;
+            }
+
+            if (args.PropertyName == nameof(ViewUpgradingDialogViewModel.RestartVisible)
+                && viewModel.RestartVisible
+                && viewModel.Message == "无法重新启动应用，请查看日志")
+            {
+                failureVisible.TrySetResult();
+            }
+        };
+
+        viewModel.OnDialogOpened(new AppDialogRequest(AppDialog.LegacyUpgrade));
+        viewModel.RestartCommand.Execute(null);
+        await failureVisible.Task
+            .WaitAsync(TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+
+        Assert.True(sawRestartingState);
+        Assert.Equal(1, lifecycle.RestartCount);
+        Assert.Equal("无法重新启动应用，请查看日志", viewModel.Message);
+        Assert.True(viewModel.RestartVisible);
+        Assert.True(viewModel.RestartCommand.CanExecute(null));
+
+        await viewModel.OnDialogClosedAsync().ConfigureAwait(true);
+    }
+
+    [Fact]
     public async Task ExpectedMigrationFailureStopsLoadingAndReturnsDiagnostic()
     {
         var failure = new InvalidOperationException("Expected migration failure.");
@@ -253,7 +297,7 @@ public sealed class LegacyUpgradeViewModelTests
         Assert.False(viewModel.IsMigrationActive);
         var failureResult = Assert.IsType<LegacyUpgradeResult>(
             result.Parameters[ViewUpgradingDialogViewModel.FailureResultParameter]);
-        Assert.IsType<NotSupportedException>(failureResult.Failure);
+        Assert.IsType<NullReferenceException>(failureResult.Failure);
     }
 
     private sealed class BlockingLegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
@@ -332,7 +376,9 @@ public sealed class LegacyUpgradeViewModelTests
         {
             Started.TrySetResult();
             await Fail.Task.ConfigureAwait(false);
-            throw new NotSupportedException("Unexpected migration failure.");
+            object missingLegacyRecord = null!;
+            _ = missingLegacyRecord.ToString();
+            throw new InvalidOperationException("The missing legacy record unexpectedly existed.");
         }
     }
 
@@ -365,8 +411,10 @@ public sealed class LegacyUpgradeViewModelTests
         }
     }
 
-    private sealed class StubApplicationLifecycle : IApplicationLifecycle
+    private sealed class StubApplicationLifecycle(Exception? restartFailure = null) : IApplicationLifecycle
     {
+        public int RestartCount { get; private set; }
+
         public Task RequestShutdownAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -382,6 +430,12 @@ public sealed class LegacyUpgradeViewModelTests
         public Task<bool> RestartAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            RestartCount++;
+            if (restartFailure != null)
+            {
+                return Task.FromException<bool>(restartFailure);
+            }
+
             return Task.FromResult(true);
         }
     }

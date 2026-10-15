@@ -62,6 +62,8 @@ jobs:
     name: Update mirrored FFmpeg assets
     needs: ffmpeg-tooling
     if: ${{ inputs.update_ffmpeg_assets }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/update-ffmpeg-assets.yml
     with:
       bootstrap: ${{ inputs.bootstrap_ffmpeg_assets }}
