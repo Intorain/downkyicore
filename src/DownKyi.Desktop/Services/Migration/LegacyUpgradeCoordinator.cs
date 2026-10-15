@@ -211,9 +211,10 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             var values = cookieRecord
                 .GetClassRecord("m_domainTable")?
                 .GetArrayRecord("Values")?
-                .GetArray(typeof(object[]))
-                .OfType<ClassRecord>();
-            foreach (var value in values ?? [])
+                .GetArray(typeof(object[]));
+            foreach (var value in EnumerateClassRecords(
+                         values,
+                         "CookieContainer.m_domainTable.Values"))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var valueObjects = value
@@ -221,14 +222,17 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                     .GetClassRecord("_list")?
                     .GetArrayRecord("values")?
                     .GetArray(typeof(object[]));
-                foreach (var valueObject in valueObjects?.OfType<ClassRecord>() ?? [])
+                foreach (var valueObject in EnumerateClassRecords(
+                             valueObjects,
+                             "PathList.m_list._list.values"))
                 {
                     var records = valueObject
                         .GetClassRecord("m_list")?
                         .GetArrayRecord("_items")?
-                        .GetArray(typeof(object[]))
-                        .OfType<ClassRecord>();
-                    foreach (var cookie in records ?? [])
+                        .GetArray(typeof(object[]));
+                    foreach (var cookie in EnumerateClassRecords(
+                                 records,
+                                 "CookieCollection.m_list._items"))
                     {
                         cookies.Add(new DownKyiCookie(
                             cookie.GetString("m_name") ?? string.Empty,
@@ -240,6 +244,33 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
         }
 
         return cookies;
+    }
+
+    internal static IEnumerable<ClassRecord> EnumerateClassRecords(
+        Array? records,
+        string source)
+    {
+        if (records == null)
+        {
+            yield break;
+        }
+
+        foreach (var record in records)
+        {
+            if (record == null)
+            {
+                continue;
+            }
+
+            if (record is not ClassRecord classRecord)
+            {
+                throw new InvalidDataException(
+                    $"Legacy NRBF array '{source}' contained an unexpected "
+                    + $"'{record.GetType().FullName}' record.");
+            }
+
+            yield return classRecord;
+        }
     }
 
     private static string? FindLegacyDatabase()

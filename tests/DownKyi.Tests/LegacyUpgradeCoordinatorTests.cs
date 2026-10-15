@@ -33,4 +33,21 @@ public sealed class LegacyUpgradeCoordinatorTests
                 Assert.Equal(".bilibili.com", cookie.Domain);
             });
     }
+
+    [Fact]
+    public void LegacyCookieArraysSkipOnlyNullSlotsAndRejectUnexpectedValues()
+    {
+        Assert.Empty(LegacyUpgradeCoordinator.EnumerateClassRecords(
+            new object?[] { null },
+            "fixture"));
+
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            LegacyUpgradeCoordinator.EnumerateClassRecords(
+                    new object?[] { null, "unexpected" },
+                    "fixture")
+                .ToArray());
+
+        Assert.Contains("fixture", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("System.String", exception.Message, StringComparison.Ordinal);
+    }
 }
