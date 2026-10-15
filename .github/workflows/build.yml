@@ -901,8 +901,12 @@ jobs:
             -OutputDirectory artifacts/release-assets
       - name: Verify immutable release configuration
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}
         run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo 'IMMUTABLE_RELEASES_READ_TOKEN is required with Administration: read access to this repository.' >&2
+            exit 1
+          fi
           immutable_enabled=$(gh api \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2026-03-10' \

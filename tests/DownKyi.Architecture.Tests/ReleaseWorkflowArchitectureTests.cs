@@ -35,6 +35,8 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("allowUpdates: false", workflow, StringComparison.Ordinal);
         Assert.Contains("replacesArtifacts: false", workflow, StringComparison.Ordinal);
         Assert.Contains("Verify immutable release configuration", workflow, StringComparison.Ordinal);
+        Assert.Contains("GH_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}", workflow, StringComparison.Ordinal);
+        Assert.Contains("IMMUTABLE_RELEASES_READ_TOKEN is required", workflow, StringComparison.Ordinal);
         Assert.Contains("repos/$GITHUB_REPOSITORY/immutable-releases", workflow, StringComparison.Ordinal);
         Assert.Contains("Immutable releases must be enabled", workflow, StringComparison.Ordinal);
         Assert.Contains("Verify immutable release publication", workflow, StringComparison.Ordinal);

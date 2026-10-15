@@ -32,11 +32,13 @@ Product PRs do not update this file merely because their work state changed.
   checksum sidecar and publish manifest, preserving filenames and bytes. Assemble
   this public set with `script/assemble-release-assets.ps1`; publish verification
   files only inside the ZIP.
-- Before creating a Release, the workflow must confirm through the repository API
-  that release immutability is enabled. Releases are assembled as drafts, receive
-  the complete validated public asset set, then are published once and read back
-  as immutable. Published assets are never replaced or deleted; an interrupted
-  draft is inspected and removed before a clean rerun.
+- Before creating a Release, the workflow must use the dedicated
+  `IMMUTABLE_RELEASES_READ_TOKEN` secret, scoped to this repository with
+  Administration read access, to confirm through the repository API that release
+  immutability is enabled. Releases are assembled as drafts, receive the complete
+  validated public asset set, then are published once and read back as immutable.
+  Published assets are never replaced or deleted; an interrupted draft is
+  inspected and removed before a clean rerun.
 - Existing tags are immutable. Do not change `version.txt`, create a tag or
   publish a release while any release blocker or required gate is unresolved.
 
