@@ -60,7 +60,13 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
     public bool IsMigrationActive
     {
         get => _isMigrationActive;
-        private set => SetProperty(ref _isMigrationActive, value);
+        private set
+        {
+            if (SetProperty(ref _isMigrationActive, value))
+            {
+                _confirmCancelMigrationCommand?.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     public bool CancelConfirmationVisible

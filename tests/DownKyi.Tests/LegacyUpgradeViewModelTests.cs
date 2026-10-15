@@ -113,14 +113,29 @@ public sealed class LegacyUpgradeViewModelTests
         var coordinator = new BlockingLegacyUpgradeCoordinator();
         var viewModel = CreateViewModel(coordinator);
         await using var viewModelScope = viewModel.ConfigureAwait(true);
+        var confirmCancelCommand = viewModel.ConfirmCancelMigrationCommand;
+        var commandEnabled = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        confirmCancelCommand.CanExecuteChanged += (_, _) =>
+        {
+            if (confirmCancelCommand.CanExecute(null))
+            {
+                commandEnabled.TrySetResult();
+            }
+        };
         var closed = new TaskCompletionSource<AppDialogResult>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         viewModel.CloseRequested += (_, result) => closed.TrySetResult(result);
 
+        Assert.False(confirmCancelCommand.CanExecute(null));
         viewModel.OnDialogOpened(new AppDialogRequest(AppDialog.LegacyUpgrade));
         await coordinator.Started.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        await commandEnabled.Task
+            .WaitAsync(TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        Assert.True(confirmCancelCommand.CanExecute(null));
         viewModel.RequestCancelMigrationCommand.Execute(null);
-        viewModel.ConfirmCancelMigrationCommand.Execute(null);
+        confirmCancelCommand.Execute(null);
 
         await coordinator.CancellationObserved.Task
             .WaitAsync(TestContext.Current.CancellationToken)
@@ -135,6 +150,7 @@ public sealed class LegacyUpgradeViewModelTests
         Assert.Equal(AppDialogOutcome.Canceled, result.Outcome);
         Assert.False(viewModel.IsMigrationActive);
         Assert.False(viewModel.CancelConfirmationVisible);
+        Assert.False(confirmCancelCommand.CanExecute(null));
     }
 
     [Fact]
