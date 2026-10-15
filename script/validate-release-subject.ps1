@@ -46,8 +46,13 @@ if ($trackedChanges) {
 
 Invoke-SubjectGit fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main' | Out-Null
 $mainCommit = Invoke-SubjectGit rev-parse 'refs/remotes/origin/main^{commit}'
-if (-not [string]::Equals($SubjectSha, $mainCommit, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Release subject $SubjectSha does not equal current main $mainCommit."
+$ancestryOutput = @(& git -C $subject merge-base --is-ancestor $SubjectSha $mainCommit 2>&1)
+$ancestryExitCode = $LASTEXITCODE
+if ($ancestryExitCode -eq 1) {
+    throw "Release subject $SubjectSha is not contained in current main history at $mainCommit."
+}
+if ($ancestryExitCode -ne 0) {
+    throw "git -C $subject merge-base --is-ancestor $SubjectSha $mainCommit failed: $($ancestryOutput -join [Environment]::NewLine)"
 }
 
 Write-Output "Validated exact $expectedReleaseVersion release subject at $SubjectSha."

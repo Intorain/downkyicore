@@ -21,7 +21,10 @@ Product PRs do not update this file merely because their work state changed.
   or material divergence from `main`. Consolidate accepted semantics onto one
   clean current-main integration branch and validate that exact head.
 - Publish only from one clean final commit after strict quality, CodeQL and
-  Windows/Linux/macOS package validation pass for that exact commit.
+  Windows/Linux/macOS package validation pass for that exact commit. Once
+  selected, that commit remains the release subject while later work may advance
+  `main`; publication requires the subject to remain in `main` history, not to
+  remain the current `main` head.
 - Preserve settings JSON, legacy SQLite, unfinished tasks, GID, partial-file
   maps, completed keys and resume fixtures unless an approved migration with
   rollback evidence explicitly changes them.

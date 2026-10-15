@@ -232,7 +232,7 @@ public sealed class ReleaseSafetyRegressionTests
     }
 
     [Fact]
-    public void ReleaseTagProvenanceRejectsLightweightAndNonMainTags()
+    public void ReleaseTagProvenanceAllowsFrozenMainAndRejectsLightweightAndNonMainTags()
     {
         var root = CreateTemporaryDirectory();
         var remote = Path.Combine(root, "remote.git");
@@ -261,11 +261,25 @@ public sealed class ReleaseSafetyRegressionTests
                 repository);
             Assert.Equal(0, valid.ExitCode);
 
+            File.AppendAllText(Path.Combine(repository, "fixture.txt"), "\nnext release");
+            RunRequired("git", ["add", "fixture.txt"], repository);
+            RunRequired("git", ["commit", "-m", "next release fixture"], repository);
+            RunRequired("git", ["push", "origin", "main"], repository);
+            var advancedMain = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+            Assert.NotEqual(mainCommit, advancedMain);
+            RunRequired("git", ["checkout", "--detach", mainCommit], repository);
+            var frozenMain = RunPowerShell(
+                validator,
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", mainCommit],
+                repository);
+            Assert.Equal(0, frozenMain.ExitCode);
+            RunRequired("git", ["switch", "main"], repository);
+
             RunRequired("git", ["tag", "-d", releaseTag], repository);
             RunRequired("git", ["tag", releaseTag], repository);
             var lightweight = RunPowerShell(
                 validator,
-                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", mainCommit],
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", advancedMain],
                 repository);
             Assert.NotEqual(0, lightweight.ExitCode);
             Assert.Contains("annotated tag", NormalizeDiagnostic(lightweight), StringComparison.OrdinalIgnoreCase);
