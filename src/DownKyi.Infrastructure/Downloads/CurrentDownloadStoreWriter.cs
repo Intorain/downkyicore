@@ -135,42 +135,32 @@ internal static class CurrentDownloadStoreWriter
         await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task UpgradeHistoryContentAsync(
+    public static async Task UpgradeCurrentShapeAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
+        LegacyDownloadStoreFormat format,
         DateTimeOffset appliedAtUtc,
         CancellationToken cancellationToken)
     {
-        await AddHistoryContentColumnAsync(connection, transaction, cancellationToken)
-            .ConfigureAwait(false);
-        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
-            .ConfigureAwait(false);
-    }
+        if (!format.CanUpgradeCurrentShapeInPlace)
+        {
+            throw new ArgumentException(
+                "The detected schema cannot be upgraded in place.",
+                nameof(format));
+        }
 
-    public static async Task UpgradeOutputReservationsAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
-            .ConfigureAwait(false);
-    }
+        if (!format.HasHistoryContent)
+        {
+            await AddHistoryContentColumnAsync(connection, transaction, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-    public static async Task UpgradeLegacyTransferMarkerAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
-            .ConfigureAwait(false);
+        if (!format.HasLegacyTransferMarker)
+        {
+            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
             .ConfigureAwait(false);
@@ -541,10 +531,9 @@ internal static class CurrentDownloadStoreWriter
                 cancellationToken)
             .ConfigureAwait(false);
         await DownloadStoreSchemaLifecycle
-            .SetUserVersionAsync(
+            .SetCurrentVersionAsync(
                 connection,
                 transaction,
-                DownloadStoreSchema.CurrentVersion,
                 cancellationToken)
             .ConfigureAwait(false);
     }

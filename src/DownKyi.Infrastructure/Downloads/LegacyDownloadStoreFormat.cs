@@ -11,8 +11,8 @@ internal enum LegacyDownloadStoreKind
     HistoryContentUpgradeWithLegacyHistory,
     LegacyTransferMarkerUpgrade,
     LegacyTransferMarkerUpgradeWithLegacyHistory,
-    PreviousCurrent,
-    PreviousCurrentWithLegacyHistory,
+    ActionClaimReservationUpgrade,
+    ActionClaimReservationUpgradeWithLegacyHistory,
     CurrentWithLegacyHistory,
     Current,
     Unsupported
@@ -32,6 +32,7 @@ internal sealed record LegacyDownloadStoreFormat(
     bool HasPublishedArtifacts,
     bool HasStagingToken,
     bool HasPublishingArtifact,
+    bool HasHistoryContent,
     bool HasLegacyTransferMarker,
     IReadOnlyList<string> SchemaDifferences)
 {
@@ -39,23 +40,15 @@ internal sealed record LegacyDownloadStoreFormat(
 
     public bool IsCurrent => Kind == LegacyDownloadStoreKind.Current;
 
-    public bool IsPreviousCurrent => Kind == LegacyDownloadStoreKind.PreviousCurrent;
-
-    public bool IsLegacyTransferMarkerUpgrade =>
-        Kind == LegacyDownloadStoreKind.LegacyTransferMarkerUpgrade;
-
-    public bool IsHistoryContentUpgrade => Kind == LegacyDownloadStoreKind.HistoryContentUpgrade;
-
-    public bool IsHistoryContentUpgradeWithLegacyHistory =>
-        Kind == LegacyDownloadStoreKind.HistoryContentUpgradeWithLegacyHistory;
-
-    public bool IsPreviousCurrentWithLegacyHistory =>
-        Kind == LegacyDownloadStoreKind.PreviousCurrentWithLegacyHistory;
+    public bool CanUpgradeCurrentShapeInPlace =>
+        Kind is LegacyDownloadStoreKind.HistoryContentUpgrade
+            or LegacyDownloadStoreKind.ActionClaimReservationUpgrade
+            or LegacyDownloadStoreKind.LegacyTransferMarkerUpgrade;
 
     public bool RequiresLegacyHistoryRecovery =>
         Kind is LegacyDownloadStoreKind.CurrentWithLegacyHistory
             or LegacyDownloadStoreKind.LegacyTransferMarkerUpgradeWithLegacyHistory
-            or LegacyDownloadStoreKind.PreviousCurrentWithLegacyHistory
+            or LegacyDownloadStoreKind.ActionClaimReservationUpgradeWithLegacyHistory
             or LegacyDownloadStoreKind.HistoryContentUpgradeWithLegacyHistory;
 
     public bool IsSupported => Kind != LegacyDownloadStoreKind.Unsupported;

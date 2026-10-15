@@ -6,7 +6,22 @@ namespace DownKyi.Infrastructure.Downloads;
 
 internal static class DownloadStoreSchema
 {
-    public const int CurrentVersion = 12;
+    // Historical versions are immutable feature identities. Never infer them from
+    // CurrentVersion - N because adding a new version would reclassify every older store.
+    internal const int SchemaMetadataVersion = 1;
+    internal const int StatefulDownloadsVersion = 2;
+    internal const int OutputReservationVersion = 3;
+    internal const int AdmissionGateVersion = 4;
+    internal const int NfoRequestVersion = 5;
+    internal const int PublishedArtifactsVersion = 6;
+    internal const int StagingTokenVersion = 7;
+    internal const int PublishingArtifactVersion = 8;
+    internal const int HistoryProjectionVersion = 9;
+    internal const int HistoryContentVersion = 10;
+    internal const int ActionClaimReservationVersion = 11;
+    internal const int LegacyTransferMarkerVersion = 12;
+
+    public const int CurrentVersion = LegacyTransferMarkerVersion;
 
     public static async Task InitializeAsync(
         SqliteConnection connection,
@@ -42,32 +57,13 @@ internal static class DownloadStoreSchema
                     .CreateAsync(connection, transaction, clock.UtcNow, cancellationToken)
                     .ConfigureAwait(false);
             }
-            else if (format.IsLegacyTransferMarkerUpgrade)
+            else if (format.CanUpgradeCurrentShapeInPlace)
             {
                 await CurrentDownloadStoreWriter
-                    .UpgradeLegacyTransferMarkerAsync(
+                    .UpgradeCurrentShapeAsync(
                         connection,
                         transaction,
-                        clock.UtcNow,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else if (format.IsPreviousCurrent)
-            {
-                await CurrentDownloadStoreWriter
-                    .UpgradeOutputReservationsAsync(
-                        connection,
-                        transaction,
-                        clock.UtcNow,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else if (format.IsHistoryContentUpgrade)
-            {
-                await CurrentDownloadStoreWriter
-                    .UpgradeHistoryContentAsync(
-                        connection,
-                        transaction,
+                        format,
                         clock.UtcNow,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -82,7 +78,7 @@ internal static class DownloadStoreSchema
                     physicalOutputPathResolver);
                 if (format.RequiresLegacyHistoryRecovery)
                 {
-                    if (format.IsHistoryContentUpgradeWithLegacyHistory)
+                    if (!format.HasHistoryContent)
                     {
                         await CurrentDownloadStoreWriter
                             .AddHistoryContentColumnAsync(connection, transaction, cancellationToken)

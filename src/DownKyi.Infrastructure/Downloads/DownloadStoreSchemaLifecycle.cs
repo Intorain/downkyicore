@@ -6,6 +6,8 @@ namespace DownKyi.Infrastructure.Downloads;
 
 internal static class DownloadStoreSchemaLifecycle
 {
+    private const string SetCurrentVersionStatement = "PRAGMA user_version = 12";
+
     public static async Task RecordMigrationAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
@@ -34,17 +36,24 @@ internal static class DownloadStoreSchemaLifecycle
         return Convert.ToInt32(value, CultureInfo.InvariantCulture);
     }
 
-    public static async Task SetUserVersionAsync(
+    public static async Task SetCurrentVersionAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
-        int version,
         CancellationToken cancellationToken)
     {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(version, DownloadStoreSchema.CurrentVersion);
-
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "PRAGMA user_version = 12";
+        // SQLite does not support parameters in PRAGMA assignments. Fail closed if the one
+        // analyzer-safe SQL literal was not updated with the authoritative version constant.
+        var expectedSuffix = string.Create(
+            CultureInfo.InvariantCulture,
+            $" = {DownloadStoreSchema.CurrentVersion}");
+        if (!SetCurrentVersionStatement.EndsWith(expectedSuffix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The current schema has no matching PRAGMA writer.");
+        }
+
+        command.CommandText = SetCurrentVersionStatement;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
