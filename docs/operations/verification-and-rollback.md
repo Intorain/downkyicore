@@ -144,7 +144,8 @@ pwsh ./script/assemble-release-assets.ps1 `
 目前共九個 installer 加一個 ZIP，合計十個公開附件。ZIP 根目錄保存原有的
 九份 `.sha256` 與九份 `publish-manifest-*.json`，檔名及內容逐位元組保留，
 不合併或重新序列化 manifest。GitHub Release 不再單獨上傳這些驗證檔。正式
-發布先建立 Draft Release、上傳完整集合，再一次發布；workflow 必須回讀
+發布前，workflow 必須先透過 repository API 確認 release immutability 已啟用，
+再建立 Draft Release、上傳完整集合並一次發布；發布後必須回讀
 `immutable=true` 才算成功。不得更新或覆寫已發布的 immutable release；若在
 發布前中斷，只能先人工檢查並移除未發布 draft，再從相同 exact-head run 重跑。
 
