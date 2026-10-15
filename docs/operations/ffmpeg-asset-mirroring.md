@@ -16,7 +16,7 @@ Scheduled updater 只自動更新 BtbN RIDs；win-x86／macOS source 變更需�
 
 ## Immutable mirror invariant
 
-- Mirror repository 固定為 `crazysmile-PhD/downkyi-runtime-assets`，retention 是 `never-delete`，且必須啟用 GitHub Immutable Releases。
+- Mirror repository 固定為 `crazysmile-PhD/downkyicore`，retention 是 `never-delete`，且必須啟用 GitHub Immutable Releases。Updater 建立的 runtime releases 一律標記為 prerelease 並明確設為非 Latest；發布前後還要比對 Latest tag 未改變，不得取代正式 DownKyi 版本。
 - 每次 candidate 使用新的 `ffmpeg-<fixed-upstream-version>` tag。Filename 必須含 RID、fixed upstream tag 與 digest prefix；禁止 `latest`、覆寫或刪除歷史 asset。
 - Workflow 先驗 publisher API 的 immutable tag／asset name／size／digest，再 download、rehash、extract 並確認 FFmpeg／ffprobe 可執行；native runner 另驗 version 和適用的 required encoder。
 - 只有全部 RID 通過後才 publish mirror。Manifest mutation 前必須由 release API read back `immutable=true`，並再次比對每個 asset 的 name、size、digest。
@@ -27,9 +27,10 @@ Validation、download、checksum、extraction、capability、upload 或 prefligh
 
 ## Permissions
 
-- `RUNTIME_ASSETS_TOKEN`：只對 runtime-assets repository 有 Contents read/write，用於建立 release／upload asset；不得有 DownKyi source permission。
-- `DOWNKYI_AUTOMATION_TOKEN`：只對 downkyicore 有 Contents 與 Pull requests read/write，用於 manifest PR。不能用它寫 runtime-assets。
-- Normal build／package downloader 不需要這兩個 token。
+- `IMMUTABLE_RELEASES_READ_TOKEN`：獨立 fine-grained token，只對 downkyicore 有 Administration read，用於發布前查詢 Immutable Releases 設定；不得用於建立或修改 release。
+- mirror job 的內建 `GITHUB_TOKEN`：caller 與被呼叫 workflow 都只對 updater job 授予 Contents write，用於在 downkyicore 建立、上傳並發布非 Latest release；其他 job 的預設 token 維持 Contents read。
+- `DOWNKYI_AUTOMATION_TOKEN`：只對 downkyicore 有 Contents 與 Pull requests read/write，用於 manifest PR；不參與 release 發布。
+- Normal build／package downloader 不需要上述 token。
 
 ## Recovery
 
