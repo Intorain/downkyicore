@@ -27,8 +27,7 @@ Validation、download、checksum、extraction、capability、upload 或 prefligh
 
 ## Permissions
 
-- `IMMUTABLE_RELEASES_READ_TOKEN`：獨立 fine-grained token，只對 downkyicore 有 Administration read，用於發布前查詢 Immutable Releases 設定；不得用於建立或修改 release。
-- mirror job 的內建 `GITHUB_TOKEN`：caller 與被呼叫 workflow 都只對 updater job 授予 Contents write，用於在 downkyicore 建立、上傳並發布非 Latest release；其他 job 的預設 token 維持 Contents read。
+- mirror job 的內建 `GITHUB_TOKEN`：caller 與被呼叫 workflow 都只對 updater job 授予 Contents write，用於在 downkyicore 建立、上傳、發布並回讀非 Latest release；其他 job 的預設 token 維持 Contents read。
 - `DOWNKYI_AUTOMATION_TOKEN`：只對 downkyicore 有 Contents 與 Pull requests read/write，用於 manifest PR；不參與 release 發布。
 - Normal build／package downloader 不需要上述 token。
 
