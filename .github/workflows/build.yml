@@ -20,6 +20,7 @@ on:
       - 'script/install-appimagetool.ps1'
       - 'script/assemble-release-assets.ps1'
       - 'script/release-package-catalog.ps1'
+      - 'script/resolve-release-plan.ps1'
       - 'script/ffmpeg-assets.py'
       - 'script/ffmpeg.ps1'
       - 'script/ffmpeg.sh'
@@ -219,6 +220,28 @@ jobs:
           OUTPUT: CHANGELOG.md
       - name: Print the changelog
         run: cat "${{ steps.git-cliff.outputs.changelog }}"
+
+  release-plan:
+    name: Resolve release contract
+    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
+    needs: changelog
+    outputs:
+      validation_matrix: ${{ steps.release-contract.outputs.validation_matrix }}
+    steps:
+      - name: Checkout release contract
+        uses: $/.github/actions/checkout
+      - name: Export validation matrix from the package catalog
+        id: release-contract
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath ./version.txt -Raw).Trim()
+          $matrix = ./script/resolve-release-plan.ps1 `
+            -ExpectedVersion $version `
+            -View ValidationMatrix `
+            -AsJson
+          # The catalog is the release-package owner. This job only adapts it to GitHub's matrix API.
+          "validation_matrix=$matrix" | Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
+
   build-windows:
     runs-on: windows-latest
     needs: changelog
@@ -782,42 +805,11 @@ jobs:
             script/macos/publish-manifest-osx-${{ matrix.cpu }}.json
   pre-release-validation:
     name: Pre-release artifacts (${{ matrix.scope }})
-    needs: [changelog, build-windows, build-linux, validate-linux-arm64, build-macos]
+    needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]
     if: ${{ github.event_name != 'pull_request' && !inputs.update_ffmpeg_assets }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - scope: Inventory
-            os: ubuntu-22.04
-            pattern: '*'
-            pattern2: ''
-            pattern3: ''
-          - scope: Windows
-            os: windows-latest
-            pattern: 'DownKyi-*-1.win-*.zip'
-            pattern2: ''
-            pattern3: ''
-          - scope: LinuxX64
-            os: ubuntu-22.04
-            pattern: 'appimage-x64-transport'
-            pattern2: 'downkyi_*_linux_self-contained_amd64.deb'
-            pattern3: 'downkyi_*_linux_self-contained.x86_64.rpm'
-          - scope: LinuxArm64
-            os: ubuntu-24.04-arm
-            pattern: 'appimage-arm64-transport'
-            pattern2: 'downkyi_*_linux_self-contained_arm64.deb'
-            pattern3: ''
-          - scope: MacOSX64
-            os: macos-15-intel
-            pattern: 'DownKyi-*-osx-x64.dmg'
-            pattern2: ''
-            pattern3: ''
-          - scope: MacOSArm64
-            os: macos-15
-            pattern: 'DownKyi-*-osx-arm64.dmg'
-            pattern2: ''
-            pattern3: ''
+      matrix: ${{ fromJSON(needs.release-plan.outputs.validation_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout release validators

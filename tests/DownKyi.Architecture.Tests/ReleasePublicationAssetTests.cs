@@ -14,18 +14,8 @@ public sealed class ReleasePublicationAssetTests
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
         UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
     private static readonly string RepositoryRoot = FindRepositoryRoot();
-    private static readonly (string PackageName, string ManifestName)[] PackageDefinitions =
-    [
-        ($"DownKyi-{Version}-1.win-x64.zip", "publish-manifest-win-x64.json"),
-        ($"DownKyi-{Version}-1.win-x86.zip", "publish-manifest-win-x86.json"),
-        ($"DownKyi-{Version}_linux_self-contained.x86_64.AppImage", "publish-manifest-linux-x64-AppImage.json"),
-        ($"downkyi_{Version}_linux_self-contained_amd64.deb", "publish-manifest-linux-x64-deb.json"),
-        ($"downkyi_{Version}_linux_self-contained.x86_64.rpm", "publish-manifest-linux-x64-rpm.json"),
-        ($"DownKyi-{Version}_linux_self-contained.aarch64.AppImage", "publish-manifest-linux-arm64-AppImage.json"),
-        ($"downkyi_{Version}_linux_self-contained_arm64.deb", "publish-manifest-linux-arm64-deb.json"),
-        ($"DownKyi-{Version}-osx-x64.dmg", "publish-manifest-osx-x64.json"),
-        ($"DownKyi-{Version}-osx-arm64.dmg", "publish-manifest-osx-arm64.json")
-    ];
+    private static readonly ReleasePackageDefinition[] PackageDefinitions =
+        ReleasePackageCatalogTestSupport.LoadPackages(Version);
 
     [Fact]
     public async Task AssemblerPublishesNineUnchangedPackagesAndOneVerificationArchive()
