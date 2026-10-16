@@ -1119,13 +1119,13 @@
       "rationale": "The finding is confined to test or platform-fixture integration coverage; it remains individually traceable."
     },
     {
-      "identity": "CA1506|tests/DownKyi.Tests/DownloadPipelineStageTests.cs|CreateAsync",
+      "identity": "CA1506|tests/DownKyi.Tests/DownloadPipelineTestSupport.cs|CreateAsync",
       "rule": "CA1506",
-      "path": "tests/DownKyi.Tests/DownloadPipelineStageTests.cs",
+      "path": "tests/DownKyi.Tests/DownloadPipelineTestSupport.cs",
       "symbol": "CreateAsync",
-      "observedMetric": 59,
-      "groupId": "ca1506-test-ddea7b47761b8175",
-      "groupTitle": "Integration-test coupling: tests/DownKyi.Tests/DownloadPipelineStageTests.cs::CreateAsync",
+      "observedMetric": 61,
+      "groupId": "ca1506-test-a10f2b8ade55912c",
+      "groupTitle": "Integration-test coupling: tests/DownKyi.Tests/DownloadPipelineTestSupport.cs::CreateAsync",
       "classification": "integration-test",
       "reviewStatus": "reviewed-reasonable",
       "rationale": "The finding is confined to test or platform-fixture integration coverage; it remains individually traceable."
