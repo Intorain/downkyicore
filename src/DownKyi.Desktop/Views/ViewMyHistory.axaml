@@ -322,7 +322,6 @@
                     Command="{Binding AddToDownloadCommand}"
                     Content="{DynamicResource DownloadSelectedPublication}"
                     FontSize="12"
-                    Foreground="{DynamicResource BrushText}"
                     Theme="{StaticResource BtnStyle}" />
 
                 <Button
@@ -333,7 +332,6 @@
                     Command="{Binding AddAllToDownloadCommand}"
                     Content="{DynamicResource DownloadAllPublication}"
                     FontSize="12"
-                    Foreground="{DynamicResource BrushText}"
                     Theme="{StaticResource BtnStyle}" />
             </Grid>
         </Grid>

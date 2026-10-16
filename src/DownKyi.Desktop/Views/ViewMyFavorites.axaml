@@ -251,7 +251,6 @@
                         Margin="8,0,0,0"
                         Command="{Binding SearchCommand}"
                         Content="{DynamicResource Search}"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
                 </Grid>
 
@@ -332,7 +331,6 @@
                         Command="{Binding AddToDownloadCommand}"
                         Content="{DynamicResource DownloadSelectedPublication}"
                         FontSize="12"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
 
                     <Button
@@ -343,7 +341,6 @@
                         Command="{Binding AddAllToDownloadCommand}"
                         Content="{DynamicResource DownloadAllPublication}"
                         FontSize="12"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
                 </Grid>
             </Grid>

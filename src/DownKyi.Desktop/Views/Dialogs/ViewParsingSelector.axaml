@@ -50,7 +50,6 @@
                     Command="{Binding ParseSelectedItemCommand}"
                     Content="{DynamicResource ParseSelectedItem}"
                     FontSize="12"
-                    Foreground="{DynamicResource BrushText}"
                     Theme="{StaticResource BtnStyle}" />
 
                 <Button
@@ -62,7 +61,6 @@
                     Command="{Binding ParseCurrentSectionCommand}"
                     Content="{DynamicResource ParseCurrentSection}"
                     FontSize="12"
-                    Foreground="{DynamicResource BrushText}"
                     Theme="{StaticResource BtnStyle}" />
 
                 <Button
@@ -74,7 +72,6 @@
                     Command="{Binding ParseAllCommand}"
                     Content="{DynamicResource ParseAll}"
                     FontSize="12"
-                    Foreground="{DynamicResource BrushText}"
                     Theme="{StaticResource BtnStyle}" />
 
                 <CheckBox
