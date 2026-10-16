@@ -15,6 +15,14 @@ public sealed class ApplicationLogProviderTests : IDisposable
         MicrosoftLogLevel.Error,
         new EventId(1, nameof(RequestFailed)),
         "Request failed for https://example.test/file?access_key=query-secret user=alice@example.test mid=123456");
+    private static readonly Action<ILogger, Exception?> TransferAttemptFailed = LoggerMessage.Define(
+        MicrosoftLogLevel.Warning,
+        new EventId(1002, "WarningMessage"),
+        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500");
+    private static readonly Action<ILogger, Exception?> UnrecognizedSensitiveWarning = LoggerMessage.Define(
+        MicrosoftLogLevel.Warning,
+        new EventId(1002, "WarningMessage"),
+        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500 Authorization: Bearer opaque-bearer-value https://example.test/file?X-Amz-Signature=opaque-signature");
     private static readonly Action<ILogger, int, Exception?> RecentEntry = LoggerMessage.Define<int>(
         MicrosoftLogLevel.Information,
         new EventId(2, nameof(RecentEntry)),
@@ -191,14 +199,18 @@ public sealed class ApplicationLogProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task FeedbackPackageWhitelistsPersistedErrorFieldsAfterRestart()
+    public async Task FeedbackPackageIncludesOnlyAllowlistedPersistedMessagesAfterRestart()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var firstProvider = CreateProvider();
         var logger = firstProvider.CreateLogger("DownKyi.Tests.Feedback");
+        var transferLogger = firstProvider.CreateLogger(
+            "DownKyi.Services.Download.DownloadTransferCoordinator");
         RecentEntry(logger, 1, null);
         using (logger.BeginScope("cookie=scope-private"))
         {
+            TransferAttemptFailed(transferLogger, null);
+            UnrecognizedSensitiveWarning(transferLogger, null);
             RequestFailed(logger, new InvalidOperationException(
                 "opaque-private-value-73918 C:\\Users\\alice\\Videos\\private.mp4"));
             RequestFailed(logger, new DownloadStoreSchemaMismatchException(
@@ -224,7 +236,8 @@ public sealed class ApplicationLogProviderTests : IDisposable
             var manifest = await ReadArchiveEntryAsync(archive, "manifest.json", cancellationToken)
                 .ConfigureAwait(true);
             using var manifestJson = JsonDocument.Parse(manifest);
-            Assert.Equal(2, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
+            Assert.Equal(2, manifestJson.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(4, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
 
             var errors = await ReadArchiveEntryAsync(archive, "errors.jsonl", cancellationToken)
                 .ConfigureAwait(true);
@@ -235,13 +248,21 @@ public sealed class ApplicationLogProviderTests : IDisposable
                 errors, StringComparison.Ordinal);
             Assert.Contains("Error message: Download database schema 9", errors,
                 StringComparison.Ordinal);
+            Assert.Contains(
+                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500",
+                errors,
+                StringComparison.Ordinal);
             Assert.DoesNotContain("entry=1", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("Request failed for", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("opaque-private-value-73918", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("private.mp4", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("query-secret", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("scope-private", errors, StringComparison.Ordinal);
-            Assert.DoesNotContain("\"message\"", errors, StringComparison.Ordinal);
+            Assert.DoesNotContain("Authorization: Bearer", errors, StringComparison.Ordinal);
+            Assert.DoesNotContain("opaque-bearer-value", errors, StringComparison.Ordinal);
+            Assert.DoesNotContain("X-Amz-Signature", errors, StringComparison.Ordinal);
+            Assert.DoesNotContain("opaque-signature", errors, StringComparison.Ordinal);
+            Assert.Contains("\"message\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"exceptionText\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"scope\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"processId\"", errors, StringComparison.Ordinal);

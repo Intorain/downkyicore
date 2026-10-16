@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -9,6 +10,34 @@ namespace DownKyi.Tests;
 
 public sealed class DownloadRetryPolicyTests
 {
+    [Fact]
+    public void TransferFailureDiagnosticUsesInvariantIntegerMilliseconds()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            var diagnostic = DownloadTransferCoordinator.FormatFailureDiagnostic(
+                "built-in",
+                attempt: 1,
+                maximumAttempts: 5,
+                failureKind: DownloadTransferFailureKind.TransientNetwork,
+                errorCode: "download.transfer.network",
+                nextAction: DownloadRetryAction.RetrySameAddress,
+                delay: TimeSpan.FromMilliseconds(500));
+
+            Assert.Equal(
+                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500",
+                diagnostic);
+            Assert.DoesNotContain("٫", diagnostic, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
     [Fact]
     public async Task CoordinatorCapsOneGlobalBudgetAcrossPrimaryAndBackupAddresses()
     {
