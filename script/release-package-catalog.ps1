@@ -80,3 +80,56 @@ function Get-ReleasePackageCatalog {
         }
     )
 }
+
+function Get-ReleaseValidationMatrix {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedVersion
+    )
+
+    $packages = @(Get-ReleasePackageCatalog -ExpectedVersion $ExpectedVersion)
+    $validationScopes = @(
+        [pscustomobject]@{ Scope = 'Inventory'; Runner = 'ubuntu-22.04' },
+        [pscustomobject]@{ Scope = 'Windows'; Runner = 'windows-latest' },
+        [pscustomobject]@{ Scope = 'LinuxX64'; Runner = 'ubuntu-22.04' },
+        [pscustomobject]@{ Scope = 'LinuxArm64'; Runner = 'ubuntu-24.04-arm' },
+        [pscustomobject]@{ Scope = 'MacOSX64'; Runner = 'macos-15-intel' },
+        [pscustomobject]@{ Scope = 'MacOSArm64'; Runner = 'macos-15' }
+    )
+
+    foreach ($validationScope in $validationScopes) {
+        $artifactNames = @(
+            if ($validationScope.Scope -ceq 'Inventory') {
+                '*'
+            }
+            else {
+                $packages |
+                    Where-Object Scope -CEQ $validationScope.Scope |
+                    ForEach-Object {
+                        if ([string]::IsNullOrWhiteSpace([string]$_.Transport)) {
+                            $_.Name
+                        }
+                        else {
+                            $_.Transport -creplace '\.transport\.tar$', '-transport'
+                        }
+                    }
+            }
+        )
+
+        if ($artifactNames.Count -eq 0) {
+            throw "Release validation scope $($validationScope.Scope) has no package artifacts."
+        }
+        if ($artifactNames.Count -gt 3) {
+            throw "Release validation scope $($validationScope.Scope) exceeds the three supported artifact downloads."
+        }
+
+        [pscustomobject]@{
+            scope = $validationScope.Scope
+            os = $validationScope.Runner
+            pattern = $artifactNames[0]
+            pattern2 = if ($artifactNames.Count -ge 2) { $artifactNames[1] } else { '' }
+            pattern3 = if ($artifactNames.Count -ge 3) { $artifactNames[2] } else { '' }
+        }
+    }
+}

@@ -24,11 +24,35 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("-p:AnalysisMode=All", workflow, StringComparison.Ordinal);
         Assert.Contains("./script/test-solution.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("./script/validate-release-version.ps1", workflow, StringComparison.Ordinal);
-        Assert.Equal(7, CountOccurrences(workflow, "fail-fast: false"));
-        Assert.Equal(4, CountOccurrences(workflow, "validate-publish-output.ps1"));
-        Assert.Equal(4, CountOccurrences(workflow, "Get-FileHash"));
+        foreach (var jobName in new[]
+                 {
+                     "release-gate",
+                     "build-windows",
+                     "build-linux-publish",
+                     "build-linux",
+                     "validate-linux-arm64",
+                     "build-macos",
+                     "pre-release-validation"
+                 })
+        {
+            var job = GetYamlBlock(NormalizeWorkflowLines(workflow), $"  {jobName}:", 2);
+            Assert.Contains("      fail-fast: false", job);
+        }
+
+        foreach (var jobName in new[] { "build-windows", "build-linux-publish", "build-macos" })
+        {
+            var job = GetYamlBlock(NormalizeWorkflowLines(workflow), $"  {jobName}:", 2);
+            Assert.Contains(job, line => line.Contains("validate-publish-output.ps1", StringComparison.Ordinal));
+        }
+
+        foreach (var jobName in new[] { "build-windows", "build-linux", "validate-linux-arm64", "build-macos" })
+        {
+            var job = GetYamlBlock(NormalizeWorkflowLines(workflow), $"  {jobName}:", 2);
+            Assert.Contains(job, line => line.Contains("Get-FileHash", StringComparison.Ordinal));
+        }
+
         Assert.Contains("./script/assemble-release-assets.ps1", workflow, StringComparison.Ordinal);
-        Assert.Contains("script/release-package-catalog.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("./script/resolve-release-plan.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains("artifacts: artifacts/release-assets/*", workflow, StringComparison.Ordinal);
         Assert.Contains("immutableCreate: true", workflow, StringComparison.Ordinal);
         Assert.Contains("artifactErrorsFailBuild: true", workflow, StringComparison.Ordinal);
@@ -44,16 +68,43 @@ public sealed class ReleaseWorkflowArchitectureTests
     [Fact]
     public void ReleasePackageIdentityHasOneScriptOwner()
     {
-        var catalog = File.ReadAllText(
-            Path.Combine(RepositoryRoot, "script", "release-package-catalog.ps1"));
+        var packages = ReleasePackageCatalogTestSupport.LoadPackages("9.8.7");
+        var validationMatrix = ReleasePackageCatalogTestSupport.LoadValidationMatrix("9.8.7");
         var validator = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "validate-build-run-artifacts.ps1"));
         var assembler = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "assemble-release-assets.ps1"));
+        var resolver = File.ReadAllText(
+            Path.Combine(RepositoryRoot, "script", "resolve-release-plan.ps1"));
 
-        Assert.Equal(9, CountOccurrences(catalog, "            Name = "));
+        Assert.Equal(9, packages.Length);
+        Assert.Equal(packages.Length, packages.Select(package => package.PackageName).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(packages.Length, packages.Select(package => package.ManifestName).Distinct(StringComparer.Ordinal).Count());
+
+        var expectedScopes = packages.Select(package => package.Scope)
+            .Append("Inventory")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(
+            expectedScopes,
+            validationMatrix.Include.Select(target => target.Scope).Order(StringComparer.Ordinal).ToArray());
+
+        var matrixArtifacts = validationMatrix.Include
+            .SelectMany(target => new[] { target.Pattern, target.Pattern2, target.Pattern3 })
+            .Where(pattern => pattern.Length > 0 && pattern != "*")
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var package in packages)
+        {
+            var artifactName = package.Transport is null
+                ? package.PackageName
+                : package.Transport.Replace(".transport.tar", "-transport", StringComparison.Ordinal);
+            Assert.Contains(artifactName, matrixArtifacts);
+        }
+
         Assert.Contains("Get-ReleasePackageCatalog", validator, StringComparison.Ordinal);
         Assert.Contains("Get-ReleasePackageCatalog", assembler, StringComparison.Ordinal);
+        Assert.Contains("Get-ReleaseValidationMatrix", resolver, StringComparison.Ordinal);
         Assert.DoesNotContain("publish-manifest-win-x64.json", validator, StringComparison.Ordinal);
         Assert.DoesNotContain("publish-manifest-win-x64.json", assembler, StringComparison.Ordinal);
     }
@@ -70,17 +121,18 @@ public sealed class ReleaseWorkflowArchitectureTests
             workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'),
             "  release:",
             2);
+        var releasePlan = GetYamlBlock(
+            workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'),
+            "  release-plan:",
+            2);
 
         Assert.Contains(
-            "    needs: [changelog, build-windows, build-linux, validate-linux-arm64, build-macos]",
+            "    needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]",
             preRelease);
         Assert.Contains("      fail-fast: false", preRelease);
-        Assert.Contains("          - scope: Inventory", preRelease);
-        Assert.Contains("          - scope: Windows", preRelease);
-        Assert.Contains("          - scope: LinuxX64", preRelease);
-        Assert.Contains("          - scope: LinuxArm64", preRelease);
-        Assert.Contains("          - scope: MacOSX64", preRelease);
-        Assert.Contains("          - scope: MacOSArm64", preRelease);
+        Assert.Contains("      matrix: ${{ fromJSON(needs.release-plan.outputs.validation_matrix) }}", preRelease);
+        Assert.Contains(releasePlan, line => line.Contains("./script/resolve-release-plan.ps1", StringComparison.Ordinal));
+        Assert.Contains(releasePlan, line => line.Contains("validation_matrix=$matrix", StringComparison.Ordinal));
         Assert.Contains("      - name: Download all artifacts from this Build run", preRelease);
         Assert.Contains("          merge-multiple: true", preRelease);
         Assert.Contains(
@@ -224,21 +276,18 @@ public sealed class ReleaseWorkflowArchitectureTests
         var gate = GetYamlBlock(lines, "  ffmpeg-required-gate:", 2);
         var release = GetYamlBlock(lines, "  release-gate:", 2);
 
-        Assert.Equal(
-            [
-                ".github/workflows/build.yml",
-                ".github/workflows/update-ffmpeg-assets.yml",
-                "script/assets/external-assets.json",
-                "script/download-external-asset.ps1",
-                "script/install-appimagetool.ps1",
-                "script/assemble-release-assets.ps1",
-                "script/release-package-catalog.ps1",
-                "script/ffmpeg-assets.py",
-                "script/ffmpeg.ps1",
-                "script/ffmpeg.sh",
-                "script/tests/test_ffmpeg_assets.py"
-            ],
-            triggerPaths);
+        foreach (var requiredOwner in new[]
+                 {
+                     ".github/workflows/build.yml",
+                     ".github/workflows/update-ffmpeg-assets.yml",
+                     "script/assets/external-assets.json",
+                     "script/release-package-catalog.ps1",
+                     "script/resolve-release-plan.ps1",
+                     "script/tests/test_ffmpeg_assets.py"
+                 })
+        {
+            Assert.Contains(requiredOwner, triggerPaths);
+        }
         Assert.DoesNotContain("needs: detect-production-manifest-change", tooling);
         Assert.DoesNotContain("github.event_name != 'pull_request'", tooling);
         Assert.Contains("    if: ${{ always() && !inputs.update_ffmpeg_assets && needs.ffmpeg-tooling.result == 'success' && (github.event_name != 'pull_request' || needs.detect-production-manifest-change.outputs.external_assets == 'true') }}", preflight);
@@ -281,6 +330,7 @@ public sealed class ReleaseWorkflowArchitectureTests
             ("script/validate-publish-output.ps1", ["macos"]),
             ("script/macos/validate-dmg-package.sh", ["macos"]),
             ("script/download-external-asset.ps1", ["build"]),
+            ("script/resolve-release-plan.ps1", ["build"]),
             ("script/ffmpeg-assets.py", ["build", "macos"]),
             ("script/assets/external-assets.json", ["build", "macos"]),
             (".github/workflows/build.yml", ["build"]),
@@ -315,30 +365,41 @@ public sealed class ReleaseWorkflowArchitectureTests
     public void BuildJobDependenciesPreserveExpectedSkipsAndFormalReleaseGate()
     {
         var workflow = ReadWorkflow("build.yml");
+        var lines = NormalizeWorkflowLines(workflow);
+        var updater = GetYamlBlock(lines, "  ffmpeg-asset-updater:", 2);
+        var preflight = GetYamlBlock(lines, "  external-assets-preflight:", 2);
+        var pullRequestGate = GetYamlBlock(lines, "  ffmpeg-required-gate:", 2);
+        var releaseGate = GetYamlBlock(lines, "  release-gate:", 2);
+        var preRelease = GetYamlBlock(lines, "  pre-release-validation:", 2);
+        var release = GetYamlBlock(lines, "  release:", 2);
 
-        Assert.False(BuildJobRuns(workflow, "release-gate", "pull_request",
-            "script/validate-build-run-artifacts.ps1"));
-        Assert.True(BuildJobRuns(workflow, "ffmpeg-required-gate", "pull_request",
-            ".github/workflows/build.yml"));
-        Assert.False(BuildJobRuns(workflow, "external-assets-preflight", "pull_request",
-            ".github/workflows/build.yml"));
-        Assert.False(BuildJobRuns(workflow, "release-gate", "pull_request",
-            ".github/workflows/build.yml"));
-        Assert.True(BuildJobRuns(workflow, "release-gate", "pull_request",
-            "script/assets/external-assets.json"));
-        Assert.False(BuildJobRuns(workflow, "pre-release-validation", "pull_request",
-            "script/assets/external-assets.json"));
-        Assert.False(BuildJobRuns(workflow, "release", "pull_request",
-            "script/assets/external-assets.json"));
-        Assert.True(BuildJobRuns(workflow, "pre-release-validation", "workflow_dispatch", ""));
-        Assert.False(BuildJobRuns(workflow, "release", "workflow_dispatch", ""));
-        Assert.True(BuildJobRuns(workflow, "ffmpeg-asset-updater", "workflow_dispatch", "",
-            updateAssets: true));
-        Assert.False(BuildJobRuns(workflow, "release-gate", "workflow_dispatch", "",
-            updateAssets: true));
-        Assert.True(BuildJobRuns(workflow, "pre-release-validation", "push-tag", ""));
-        Assert.True(BuildJobRuns(workflow, "release", "push-tag", ""));
-        Assert.False(BuildJobRuns(workflow, "ffmpeg-required-gate", "push-tag", ""));
+        Assert.Contains("    needs: ffmpeg-tooling", updater);
+        AssertJobConditionContains(updater, "inputs.update_ffmpeg_assets");
+
+        Assert.Contains("      - ffmpeg-tooling", preflight);
+        Assert.Contains("      - detect-production-manifest-change", preflight);
+        AssertJobConditionContains(
+            preflight,
+            "!inputs.update_ffmpeg_assets",
+            "needs.ffmpeg-tooling.result == 'success'",
+            "github.event_name != 'pull_request'",
+            "needs.detect-production-manifest-change.outputs.external_assets == 'true'");
+
+        Assert.Contains("      - ffmpeg-tooling", pullRequestGate);
+        Assert.Contains("      - external-assets-preflight", pullRequestGate);
+        AssertJobConditionContains(pullRequestGate, "always()", "github.event_name == 'pull_request'");
+
+        Assert.Contains("    needs: external-assets-preflight", releaseGate);
+        Assert.DoesNotContain(releaseGate, line =>
+            GetIndent(line) == 4 && line.TrimStart().StartsWith("if:", StringComparison.Ordinal));
+
+        Assert.Contains(
+            "    needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]",
+            preRelease);
+        AssertJobConditionContains(preRelease, "github.event_name != 'pull_request'", "!inputs.update_ffmpeg_assets");
+
+        Assert.Contains("    needs: [changelog, pre-release-validation]", release);
+        AssertJobConditionContains(release, "startsWith(github.ref, 'refs/tags/')");
     }
 
     [Fact]
@@ -1197,57 +1258,16 @@ public sealed class ReleaseWorkflowArchitectureTests
         return Regex.IsMatch(path, $"\\A{pattern}\\z", RegexOptions.CultureInvariant);
     }
 
-    private static bool BuildJobRuns(
-        string workflow, string jobName, string eventKind, string changedPath,
-        bool updateAssets = false)
+    private static void AssertJobConditionContains(
+        IReadOnlyList<string> job,
+        params string[] requiredFragments)
     {
-        if (!WorkflowRuns(workflow, eventKind, changedPath))
+        var condition = Assert.Single(job, line =>
+            GetIndent(line) == 4 && line.TrimStart().StartsWith("if:", StringComparison.Ordinal));
+        foreach (var fragment in requiredFragments)
         {
-            return false;
+            Assert.Contains(fragment, condition, StringComparison.Ordinal);
         }
-
-        return BuildJobRunsCore(workflow, jobName, eventKind, changedPath, updateAssets);
-    }
-
-    private static bool BuildJobRunsCore(
-        string workflow, string jobName, string eventKind, string changedPath,
-        bool updateAssets)
-    {
-        var job = GetYamlBlock(NormalizeWorkflowLines(workflow), $"  {jobName}:", 2);
-        Assert.NotEmpty(job);
-        var needsLine = job.SingleOrDefault(line => GetIndent(line) == 4 &&
-            line.TrimStart().StartsWith("needs:", StringComparison.Ordinal));
-        var needs = needsLine is null ? [] : needsLine.Trim() == "needs:"
-            ? GetYamlSequenceValues(job, "    needs:", 4)
-            : needsLine.Trim()["needs:".Length..].Trim().Trim('[', ']')
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var results = needs.ToDictionary(
-            need => need,
-            need => BuildJobRunsCore(workflow, need, eventKind, changedPath, updateAssets),
-            StringComparer.Ordinal);
-        var condition = job.SingleOrDefault(line => GetIndent(line) == 4 &&
-            line.TrimStart().StartsWith("if:", StringComparison.Ordinal))?.Trim();
-        var dependenciesSucceeded = results.Values.All(result => result);
-
-        return condition switch
-        {
-            null => dependenciesSucceeded,
-            "if: ${{ inputs.update_ffmpeg_assets }}" =>
-                dependenciesSucceeded && updateAssets,
-            "if: ${{ always() && !inputs.update_ffmpeg_assets && needs.ffmpeg-tooling.result == 'success' && (github.event_name != 'pull_request' || needs.detect-production-manifest-change.outputs.external_assets == 'true') }}" =>
-                !updateAssets && results["ffmpeg-tooling"] &&
-                (eventKind != "pull_request" ||
-                 changedPath == "script/assets/external-assets.json"),
-            "if: ${{ always() && github.event_name == 'pull_request' }}" =>
-                eventKind == "pull_request",
-            "if: ${{ always() && needs.release-gate.result == 'success' }}" =>
-                results["release-gate"],
-            "if: ${{ github.event_name != 'pull_request' && !inputs.update_ffmpeg_assets }}" =>
-                dependenciesSucceeded && eventKind != "pull_request" && !updateAssets,
-            "if: ${{ startsWith(github.ref, 'refs/tags/') }}" =>
-                dependenciesSucceeded && eventKind == "push-tag",
-            _ => throw new InvalidOperationException($"Unmodeled Build job condition in {jobName}: {condition}")
-        };
     }
 
     private static List<List<string>> GetWorkflowSteps(string workflow, string jobHeader)

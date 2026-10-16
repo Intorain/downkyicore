@@ -4,7 +4,6 @@ param(
     [string]$ArtifactDirectory,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Inventory', 'Windows', 'LinuxX64', 'LinuxArm64', 'MacOSX64', 'MacOSArm64')]
     [string]$Scope,
 
     [string]$ExpectedVersion,

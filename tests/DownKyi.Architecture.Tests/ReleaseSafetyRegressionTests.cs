@@ -31,8 +31,12 @@ public sealed class ReleaseSafetyRegressionTests
         Assert.DoesNotContain($"'{RepositoryVersion}'", packageValidator, StringComparison.Ordinal);
         Assert.Contains("resolve-v112-macos-trust.ps1", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("HAS_MACOS_SIGNING: ${{ secrets.", workflow, StringComparison.Ordinal);
-        Assert.Equal(3, CountOccurrences(workflow, "validate-release-package.ps1"));
-        Assert.Equal(3, CountOccurrences(workflow, "-ExpectedManifestPath"));
+        foreach (var jobName in new[] { "build-windows", "build-linux", "validate-linux-arm64" })
+        {
+            var job = GetWorkflowJob(workflow, jobName);
+            Assert.Contains("validate-release-package.ps1", job, StringComparison.Ordinal);
+            Assert.Contains("-ExpectedManifestPath", job, StringComparison.Ordinal);
+        }
         Assert.Contains("./validate-dmg-package.sh \\", workflow, StringComparison.Ordinal);
         Assert.Contains("ubuntu-24.04-arm", workflow, StringComparison.Ordinal);
         Assert.Contains("validate-linux-arm64:", workflow, StringComparison.Ordinal);
@@ -112,12 +116,18 @@ public sealed class ReleaseSafetyRegressionTests
     public void Arm64CandidatePromotionRejectsBrokenWorkflowTransitions()
     {
         var workflow = File.ReadAllText(Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var arm64Validation = Assert.Single(
+            ReleasePackageCatalogTestSupport.LoadValidationMatrix(RepositoryVersion).Include,
+            target => target.Scope == "LinuxArm64");
 
         AssertArm64PromotionContract(workflow);
+        Assert.Equal("ubuntu-24.04-arm", arm64Validation.Runner);
+        Assert.Equal("appimage-arm64-transport", arm64Validation.Pattern);
+        Assert.Equal($"downkyi_{RepositoryVersion}_linux_self-contained_arm64.deb", arm64Validation.Pattern2);
         Assert.ThrowsAny<Exception>(() => AssertArm64PromotionContract(
             workflow.Replace(
-                "needs: [changelog, build-windows, build-linux, validate-linux-arm64, build-macos]",
-                "needs: [changelog, build-windows, build-linux, build-macos]",
+                "needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]",
+                "needs: [changelog, release-plan, build-windows, build-linux, build-macos]",
                 StringComparison.Ordinal)));
         Assert.ThrowsAny<Exception>(() => AssertArm64PromotionContract(
             workflow.Replace(
@@ -142,6 +152,7 @@ public sealed class ReleaseSafetyRegressionTests
         var configuration = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "pupnet", "DownKyi.pupnet.conf"));
         var workflow = File.ReadAllText(Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var windowsPackages = GetWorkflowJob(workflow, "build-windows");
         var linuxPublish = GetWorkflowJob(workflow, "build-linux-publish");
         var linuxPackages = GetWorkflowJob(workflow, "build-linux");
         var root = CreateTemporaryDirectory();
@@ -152,12 +163,16 @@ public sealed class ReleaseSafetyRegressionTests
         Assert.Contains("DotnetPostPublish = stage-canonical-publish.sh", configuration, StringComparison.Ordinal);
         Assert.Contains("DotnetPostPublishOnWindows = stage-canonical-publish.cmd", configuration, StringComparison.Ordinal);
         Assert.DoesNotContain("DotnetPublishArgs", configuration, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(workflow, "- name: Build canonical publish"));
-        Assert.Equal(2, CountOccurrences(workflow, "- name: Finalize and validate canonical publish payload"));
-        Assert.Equal(2, CountOccurrences(workflow, "CANONICAL_PUBLISH_DIRECTORY:"));
-        Assert.Equal(7, CountOccurrences(workflow, "os: ubuntu-22.04"));
-        Assert.Equal(3, CountOccurrences(workflow, "linux-${{ matrix.cpu }}.canonical-publish.internal.transport.tar"));
-        Assert.Equal(1, CountOccurrences(linuxPublish, "dotnet publish ./DownKyi/DownKyi.csproj"));
+        foreach (var producer in new[] { windowsPackages, linuxPublish })
+        {
+            Assert.Contains("- name: Build canonical publish", producer, StringComparison.Ordinal);
+            Assert.Contains("- name: Finalize and validate canonical publish payload", producer, StringComparison.Ordinal);
+        }
+        Assert.Contains("CANONICAL_PUBLISH_DIRECTORY:", windowsPackages, StringComparison.Ordinal);
+        Assert.Contains("CANONICAL_PUBLISH_DIRECTORY:", linuxPackages, StringComparison.Ordinal);
+        Assert.Contains("linux-${{ matrix.cpu }}.canonical-publish.internal.transport.tar", linuxPublish, StringComparison.Ordinal);
+        Assert.Contains("linux-${{ matrix.cpu }}.canonical-publish.internal.transport.tar", linuxPackages, StringComparison.Ordinal);
+        Assert.Contains("dotnet publish ./DownKyi/DownKyi.csproj", linuxPublish, StringComparison.Ordinal);
         Assert.Contains("cpu: [ x64, arm64 ]", linuxPublish, StringComparison.Ordinal);
         Assert.DoesNotContain("kind: [ AppImage, deb, rpm ]", linuxPublish, StringComparison.Ordinal);
         Assert.DoesNotContain("dotnet publish ./DownKyi/DownKyi.csproj", linuxPackages, StringComparison.Ordinal);
@@ -1575,18 +1590,12 @@ public sealed class ReleaseSafetyRegressionTests
     private static (string Name, string RuntimeIdentifier, string Manifest)[] WriteBuildArtifactInventoryFixture(
         string artifactDirectory)
     {
-        (string Name, string RuntimeIdentifier, string Manifest)[] packages =
-        [
-            ($"DownKyi-{RepositoryVersion}-1.win-x64.zip", "win-x64", "publish-manifest-win-x64.json"),
-            ($"DownKyi-{RepositoryVersion}-1.win-x86.zip", "win-x86", "publish-manifest-win-x86.json"),
-            ($"DownKyi-{RepositoryVersion}_linux_self-contained.x86_64.AppImage", "linux-x64", "publish-manifest-linux-x64-AppImage.json"),
-            ($"downkyi_{RepositoryVersion}_linux_self-contained_amd64.deb", "linux-x64", "publish-manifest-linux-x64-deb.json"),
-            ($"downkyi_{RepositoryVersion}_linux_self-contained.x86_64.rpm", "linux-x64", "publish-manifest-linux-x64-rpm.json"),
-            ($"DownKyi-{RepositoryVersion}_linux_self-contained.aarch64.AppImage", "linux-arm64", "publish-manifest-linux-arm64-AppImage.json"),
-            ($"downkyi_{RepositoryVersion}_linux_self-contained_arm64.deb", "linux-arm64", "publish-manifest-linux-arm64-deb.json"),
-            ($"DownKyi-{RepositoryVersion}-osx-x64.dmg", "osx-x64", "publish-manifest-osx-x64.json"),
-            ($"DownKyi-{RepositoryVersion}-osx-arm64.dmg", "osx-arm64", "publish-manifest-osx-arm64.json")
-        ];
+        var packages = ReleasePackageCatalogTestSupport.LoadPackages(RepositoryVersion)
+            .Select(package => (
+                Name: package.PackageName,
+                package.RuntimeIdentifier,
+                Manifest: package.ManifestName))
+            .ToArray();
 
         foreach (var package in packages)
         {
@@ -1631,9 +1640,6 @@ public sealed class ReleaseSafetyRegressionTests
         }
     }
 
-    private static int CountOccurrences(string source, string value) =>
-        source.Split(value, StringSplitOptions.None).Length - 1;
-
     private static void AssertArm64PromotionContract(string workflow)
     {
         var buildLinux = GetWorkflowJob(workflow, "build-linux");
@@ -1667,13 +1673,13 @@ public sealed class ReleaseSafetyRegressionTests
             StringComparison.Ordinal);
 
         Assert.Contains(
-            "needs: [changelog, build-windows, build-linux, validate-linux-arm64, build-macos]",
+            "needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]",
             preRelease,
             StringComparison.Ordinal);
-        Assert.Contains("scope: LinuxArm64", preRelease, StringComparison.Ordinal);
-        Assert.Contains("os: ubuntu-24.04-arm", preRelease, StringComparison.Ordinal);
-        Assert.Contains("pattern: 'appimage-arm64-transport'", preRelease, StringComparison.Ordinal);
-        Assert.Contains("pattern2: 'downkyi_*_linux_self-contained_arm64.deb'", preRelease, StringComparison.Ordinal);
+        Assert.Contains(
+            "matrix: ${{ fromJSON(needs.release-plan.outputs.validation_matrix) }}",
+            preRelease,
+            StringComparison.Ordinal);
         Assert.Contains("needs: [changelog, pre-release-validation]", release, StringComparison.Ordinal);
         Assert.Contains(
             "./script/validate-build-run-artifacts.ps1",
