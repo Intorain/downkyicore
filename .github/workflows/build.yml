@@ -310,8 +310,7 @@ jobs:
             -RuntimeIdentifier "win-${{ matrix.cpu }}" `
             -ExpectedManifestPath "script/pupnet/output/expected-publish-manifest-win-${{ matrix.cpu }}.json" `
             -OutputPath "script/pupnet/output/publish-manifest-win-${{ matrix.cpu }}.json"
-          $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -LiteralPath "$package.sha256" -Encoding ascii
+          ./script/write-package-checksum.ps1 -PackagePath $package
       - name: Upload build artifacts ${{ matrix.kind }}
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: $/.github/actions/upload-artifact
@@ -485,8 +484,7 @@ jobs:
             -RuntimeIdentifier "linux-${{ matrix.cpu }}" `
             -ExpectedManifestPath "script/pupnet/output/expected-publish-manifest-linux-${{ matrix.cpu }}.json" `
             -OutputPath "script/pupnet/output/publish-manifest-linux-${{ matrix.cpu }}-${{ matrix.kind }}.json"
-          $hash = (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $($package.Name)" | Set-Content -LiteralPath "$($package.FullName).sha256" -Encoding ascii
+          ./script/write-package-checksum.ps1 -PackagePath $package.FullName
       - name: Upload Linux package validation diagnostics
         if: ${{ failure() && matrix.cpu == 'x64' }}
         uses: $/.github/actions/upload-artifact
@@ -576,8 +574,7 @@ jobs:
             -RuntimeIdentifier linux-arm64 `
             -ExpectedManifestPath $expectedManifest `
             -OutputPath $approvedManifest
-          $hash = (Get-FileHash -LiteralPath $packages[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $($packages[0].Name)" | Set-Content -LiteralPath "$($packages[0].FullName).sha256" -Encoding ascii
+          ./script/write-package-checksum.ps1 -PackagePath $packages[0].FullName
       - name: Upload ARM64 package validation diagnostics
         if: ${{ failure() }}
         uses: $/.github/actions/upload-artifact
@@ -763,8 +760,7 @@ jobs:
         shell: pwsh
         run: |
           $package = "script/macos/DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg"
-          $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -LiteralPath "$package.sha256" -Encoding ascii
+          ./script/write-package-checksum.ps1 -PackagePath $package
       - name: Upload build artifacts
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: $/.github/actions/upload-artifact

@@ -101,8 +101,7 @@ jobs:
         shell: pwsh
         run: |
           $package = "script/macos/DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg"
-          $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -LiteralPath "$package.sha256" -Encoding ascii
+          ./script/write-package-checksum.ps1 -PackagePath $package
       - name: Upload verified DMG
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: $/.github/actions/upload-artifact
