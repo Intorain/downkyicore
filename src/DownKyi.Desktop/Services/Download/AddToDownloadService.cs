@@ -17,7 +17,6 @@ using DownKyi.Domain.Downloads;
 using DownKyi.Presentation;
 using DownKyi.Services.Video;
 using DownKyi.Utils;
-using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Services.Download;
@@ -64,11 +63,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
             wbiKeyProvider,
             client,
             logger);
-    }
-    public Task<DownloadAdmissionOutcome> EnsureAdmissionAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(DownloadAdmissionOutcome.Allowed);
     }
     public Task<PreparedDownload> PrepareAsync(
         VideoInfoView videoInfoView,
@@ -196,8 +190,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         var addedCount = 0;
         var duplicateCount = 0;
         var failedCount = 0;
-        Lazy<Task<List<DownloadedItem>>>? completedCandidates = null;
-        Lazy<Task<List<DownloadingItem>>>? activeCandidates = null;
         try
         {
             foreach (var finalizedSection in finalizedDownload.Sections)
@@ -214,18 +206,11 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                         finalizedPage.VideoQuality,
                         settings,
                         finalizedPage.FinalizedContent);
-                    completedCandidates ??= new Lazy<Task<List<DownloadedItem>>>(() =>
-                        _duplicatePolicy.LoadCompletedCandidatesAsync(
-                            cancellationToken));
-                    activeCandidates ??= new Lazy<Task<List<DownloadingItem>>>(() =>
-                        _duplicatePolicy.LoadActiveCandidatesAsync(cancellationToken));
                     var duplicateResolution = await _duplicatePolicy
                         .ResolveAsync(
                             downloadingItem,
                             settings.Basic.RepeatDownloadStrategy,
-                            cancellationToken,
-                            completedCandidates,
-                            activeCandidates)
+                            cancellationToken)
                         .ConfigureAwait(true);
                     if (duplicateResolution.IsFullyCovered)
                     {

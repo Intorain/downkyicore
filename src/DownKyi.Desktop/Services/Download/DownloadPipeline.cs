@@ -92,7 +92,7 @@ internal sealed class DownloadPipeline : IDownloadTaskExecutor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taskId);
-        return _stateWriter.FailAsync(
+        return _stateWriter.FailIfRunnableAsync(
             taskId,
             DownloadActivityPresenter.CreateRetryableFailure(),
             cancellationToken);

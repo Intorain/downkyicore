@@ -19,6 +19,10 @@ public interface IDownloadHistoryService
         int pageSize,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<DownloadHistoryRecord>> GetByCidAsync(
+        long cid,
+        CancellationToken cancellationToken);
+
     Task<OperationResult> DeleteAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken);

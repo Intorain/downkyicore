@@ -38,6 +38,62 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
     }
 
     [Fact]
+    public async Task UnfinishedCandidateQueryReturnsOnlyTheRequestedCid()
+    {
+        using var store = _fixture.CreateStore();
+        var expected = _fixture.CreateQueuedTask(
+            "cid-match",
+            Path.Combine(_fixture.TempDirectory, "cid-match"),
+            cid: 101);
+        var unrelated = _fixture.CreateQueuedTask(
+            "cid-other",
+            Path.Combine(_fixture.TempDirectory, "cid-other"),
+            cid: 202);
+        Assert.True((await store.AddAsync(
+            expected,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await store.AddAsync(
+            unrelated,
+            TestContext.Current.CancellationToken)).IsSuccess);
+
+        var candidates = await store.GetUnfinishedByCidAsync(
+            101,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected.Id, Assert.Single(candidates).Id);
+    }
+
+    [Fact]
+    public async Task UnfinishedCandidateQueryQuarantinesCorruptMatchingRecords()
+    {
+        using var store = _fixture.CreateStore();
+        var valid = _fixture.CreateQueuedTask(
+            "cid-valid",
+            Path.Combine(_fixture.TempDirectory, "cid-valid"),
+            cid: 101);
+        var corrupt = _fixture.CreateQueuedTask(
+            "cid-corrupt",
+            Path.Combine(_fixture.TempDirectory, "cid-corrupt"),
+            cid: 101);
+        Assert.True((await store.AddAsync(
+            valid,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await store.AddAsync(
+            corrupt,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        await _fixture.CorruptRequestedAssetsAsync("cid-corrupt", "not-json");
+
+        var candidates = await store.GetUnfinishedByCidAsync(
+            101,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(valid.Id, Assert.Single(candidates).Id);
+        var quarantine = Assert.Single(
+            await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("cid-corrupt", quarantine.RecordId);
+    }
+
+    [Fact]
     public async Task PendingPublicationSurvivesDatabaseReopenWithoutBecomingPublished()
     {
         var task = DownloadTask.Create(

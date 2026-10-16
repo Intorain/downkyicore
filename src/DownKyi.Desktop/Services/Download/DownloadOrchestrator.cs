@@ -20,7 +20,7 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
     internal static readonly TimeSpan WorkerShutdownTimeout = TimeSpan.FromSeconds(4);
     private readonly IDownloadTaskExecutor _executor;
     private readonly DownloadTaskStateWriter _stateWriter;
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly IDownloadTaskSchedulerService _tasks;
     private readonly int _workerCount;
     private readonly ILogger<DownloadOrchestrator> _logger;
     private readonly ConcurrentDictionary<DownloadTaskId, byte> _scheduledTasks = new();
@@ -43,7 +43,7 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
     public DownloadOrchestrator(
         IDownloadTaskExecutor executor,
         DownloadTaskStateWriter stateWriter,
-        IDownloadTaskApplicationService tasks,
+        IDownloadTaskSchedulerService tasks,
         int workerCount,
         ILogger<DownloadOrchestrator> logger)
     {
@@ -616,12 +616,6 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
     {
         try
         {
-            var task = await _tasks.FindAsync(taskId, CancellationToken.None).ConfigureAwait(false);
-            if (task?.Phase is not (DownloadPhase.Queued or DownloadPhase.Downloading))
-            {
-                return;
-            }
-
             await _executor.MarkFailedAsync(taskId, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
@@ -635,12 +629,8 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
     {
         try
         {
-            var task = await _tasks.FindAsync(taskId, CancellationToken.None).ConfigureAwait(false);
-            if (task?.Phase == DownloadPhase.Pausing)
-            {
-                await _stateWriter.ConfirmPausedAsync(taskId, CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
+            await _stateWriter.ConfirmPausedIfPausingAsync(taskId, CancellationToken.None)
+                .ConfigureAwait(false);
         }
         catch (InvalidOperationException exception)
         {

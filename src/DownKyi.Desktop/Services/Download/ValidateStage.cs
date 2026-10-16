@@ -63,7 +63,7 @@ internal sealed class ValidateStage : IDownloadPipelineStage
         }
 
         if (context.NeedsDanmaku &&
-            DownloadArtifactsStage.GetDanmakuOutputs(
+            DownloadOutputLayout.GetDanmakuOutputPaths(
                     context.WorkingBasePath,
                     context.Input.DanmakuSettings.OutputFormat)
                 .Any(output => !HasUsableDanmakuOutput(context, output)))
@@ -114,12 +114,13 @@ internal sealed class ValidateStage : IDownloadPipelineStage
 
     private static bool HasUsableDanmakuOutput(
         DownloadExecutionContext context,
-        DanmakuOutput output)
+        DownloadDanmakuOutputPath output)
     {
-        var path = context.PublishedArtifacts.TryGetValue(output.Key, out var published)
+        var key = DownloadArtifactWriter.GetDanmakuTransferKey(output.Kind);
+        var path = context.PublishedArtifacts.TryGetValue(key, out var published)
             ? published
             : output.File;
-        return output.Key == DownloadArtifactWriter.DanmakuXmlTransferKey
+        return output.Kind == DownloadDanmakuOutputKind.Xml
             ? DownloadFileIntegrity.CheckXml(path, "i").IsUsable
             : DownloadFileIntegrity.Check(path).IsUsable;
     }

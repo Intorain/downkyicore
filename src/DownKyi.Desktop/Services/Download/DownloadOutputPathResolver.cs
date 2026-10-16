@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -86,47 +85,8 @@ internal static class DownloadOutputPathResolver
             return false;
         }
 
-        var baseKey = CreateComparisonKey(basePath);
         return Directory.EnumerateFiles(directory).Any(file =>
-        {
-            var fileKey = CreateComparisonKey(file);
-            var stemKey = CreateComparisonKey(
-                Path.Combine(directory, Path.GetFileNameWithoutExtension(file)));
-            var extension = Path.GetExtension(file);
-            if (requestedClaims.Contains(DownloadActionClaim.Media)
-                && PlatformComparer.Equals(stemKey, baseKey)
-                && MediaExtensions.Contains(extension))
-            {
-                return true;
-            }
-
-            if (requestedClaims.Contains(DownloadActionClaim.Subtitle)
-                && extension.Equals(".srt", StringComparison.OrdinalIgnoreCase)
-                && (PlatformComparer.Equals(stemKey, baseKey)
-                    || stemKey.StartsWith(baseKey + "_", PlatformComparison)))
-            {
-                return true;
-            }
-
-            if ((requestedClaims.Contains(DownloadActionClaim.DanmakuAss)
-                    && PlatformComparer.Equals(fileKey, baseKey + ".ass")
-                    || requestedClaims.Contains(DownloadActionClaim.DanmakuXml)
-                    && PlatformComparer.Equals(fileKey, baseKey + ".xml")))
-            {
-                return true;
-            }
-
-            if (requestedClaims.Contains(DownloadActionClaim.Nfo)
-                && PlatformComparer.Equals(fileKey, baseKey + ".nfo"))
-            {
-                return true;
-            }
-
-            return requestedClaims.Contains(DownloadActionClaim.Cover)
-                   && ImageExtensions.Contains(extension)
-                   && (PlatformComparer.Equals(stemKey, baseKey)
-                       || stemKey.StartsWith(baseKey + ".Cover", PlatformComparison));
-        });
+            DownloadOutputLayout.HasOutputClaimConflict(basePath, file, requestedClaims));
     }
 
     private static string[] GetExistingBasePaths(string basePath)
@@ -147,29 +107,5 @@ internal static class DownloadOutputPathResolver
     {
         return DownloadOutputPathKey.Create(path, ignoreCase: false);
     }
-
-    private static StringComparison PlatformComparison =>
-        DownloadOutputPathKey.UsesCaseInsensitiveComparison
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-
-    private static readonly ImmutableHashSet<string> MediaExtensions =
-        ImmutableHashSet.Create(
-            StringComparer.OrdinalIgnoreCase,
-            ".mp4",
-            ".mp3",
-            ".aac",
-            ".flac");
-
-    private static readonly ImmutableHashSet<string> ImageExtensions =
-        ImmutableHashSet.Create(
-            StringComparer.OrdinalIgnoreCase,
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".webp",
-            ".bmp",
-            ".gif",
-            ".avif");
 
 }

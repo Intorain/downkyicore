@@ -61,6 +61,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
         ["FindAsync"] = "await _queries.FindAsync(taskId, cancellationToken).ConfigureAwait(false)",
         ["GetUnfinishedAsync"] =
             "await _queries.GetUnfinishedAsync(cancellationToken).ConfigureAwait(false)",
+        ["GetUnfinishedByCidAsync"] =
+            "await _queries.GetUnfinishedByCidAsync(cid, cancellationToken).ConfigureAwait(false)",
         ["IsOutputPathReservedAsync"] =
             "await _outputReservations.IsOutputPathReservedAsync(basePath, ignoreCase, cancellationToken)" +
             ".ConfigureAwait(false)",
@@ -73,6 +75,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
             ".ConfigureAwait(false)",
         ["GetHistoryPageAsync"] =
             "await _queries.GetHistoryPageAsync(cursor, pageSize, cancellationToken).ConfigureAwait(false)",
+        ["GetHistoryByCidAsync"] =
+            "await _queries.GetHistoryByCidAsync(cid, cancellationToken).ConfigureAwait(false)",
         ["DeleteAsync"] = "await _commands.DeleteAsync(taskId, cancellationToken).ConfigureAwait(false)",
         ["DeleteHistoryAsync"] =
             "await _commands.DeleteHistoryAsync(taskId, cancellationToken).ConfigureAwait(false)",
@@ -122,6 +126,21 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
     }
 
     [Fact]
+    public void DuplicateCandidateQueriesAreCidScopedAndIndexed()
+    {
+        var queries = ReadDownloadSource("SqliteDownloadStoreQueries.cs");
+        var schema = ReadDownloadSource("CurrentDownloadStoreWriter.cs");
+        var lifecycle = ReadDownloadSource("DownloadStoreSchema.cs");
+
+        Assert.Contains("WHERE db.cid = @cid", queries, StringComparison.Ordinal);
+        Assert.Contains("WHERE h.cid = @cid", queries, StringComparison.Ordinal);
+        Assert.Contains("ix_download_base_cid", schema, StringComparison.Ordinal);
+        Assert.Contains("ix_download_history_cid", schema, StringComparison.Ordinal);
+        Assert.Contains("if (format.IsCurrent)", lifecycle, StringComparison.Ordinal);
+        Assert.Contains(".EnsureIndexesAsync(connection, transaction", lifecycle, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PersistenceContractsSeparateActiveHistoryAndCompletionAuthority()
     {
         var taskStore = ReadApplicationSource("IDownloadTaskStore.cs");
@@ -141,6 +160,7 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
 
         Assert.Contains("AddHistoryAsync", historyStore, StringComparison.Ordinal);
         Assert.Contains("GetHistoryPageAsync", historyStore, StringComparison.Ordinal);
+        Assert.Contains("GetHistoryByCidAsync", historyStore, StringComparison.Ordinal);
         Assert.Contains("DeleteHistoryAsync", historyStore, StringComparison.Ordinal);
         Assert.Contains("ClearHistoryAsync", historyStore, StringComparison.Ordinal);
         Assert.DoesNotContain("CompleteAsync", historyStore, StringComparison.Ordinal);
@@ -159,6 +179,7 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
         Assert.DoesNotContain("ClearHistoryAsync", taskService, StringComparison.Ordinal);
         Assert.Contains("DownloadHistoryRecord", historyService, StringComparison.Ordinal);
         Assert.Contains("GetPageAsync", historyService, StringComparison.Ordinal);
+        Assert.Contains("GetByCidAsync", historyService, StringComparison.Ordinal);
         Assert.Contains("DeleteAsync", historyService, StringComparison.Ordinal);
         Assert.Contains("ClearAsync", historyService, StringComparison.Ordinal);
 
@@ -211,8 +232,7 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
 
             var forbiddenPeers = Collaborators.Where(peer =>
                 peer != collaborator &&
-                !(collaborator == "SqliteDownloadStoreQueries" &&
-                  peer == "SqliteDownloadStoreQuarantine"));
+                peer != "SqliteDownloadStoreQuarantine");
             Assert.All(
                 forbiddenPeers,
                 peer => Assert.DoesNotContain(peer, source, StringComparison.Ordinal));

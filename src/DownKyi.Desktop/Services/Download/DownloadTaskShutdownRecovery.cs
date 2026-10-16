@@ -8,11 +8,11 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadTaskShutdownRecovery
 {
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly IDownloadTaskLookup _tasks;
     private readonly DownloadTaskStateWriter _stateWriter;
 
     public DownloadTaskShutdownRecovery(
-        IDownloadTaskApplicationService tasks,
+        IDownloadTaskLookup tasks,
         DownloadTaskStateWriter stateWriter)
     {
         _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));

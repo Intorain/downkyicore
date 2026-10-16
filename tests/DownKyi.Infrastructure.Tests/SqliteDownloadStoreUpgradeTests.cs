@@ -43,6 +43,49 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
     }
 
+    [Fact]
+    public async Task CurrentSchemaInitializationRestoresMissingCandidateIndexes()
+    {
+        using (var current = _fixture.CreateStore())
+        {
+            await current.InitializeAsync(TestContext.Current.CancellationToken);
+        }
+
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                DROP INDEX IF EXISTS ix_download_base_cid;
+                DROP INDEX IF EXISTS ix_download_history_cid;
+                """;
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using (var reopened = _fixture.CreateStore())
+        {
+            await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var verification = await _fixture.OpenConnectionAsync(readOnly: true);
+        using var indexes = verification.CreateCommand();
+        indexes.CommandText = """
+            SELECT name FROM sqlite_master
+            WHERE type = 'index'
+              AND name IN ('ix_download_base_cid', 'ix_download_history_cid')
+            ORDER BY name
+            """;
+        using var reader = await indexes.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        var names = new List<string>();
+        while (await reader.ReadAsync(TestContext.Current.CancellationToken))
+        {
+            names.Add(reader.GetString(0));
+        }
+
+        Assert.Equal(
+            ["ix_download_base_cid", "ix_download_history_cid"],
+            names);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -37,6 +37,54 @@ public sealed class SqliteDownloadStoreHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task HistoryCandidateQueryReturnsOnlyTheRequestedCid()
+    {
+        using var store = _fixture.CreateStore();
+        var expected = DownloadHistoryRecord.FromCompletedTask(
+            _fixture.CreateCompletedTask("history-cid-match", 200, cid: 101));
+        var unrelated = DownloadHistoryRecord.FromCompletedTask(
+            _fixture.CreateCompletedTask("history-cid-other", 100, cid: 202));
+        Assert.True((await store.AddHistoryAsync(
+            expected,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await store.AddHistoryAsync(
+            unrelated,
+            TestContext.Current.CancellationToken)).IsSuccess);
+
+        var candidates = await store.GetHistoryByCidAsync(
+            101,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected.Id, Assert.Single(candidates).Id);
+    }
+
+    [Fact]
+    public async Task HistoryCandidateQueryQuarantinesCorruptMatchingRecords()
+    {
+        using var store = _fixture.CreateStore();
+        var valid = DownloadHistoryRecord.FromCompletedTask(
+            _fixture.CreateCompletedTask("history-cid-valid", 200, cid: 101));
+        var corrupt = DownloadHistoryRecord.FromCompletedTask(
+            _fixture.CreateCompletedTask("history-cid-corrupt", 100, cid: 101));
+        Assert.True((await store.AddHistoryAsync(
+            valid,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await store.AddHistoryAsync(
+            corrupt,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        await _fixture.CorruptHistoryPublishedArtifactsAsync("history-cid-corrupt");
+
+        var candidates = await store.GetHistoryByCidAsync(
+            101,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(valid.Id, Assert.Single(candidates).Id);
+        var quarantine = Assert.Single(
+            await store.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("history-cid-corrupt", quarantine.RecordId);
+    }
+
+    [Fact]
     public async Task CompletedHistoryRecordRoundTripsEveryFieldAcrossDatabaseReopen()
     {
         var media = Path.Combine(_fixture.TempDirectory, "published.flv");

@@ -34,12 +34,7 @@ internal static class DownloadStoreSchema
         var format = await LegacyDownloadStoreFormatDetector
             .DetectAsync(connection, databaseExisted, cancellationToken)
             .ConfigureAwait(false);
-        if (format.IsCurrent)
-        {
-            return;
-        }
-
-        if (format.DatabaseExisted)
+        if (!format.IsCurrent && format.DatabaseExisted)
         {
             await DownloadStoreSchemaLifecycle
                 .BackupAsync(connection, databasePath, format.UserVersion, clock, cancellationToken)
@@ -51,7 +46,13 @@ internal static class DownloadStoreSchema
             .ConfigureAwait(false);
         try
         {
-            if (format.IsNew)
+            if (format.IsCurrent)
+            {
+                await CurrentDownloadStoreWriter
+                    .EnsureIndexesAsync(connection, transaction, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (format.IsNew)
             {
                 await CurrentDownloadStoreWriter
                     .CreateAsync(connection, transaction, clock.UtcNow, cancellationToken)

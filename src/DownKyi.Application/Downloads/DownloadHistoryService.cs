@@ -50,6 +50,11 @@ public sealed class DownloadHistoryService : IDownloadHistoryService
         CancellationToken cancellationToken) =>
         _history.GetHistoryPageAsync(cursor, pageSize, cancellationToken);
 
+    public Task<IReadOnlyList<DownloadHistoryRecord>> GetByCidAsync(
+        long cid,
+        CancellationToken cancellationToken) =>
+        _history.GetHistoryByCidAsync(cid, cancellationToken);
+
     public Task<OperationResult> DeleteAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken)

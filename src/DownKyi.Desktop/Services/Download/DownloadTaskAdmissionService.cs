@@ -10,10 +10,9 @@ namespace DownKyi.Services.Download;
 internal sealed class DownloadTaskAdmissionService : IDisposable
 {
     private readonly DownloadListState _downloadLists;
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly IDownloadOutputReservationService _outputReservations;
     private readonly DownloadTaskProjectionStore _projections;
-    private readonly DownloadTaskStateWriter _stateWriter;
-    private readonly IDownloadTaskQueue _taskQueue;
+    private readonly DownloadCommittedTaskDispatcher _committedTaskDispatcher;
     private readonly IDownloadRuntimeAvailability _runtimeAvailability;
     private readonly IPhysicalOutputPathResolver _physicalOutputPathResolver;
     private readonly SemaphoreSlim _admissionGate = new(1, 1);
@@ -21,18 +20,18 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
 
     public DownloadTaskAdmissionService(
         DownloadListState downloadLists,
-        IDownloadTaskApplicationService tasks,
+        IDownloadOutputReservationService outputReservations,
         DownloadTaskProjectionStore projections,
-        DownloadTaskStateWriter stateWriter,
-        IDownloadTaskQueue taskQueue,
+        DownloadCommittedTaskDispatcher committedTaskDispatcher,
         IDownloadRuntimeAvailability runtimeAvailability,
         IPhysicalOutputPathResolver physicalOutputPathResolver)
     {
         _downloadLists = downloadLists ?? throw new ArgumentNullException(nameof(downloadLists));
-        _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
+        _outputReservations = outputReservations
+            ?? throw new ArgumentNullException(nameof(outputReservations));
         _projections = projections ?? throw new ArgumentNullException(nameof(projections));
-        _stateWriter = stateWriter ?? throw new ArgumentNullException(nameof(stateWriter));
-        _taskQueue = taskQueue ?? throw new ArgumentNullException(nameof(taskQueue));
+        _committedTaskDispatcher = committedTaskDispatcher
+            ?? throw new ArgumentNullException(nameof(committedTaskDispatcher));
         _runtimeAvailability = runtimeAvailability
             ?? throw new ArgumentNullException(nameof(runtimeAvailability));
         _physicalOutputPathResolver = physicalOutputPathResolver
@@ -59,13 +58,13 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
             var admittedBasePath = await DownloadOutputPathResolver.ResolveAdmissionCollisionAsync(
                 physicalBasePath,
                 autoAddNumberSuffix,
-                (path, token) => _tasks.HasOutputClaimConflictAsync(
+                (path, token) => _outputReservations.HasOutputClaimConflictAsync(
                     path,
                     item.DownloadBase.Cid,
                     requestedClaims,
                     DownloadOutputPathKey.UsesCaseInsensitiveComparison,
                     token),
-                token => _tasks.GetActiveOutputReservationKeysAsync(
+                token => _outputReservations.GetActiveOutputReservationKeysAsync(
                     DownloadOutputPathKey.UsesCaseInsensitiveComparison,
                     token),
                 cancellationToken,
@@ -80,17 +79,7 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
             // Once persisted, admission must finish even if the originating UI operation is canceled.
             _downloadLists.AddDownloading(item);
             var taskId = new DownloadTaskId(item.DownloadBase.Id);
-            try
-            {
-                await _taskQueue.EnqueueAsync(taskId, CancellationToken.None).ConfigureAwait(true);
-            }
-            catch (DownloadRuntimeUnavailableException)
-            {
-                await _stateWriter.FailRuntimeUnavailableAsync(
-                    taskId,
-                    CancellationToken.None).ConfigureAwait(true);
-                throw;
-            }
+            await _committedTaskDispatcher.EnqueueCommittedAsync(taskId).ConfigureAwait(true);
         }
         finally
         {

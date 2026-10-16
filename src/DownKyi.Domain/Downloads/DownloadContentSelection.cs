@@ -279,3 +279,11 @@ public readonly record struct DownloadActionClaims(DownloadActionClaim Value)
     private const DownloadDanmakuOutputFormat AllDanmakuFormats =
         DownloadDanmakuOutputFormat.Ass | DownloadDanmakuOutputFormat.Xml;
 }
+
+public readonly record struct DownloadOutputOwnership(
+    long Cid,
+    DownloadActionClaims Claims)
+{
+    public bool ConflictsWith(DownloadOutputOwnership other) =>
+        Cid != other.Cid || Claims.Overlaps(other.Claims);
+}

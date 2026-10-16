@@ -11,7 +11,6 @@ public sealed class DownloadAddCoordinatorTests
         var addWasCalled = false;
 
         var result = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
-            () => Task.FromResult(DownloadAdmissionOutcome.Allowed),
             () => Task.FromResult(DownloadSelectionResult.Canceled),
             _ =>
             {
@@ -32,7 +31,6 @@ public sealed class DownloadAddCoordinatorTests
         var requestedContent = DownloadContentSelection.None with { Video = true };
 
         var result = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
-            () => Task.FromResult(DownloadAdmissionOutcome.Allowed),
             () => Task.FromResult(DownloadSelectionResult.Accepted(
                 new DownloadAddSelection("D:\\Downloads", requestedContent))),
             selection =>
@@ -48,32 +46,4 @@ public sealed class DownloadAddCoordinatorTests
         Assert.Same(requestedContent, receivedSelection.RequestedContent);
     }
 
-    [Fact]
-    public async Task BlockedAdmissionStopsBeforeDirectorySelectionAndBatchAdd()
-    {
-        var directorySelectionCount = 0;
-        var addCount = 0;
-
-        var result = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
-            () => Task.FromResult(DownloadAdmissionOutcome.Canceled),
-            () =>
-            {
-                directorySelectionCount++;
-                return Task.FromResult(DownloadSelectionResult.Accepted(
-                    new DownloadAddSelection(
-                        "D:\\Downloads",
-                        DownloadContentSelection.All)));
-            },
-            _ =>
-            {
-                addCount++;
-                return Task.FromResult(2);
-            },
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(DownloadAddFlowOutcome.AdmissionCanceled, result.Outcome);
-        Assert.Null(result.Value);
-        Assert.Equal(0, directorySelectionCount);
-        Assert.Equal(0, addCount);
-    }
 }

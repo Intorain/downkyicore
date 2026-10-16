@@ -77,11 +77,8 @@ internal static class DownloadAddNotificationFormatter
         {
             DownloadAddStopReason.UnsupportedInput =>
                 DictionaryResource.GetString("TipAddDownloadingUnsupportedInput"),
-            DownloadAddStopReason.AdmissionCanceled or DownloadAddStopReason.SelectionCanceled
-                or DownloadAddStopReason.CancellationRequested =>
+            DownloadAddStopReason.SelectionCanceled or DownloadAddStopReason.CancellationRequested =>
                 DictionaryResource.GetString("TipAddDownloadingCanceled"),
-            DownloadAddStopReason.AdmissionFailed =>
-                DictionaryResource.GetString("TipAddDownloadingAdmissionFailed"),
             DownloadAddStopReason.SelectionUnavailable =>
                 DictionaryResource.GetString("TipAddDownloadingSelectionUnavailable"),
             DownloadAddStopReason.NoAvailableContent =>

@@ -75,9 +75,30 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
         Assert.DoesNotContain("VideoZone.Instance", sessionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("new DownloadBase", sessionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("page.LoadTagsAsync", sessionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Lazy<Task<List<DownloadedItem>>>", sessionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Lazy<Task<List<DownloadingItem>>>", sessionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadCompletedCandidatesAsync", sessionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("LoadActiveCandidatesAsync", sessionSource, StringComparison.Ordinal);
 
-        Assert.Contains("DownloadListState", duplicateSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("DownloadListState", duplicateSource, StringComparison.Ordinal);
+        Assert.Contains("IDownloadedListProjection", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskProjectionStore", duplicateSource, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadingByCidAsync", duplicateSource, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadedByCidAsync", duplicateSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "var active = await LoadActiveCandidatesAsync(cid",
+            duplicateSource,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "var candidates = await LoadCompletedCandidatesAsync(cid",
+            duplicateSource,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("MergeLiveActiveCandidates", duplicateSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("MergeLiveCompletedCandidates", duplicateSource, StringComparison.Ordinal);
+        Assert.True(
+            duplicateSource.IndexOf(".RemoveDownloadedAsync(item", StringComparison.Ordinal)
+            < duplicateSource.IndexOf("_downloadedListProjection.RemoveDownloaded(item)", StringComparison.Ordinal),
+            "Accepted re-download must remove durable history before updating the UI projection.");
         Assert.DoesNotContain("IUserNotificationService", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("IAppDialogService", duplicateSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ISettingsStore", duplicateSource, StringComparison.Ordinal);

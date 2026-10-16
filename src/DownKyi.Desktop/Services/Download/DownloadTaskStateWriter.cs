@@ -13,9 +13,9 @@ internal sealed class DownloadTaskStateWriter
     internal const string LegacyBackendRemovedFailureCode =
         "download.transfer.legacy-backend-removed";
 
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly IDownloadTaskStateService _tasks;
 
-    public DownloadTaskStateWriter(IDownloadTaskApplicationService tasks)
+    public DownloadTaskStateWriter(IDownloadTaskStateService tasks)
     {
         _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
     }
@@ -75,6 +75,17 @@ internal sealed class DownloadTaskStateWriter
         DownloadFailure failure,
         CancellationToken cancellationToken = default) =>
         RequireAsync(_tasks.FailAsync(taskId, failure, cancellationToken));
+
+    public Task<DownloadTask> FailIfRunnableAsync(
+        DownloadTaskId taskId,
+        DownloadFailure failure,
+        CancellationToken cancellationToken = default) =>
+        RequireAsync(_tasks.FailIfRunnableAsync(taskId, failure, cancellationToken));
+
+    public Task<DownloadTask> ConfirmPausedIfPausingAsync(
+        DownloadTaskId taskId,
+        CancellationToken cancellationToken = default) =>
+        RequireAsync(_tasks.ConfirmPausedIfPausingAsync(taskId, cancellationToken));
 
     public Task<DownloadTask> FailRuntimeUnavailableAsync(
         DownloadTaskId taskId,

@@ -112,8 +112,9 @@ internal static class DownloadActionCoverage
                        path,
                        physicalOutputPathResolver,
                        out var artifactKey)
-                   && (artifactKey.StartsWith(requestedKey + ".", StringComparison.Ordinal)
-                       || artifactKey.StartsWith(requestedKey + "_", StringComparison.Ordinal));
+                   && DownloadOutputLayout.IsHistoricalArtifactPathFamily(
+                       requestedKey,
+                       artifactKey);
         });
     }
 
@@ -276,10 +277,7 @@ internal static class DownloadActionCoverage
                 : content with { Audio = false, Video = false, MediaKind = DownloadMediaKind.None };
         }
 
-        var extension = Path.GetExtension(mediaPath);
-        if (extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".aac", StringComparison.OrdinalIgnoreCase)
-            || extension.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        if (DownloadOutputLayout.IsAudioMediaPath(mediaPath))
         {
             return content with { Audio = true, Video = false, MediaKind = DownloadMediaKind.Dash };
         }

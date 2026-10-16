@@ -271,6 +271,85 @@ public sealed class DownloadTaskApplicationServiceTests
         Assert.Same(task, store.Current);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConditionalFailureMutatesQueuedAndDownloadingTasks(bool startBeforeFailure)
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(
+            store,
+            DownloadHistoryService.CreateForSharedStore(store),
+            new AdvancingClock());
+        var task = CreateTask();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        if (startBeforeFailure)
+        {
+            await service.StartAsync(task.Id, TestContext.Current.CancellationToken);
+        }
+
+        var updatesBeforeFailure = store.ExpectedVersions.Count;
+        var eventCount = 0;
+        service.TaskChanged += (_, _) => eventCount++;
+        var failure = new DownloadFailure("download.runtime.failed", "Runtime failed.", true);
+
+        var result = await service.FailIfRunnableAsync(
+            task.Id,
+            failure,
+            TestContext.Current.CancellationToken);
+
+        var failed = result.RequireValue();
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+        Assert.Same(failure, failed.Failure);
+        Assert.Equal(updatesBeforeFailure + 1, store.ExpectedVersions.Count);
+        Assert.Equal(1, eventCount);
+    }
+
+    [Fact]
+    public async Task ConditionalPhaseCommandsDoNotOverwriteACompetingState()
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(
+            store,
+            DownloadHistoryService.CreateForSharedStore(store),
+            new AdvancingClock());
+        var task = CreateTask();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        await service.StartAsync(task.Id, TestContext.Current.CancellationToken);
+        var pausing = (await service.PauseAsync(
+            task.Id,
+            TestContext.Current.CancellationToken)).RequireValue();
+        var updatesBeforeCommands = store.ExpectedVersions.Count;
+        var eventCount = 0;
+        service.TaskChanged += (_, _) => eventCount++;
+
+        var failureResult = await service.FailIfRunnableAsync(
+            task.Id,
+            new DownloadFailure("download.runtime.failed", "Runtime failed.", true),
+            TestContext.Current.CancellationToken);
+
+        Assert.Same(pausing, failureResult.RequireValue());
+        Assert.Equal(updatesBeforeCommands, store.ExpectedVersions.Count);
+        Assert.Equal(0, eventCount);
+
+        var confirmed = (await service.ConfirmPausedIfPausingAsync(
+            task.Id,
+            TestContext.Current.CancellationToken)).RequireValue();
+
+        Assert.Equal(DownloadPhase.Paused, confirmed.Phase);
+        Assert.Equal(pausing.Version + 1, confirmed.Version);
+        Assert.Equal(updatesBeforeCommands + 1, store.ExpectedVersions.Count);
+        Assert.Equal(1, eventCount);
+
+        var repeated = await service.ConfirmPausedIfPausingAsync(
+            task.Id,
+            TestContext.Current.CancellationToken);
+
+        Assert.Same(confirmed, repeated.RequireValue());
+        Assert.Equal(updatesBeforeCommands + 1, store.ExpectedVersions.Count);
+        Assert.Equal(1, eventCount);
+    }
+
     [Fact]
     public async Task CompletingTaskAtomicallyReplacesRecoverableStateWithLossyHistoryRecord()
     {
@@ -294,23 +373,6 @@ public sealed class DownloadTaskApplicationServiceTests
             DownloadHistoryRecord.FromCompletedTask(completed),
             store.CompletedHistory,
             strict: true);
-    }
-
-    [Fact]
-    public async Task RemovedBackendDoesNotBlockNewTaskAdmission()
-    {
-        var store = new RecordingStore();
-        using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
-
-        var admission = await service.CheckNewDownloadAdmissionAsync(
-            TestContext.Current.CancellationToken);
-        var added = await service.AddAsync(
-            CreateTask(),
-            TestContext.Current.CancellationToken);
-
-        Assert.True(admission.IsSuccess);
-        Assert.True(added.IsSuccess);
-        Assert.Equal(1, store.AddCount);
     }
 
     private static DownloadTask CreateTask()

@@ -16,6 +16,7 @@ internal sealed class DownloadMediaStage : IDownloadPipelineStage
 {
     private readonly DownloadTaskProjectionStore _projectionStore;
     private readonly DownloadTaskStateWriter _stateWriter;
+    private readonly DownloadTransferArtifactInvalidator _artifactInvalidator;
     private readonly DownloadTransferCoordinator _transferCoordinator;
     private readonly DownloadPlaybackResolver _playbackResolver;
     private readonly DownloadActivityPresenter _presenter;
@@ -24,6 +25,7 @@ internal sealed class DownloadMediaStage : IDownloadPipelineStage
     public DownloadMediaStage(
         DownloadTaskProjectionStore projectionStore,
         DownloadTaskStateWriter stateWriter,
+        DownloadTransferArtifactInvalidator artifactInvalidator,
         DownloadTransferCoordinator transferCoordinator,
         DownloadPlaybackResolver playbackResolver,
         DownloadActivityPresenter presenter,
@@ -32,6 +34,8 @@ internal sealed class DownloadMediaStage : IDownloadPipelineStage
         _projectionStore = projectionStore
             ?? throw new ArgumentNullException(nameof(projectionStore));
         _stateWriter = stateWriter ?? throw new ArgumentNullException(nameof(stateWriter));
+        _artifactInvalidator = artifactInvalidator
+            ?? throw new ArgumentNullException(nameof(artifactInvalidator));
         _transferCoordinator = transferCoordinator
             ?? throw new ArgumentNullException(nameof(transferCoordinator));
         _playbackResolver = playbackResolver
@@ -258,16 +262,15 @@ internal sealed class DownloadMediaStage : IDownloadPipelineStage
 
             if (snapshot.Transfer.CompletedFileKeys.Contains(key, StringComparer.Ordinal))
             {
-                if (!DownloadTransferFileCleanup.DeleteInvalidArtifacts(
-                        cachedFile, context.StagingDirectory, _logger).Succeeded)
+                var invalidation = await _artifactInvalidator.InvalidateAsync(
+                    context.TaskId,
+                    context.StagingDirectory,
+                    [new DownloadTransferArtifact(key, cachedFile)],
+                    cancellationToken).ConfigureAwait(true);
+                if (invalidation == DownloadTransferArtifactInvalidationOutcome.CleanupFailed)
                 {
                     return CleanupFailure();
                 }
-
-                await _stateWriter.InvalidateCompletedFileAsync(
-                    context.TaskId,
-                    key,
-                    cancellationToken).ConfigureAwait(true);
             }
         }
         else

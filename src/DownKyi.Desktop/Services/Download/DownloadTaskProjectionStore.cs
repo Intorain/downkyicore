@@ -14,11 +14,11 @@ namespace DownKyi.Services.Download;
 
 /// <summary>
 /// Projects persisted Domain aggregates into desktop list items.
-/// Runtime state changes enter through <see cref="IDownloadTaskApplicationService"/>.
+/// Runtime state changes enter through <see cref="IDownloadTaskStateService"/>.
 /// </summary>
 internal sealed class DownloadTaskProjectionStore : IDisposable
 {
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly IDownloadTaskCatalog _tasks;
     private readonly IDownloadHistoryService _history;
     private readonly IClock _clock;
     private readonly ConcurrentDictionary<DownloadTaskId, DownloadTask> _snapshots = new();
@@ -26,7 +26,7 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
     private bool _disposed;
 
     public DownloadTaskProjectionStore(
-        IDownloadTaskApplicationService tasks,
+        IDownloadTaskCatalog tasks,
         IDownloadHistoryService history,
         IClock clock)
     {
@@ -71,6 +71,16 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
         return new DownloadTaskProjectionStartupState(
             tasks,
             tasks.Select(CreateDownloadingProjection).ToArray());
+    }
+
+    public async Task<IReadOnlyList<DownloadingItem>> GetDownloadingByCidAsync(
+        long cid,
+        CancellationToken cancellationToken = default)
+    {
+        var tasks = await _tasks
+            .GetUnfinishedByCidAsync(cid, cancellationToken)
+            .ConfigureAwait(true);
+        return tasks.Select(CreateDownloadingProjection).ToArray();
     }
 
     public async Task AddMigratedHistoryAsync(
@@ -128,6 +138,16 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
         while (cursor != null);
 
         return items;
+    }
+
+    public async Task<IReadOnlyList<DownloadedItem>> GetDownloadedByCidAsync(
+        long cid,
+        CancellationToken cancellationToken = default)
+    {
+        var records = await _history
+            .GetByCidAsync(cid, cancellationToken)
+            .ConfigureAwait(false);
+        return records.Select(DownloadTaskProjectionMapper.ToDownloadedItem).ToArray();
     }
 
     public async Task ClearDownloadedAsync(CancellationToken cancellationToken = default)

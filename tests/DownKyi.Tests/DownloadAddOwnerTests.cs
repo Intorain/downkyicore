@@ -20,10 +20,10 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task ActiveDuplicateIsSkippedWithoutOwningUiNotification()
+    public async Task DurableActiveDuplicateIsSkippedWhenUiListIsEmpty()
     {
         using var context = new DuplicatePolicyContext(AppDialogOutcome.Canceled);
-        context.ListState.AddDownloading(CreateDownloadingItem());
+        await context.PersistActiveAsync(CreateDownloadingItem());
 
         var shouldSkip = await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(DownloadContentSelection.All),
@@ -31,8 +31,24 @@ public sealed class DownloadAddOwnerTests : IDisposable
             TestContext.Current.CancellationToken);
 
         Assert.True(shouldSkip);
+        Assert.Empty(context.ListState.Downloading);
         Assert.Empty(context.Notifications.Messages);
         Assert.Equal(0, context.Dialogs.ShowCount);
+    }
+
+    [Fact]
+    public async Task UiOnlyActiveItemDoesNotAffectDuplicateDecision()
+    {
+        using var context = new DuplicatePolicyContext(AppDialogOutcome.Canceled);
+        context.ListState.AddDownloading(CreateDownloadingItem());
+
+        var shouldSkip = await context.Policy.ShouldSkipAsync(
+            CreateRequestedItem(DownloadContentSelection.All),
+            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
+            TestContext.Current.CancellationToken);
+
+        Assert.False(shouldSkip);
+        Assert.Single(context.ListState.Downloading);
     }
 
     [Fact]
@@ -45,7 +61,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Video = true,
             MediaKind = DownloadMediaKind.Dash
         };
-        context.ListState.AddDownloading(videoOnly);
+        await context.PersistActiveAsync(videoOnly);
         var page = CreatePage();
         page.AudioQualityFormat = "高质量";
 
@@ -70,7 +86,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Video = true,
             MediaKind = DownloadMediaKind.Dash
         });
-        context.ListState.AddDownloading(mediaOnly);
+        await context.PersistActiveAsync(mediaOnly);
         var mediaWithSubtitle = mediaOnly.DownloadBase.NeedDownloadContent with
         {
             Subtitle = true,
@@ -103,7 +119,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Video = true,
             MediaKind = DownloadMediaKind.Dash
         });
-        context.ListState.AddDownloading(mediaOnly);
+        await context.PersistActiveAsync(mediaOnly);
         var subtitleOnly = DownloadContentSelection.None with
         {
             Subtitle = true,
@@ -143,7 +159,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
 
         Assert.Equal(subtitleOnly, resolution.RemainingContent);
         Assert.True(resolution.AllowExistingBasePath);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
     }
 
     [Fact]
@@ -209,7 +225,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             MediaKind = DownloadMediaKind.Dash,
             SelectedSubtitleTrackIds = [11]
         };
-        context.ListState.AddDownloading(CreateRequestedItem(mediaAndSubtitle));
+        await context.PersistActiveAsync(CreateRequestedItem(mediaAndSubtitle));
         var subtitleOnly = DownloadContentSelection.None with
         {
             Subtitle = true,
@@ -234,7 +250,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             SelectedSubtitleTrackIds = [11, 22],
             DefaultSubtitleTrackId = 11
         };
-        context.ListState.AddDownloading(CreateRequestedItem(existing));
+        await context.PersistActiveAsync(CreateRequestedItem(existing));
 
         Assert.True(await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(existing with { SelectedSubtitleTrackIds = [22, 11] }),
@@ -300,7 +316,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Danmaku = true,
             DanmakuOutputFormat = DownloadDanmakuOutputFormat.Ass
         };
-        context.ListState.AddDownloading(CreateRequestedItem(ass));
+        await context.PersistActiveAsync(CreateRequestedItem(ass));
 
         Assert.True(await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(ass),
@@ -317,7 +333,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     {
         using var context = new DuplicatePolicyContext(AppDialogOutcome.Canceled);
         var cover = DownloadContentSelection.None with { Cover = true };
-        context.ListState.AddDownloading(CreateRequestedItem(cover));
+        await context.PersistActiveAsync(CreateRequestedItem(cover));
 
         var shouldSkip = await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(cover),
@@ -404,24 +420,19 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public async Task ActiveDuplicateIsSkippedBeforeCompletedHistoryIsRead()
     {
         using var context = DuplicatePolicyContext.WithCompleted(AppDialogOutcome.Accepted);
-        context.ListState.AddDownloading(CreateDownloadingItem());
-        var completedCandidates = new Lazy<Task<List<DownloadedItem>>>(() =>
-            context.Policy.LoadCompletedCandidatesAsync(
-                TestContext.Current.CancellationToken));
+        await context.PersistActiveAsync(CreateDownloadingItem());
 
         var shouldSkip = await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(DownloadContentSelection.All),
             DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
-            TestContext.Current.CancellationToken,
-            completedCandidates);
+            TestContext.Current.CancellationToken);
 
         Assert.True(shouldSkip);
-        Assert.False(completedCandidates.IsValueCreated);
-        Assert.Equal(0, context.Store.HistoryPageRequestCount);
+        Assert.Equal(0, context.Store.HistoryByCidRequestCount);
     }
 
     [Fact]
-    public async Task CompletedDuplicateJumpOverPreservesHistory()
+    public async Task DurableCompletedDuplicateIsSkippedWhenUiListIsEmpty()
     {
         using var context = DuplicatePolicyContext.WithCompleted(AppDialogOutcome.Accepted);
 
@@ -433,9 +444,25 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Assert.True(shouldSkip);
         Assert.Empty(context.ListState.Downloaded);
         Assert.NotNull(context.Store.History);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.UpdateCount);
         Assert.Equal(0, context.Dialogs.ShowCount);
+    }
+
+    [Fact]
+    public async Task UiOnlyCompletedItemDoesNotAffectDuplicateDecision()
+    {
+        using var context = new DuplicatePolicyContext(AppDialogOutcome.Canceled);
+        context.ListState.AddDownloaded(DownloadTaskProjectionMapper.ToDownloadedItem(
+            DuplicatePolicyContext.CreateCompletedHistory()));
+
+        var shouldSkip = await context.Policy.ShouldSkipAsync(
+            CreateRequestedItem(DownloadContentSelection.All),
+            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
+            TestContext.Current.CancellationToken);
+
+        Assert.False(shouldSkip);
+        Assert.Single(context.ListState.Downloaded);
     }
 
     [Fact]
@@ -451,7 +478,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Assert.False(shouldSkip);
         Assert.Empty(context.ListState.Downloaded);
         Assert.NotNull(context.Store.History);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.UpdateCount);
         Assert.Equal(0, context.Dialogs.ShowCount);
     }
@@ -469,7 +496,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Assert.True(shouldSkip);
         Assert.Empty(context.ListState.Downloaded);
         Assert.NotNull(context.Store.History);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.UpdateCount);
         Assert.Equal(1, context.Dialogs.ShowCount);
     }
@@ -495,8 +522,14 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Assert.Equal(0, context.Store.UpdateCount);
         Assert.Equal(1, context.Store.DeleteHistoryCount);
         Assert.Equal(historyId, context.Store.DeletedHistoryId);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
         Assert.Equal(1, context.Dialogs.ShowCount);
+
+        Assert.False(await context.Policy.ShouldSkipAsync(
+            CreateRequestedItem(DownloadContentSelection.All),
+            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
+            TestContext.Current.CancellationToken));
+        Assert.Equal(2, context.Store.HistoryByCidRequestCount);
     }
 
     [Fact]
@@ -504,15 +537,11 @@ public sealed class DownloadAddOwnerTests : IDisposable
     {
         using var context = DuplicatePolicyContext.WithCompleted(AppDialogOutcome.Accepted);
         var staleSnapshot = DownloadTaskProjectionMapper.ToDownloadedItem(context.Store.History!);
-        var completedCandidates = new Lazy<Task<List<DownloadedItem>>>(() =>
-            context.Policy.LoadCompletedCandidatesAsync(
-                TestContext.Current.CancellationToken));
 
         var shouldSkip = await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(DownloadContentSelection.All),
             DownKyi.Core.Settings.RepeatDownloadStrategy.Ask,
-            TestContext.Current.CancellationToken,
-            completedCandidates);
+            TestContext.Current.CancellationToken);
         context.ListState.LoadDownloadedHistory([staleSnapshot]);
 
         Assert.False(shouldSkip);
@@ -521,25 +550,20 @@ public sealed class DownloadAddOwnerTests : IDisposable
     }
 
     [Fact]
-    public async Task CachedCandidatesIncludeACompletionProjectedDuringTheBatch()
+    public async Task UiOnlyCompletionProjectedDuringTheBatchIsNotADurableDuplicate()
     {
         using var context = new DuplicatePolicyContext(AppDialogOutcome.Accepted);
-        var candidateList = await context.Policy.LoadCompletedCandidatesAsync(
-            TestContext.Current.CancellationToken);
-        var completedCandidates = new Lazy<Task<List<DownloadedItem>>>(() =>
-            Task.FromResult(candidateList));
         context.ListState.AddDownloaded(DownloadTaskProjectionMapper.ToDownloadedItem(
             DuplicatePolicyContext.CreateCompletedHistory()));
 
         var shouldSkip = await context.Policy.ShouldSkipAsync(
             CreateRequestedItem(DownloadContentSelection.All),
             DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
-            TestContext.Current.CancellationToken,
-            completedCandidates);
+            TestContext.Current.CancellationToken);
 
-        Assert.True(shouldSkip);
-        Assert.Single(candidateList);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.False(shouldSkip);
+        Assert.Single(context.ListState.Downloaded);
+        Assert.Equal(1, context.Store.HistoryByCidRequestCount);
     }
 
     [Fact]
@@ -1030,6 +1054,11 @@ public sealed class DownloadAddOwnerTests : IDisposable
 
         public StubDialogService Dialogs { get; }
 
+        public Task PersistActiveAsync(DownloadingItem item) =>
+            _projectionStore.AddDownloadingAsync(
+                item,
+                TestContext.Current.CancellationToken);
+
         public static DuplicatePolicyContext WithCompleted(
             AppDialogOutcome outcome,
             bool loadUi = false,
@@ -1185,6 +1214,8 @@ public sealed class DownloadAddOwnerTests : IDisposable
 
         public int HistoryPageRequestCount { get; private set; }
 
+        public int HistoryByCidRequestCount { get; private set; }
+
         public Task<DownloadHistoryPage>? PendingHistoryPage { get; set; }
 
         public DownloadTaskId? DeletedHistoryId { get; private set; }
@@ -1250,13 +1281,40 @@ public sealed class DownloadAddOwnerTests : IDisposable
             return Task.FromResult(new DownloadHistoryPage(items, null));
         }
 
+        public Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidAsync(
+            long cid,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            HistoryByCidRequestCount++;
+            IReadOnlyList<DownloadHistoryRecord> items = History?.Cid == cid
+                ? [History]
+                : [];
+            return Task.FromResult(items);
+        }
+
         public Task<IReadOnlyList<QuarantinedDownloadRecord>> GetQuarantinedRecordsAsync(
             CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<QuarantinedDownloadRecord>>([]);
 
         public Task<IReadOnlyList<DownloadTask>> GetUnfinishedAsync(
-            CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<DownloadTask>>([]);
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<DownloadTask> tasks = Current == null ? [] : [Current];
+            return Task.FromResult(tasks);
+        }
+
+        public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+            long cid,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyList<DownloadTask> tasks = Current?.Metadata.Media.Cid == cid
+                ? [Current]
+                : [];
+            return Task.FromResult(tasks);
+        }
 
         public Task<bool> IsOutputPathReservedAsync(
             string basePath,

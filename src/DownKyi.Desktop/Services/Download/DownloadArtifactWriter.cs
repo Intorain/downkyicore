@@ -40,6 +40,14 @@ internal sealed partial class DownloadArtifactWriter
         _client = client ?? throw new ArgumentNullException(nameof(client));
     }
 
+    internal static string GetDanmakuTransferKey(DownloadDanmakuOutputKind kind) =>
+        kind switch
+        {
+            DownloadDanmakuOutputKind.Ass => DanmakuAssTransferKey,
+            DownloadDanmakuOutputKind.Xml => DanmakuXmlTransferKey,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
+
     public async Task<OperationResult<DownloadArtifactWriteResult>> DownloadCoverAsync(
         DownloadTaskId taskId,
         string? coverUrl,
@@ -113,32 +121,29 @@ internal sealed partial class DownloadArtifactWriter
     public async Task<OperationResult<DownloadArtifactWriteResult>> DownloadDanmakuAsync(
         DownloadTaskId taskId,
         DownloadTaskMetadata metadata,
-        string outputBasePath,
+        IReadOnlyList<DownloadDanmakuOutputPath> outputs,
         DanmakuApplicationSettings settings,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(taskId);
         ArgumentNullException.ThrowIfNull(metadata);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputBasePath);
+        ArgumentNullException.ThrowIfNull(outputs);
         ArgumentNullException.ThrowIfNull(settings);
 
-        var writeAss = settings.OutputFormat.IncludesAss();
-        var writeXml = settings.OutputFormat.IncludesXml();
-        var assFile = writeAss ? $"{outputBasePath}.ass" : null;
-        var xmlFile = writeXml ? $"{outputBasePath}.xml" : null;
-        var outputFiles = new List<string>();
-        var outputClaims = new List<KeyValuePair<string, string>>(2);
-        if (assFile != null)
-        {
-            outputFiles.Add(assFile);
-            outputClaims.Add(new KeyValuePair<string, string>(DanmakuAssTransferKey, assFile));
-        }
-
-        if (xmlFile != null)
-        {
-            outputFiles.Add(xmlFile);
-            outputClaims.Add(new KeyValuePair<string, string>(DanmakuXmlTransferKey, xmlFile));
-        }
+        var assFile = outputs
+            .Where(output => output.Kind == DownloadDanmakuOutputKind.Ass)
+            .Select(static output => (string?)output.File)
+            .SingleOrDefault();
+        var xmlFile = outputs
+            .Where(output => output.Kind == DownloadDanmakuOutputKind.Xml)
+            .Select(static output => (string?)output.File)
+            .SingleOrDefault();
+        var outputFiles = outputs.Select(output => output.File).ToList();
+        var outputClaims = outputs
+            .Select(output => new KeyValuePair<string, string>(
+                GetDanmakuTransferKey(output.Kind),
+                output.File))
+            .ToList();
 
         var subtitleConfig = new Config
         {
@@ -330,7 +335,9 @@ internal sealed partial class DownloadArtifactWriter
 
         foreach (var subRip in subRipTexts)
         {
-            var srtFile = $"{outputBasePath}_{subRip.LanDoc}.srt";
+            var srtFile = DownloadOutputLayout.GetSubtitleTrackPath(
+                outputBasePath,
+                subRip.LanDoc);
             try
             {
                 await _stateWriter.ClaimTransferFileAsync(
@@ -376,7 +383,7 @@ internal sealed partial class DownloadArtifactWriter
         string? defaultSubtitleFile = null;
         if (defaultSubtitleSourceToWrite != null)
         {
-            defaultSubtitleFile = $"{outputBasePath}.srt";
+            defaultSubtitleFile = DownloadOutputLayout.GetDefaultSubtitlePath(outputBasePath);
             try
             {
                 await _stateWriter.ClaimTransferFileAsync(
@@ -415,15 +422,14 @@ internal sealed partial class DownloadArtifactWriter
 
     public async Task<OperationResult<DownloadArtifactWriteResult>> GenerateNfoFileAsync(
         DownloadTaskId taskId,
-        string outputBasePath,
+        string nfoFile,
         DownloadNfoRequest metadata,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(taskId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputBasePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nfoFile);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        var nfoFile = $"{outputBasePath}.nfo";
         try
         {
             await _stateWriter.ClaimTransferFileAsync(

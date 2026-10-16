@@ -53,14 +53,6 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
         return OperationResult.Success(task);
     }
 
-    public Task<OperationResult> CheckNewDownloadAdmissionAsync(
-        CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(OperationResult.Success());
-    }
-
     public Task<DownloadTask?> FindAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken)
@@ -74,6 +66,14 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return _store.GetUnfinishedAsync(cancellationToken);
+    }
+
+    public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+        long cid,
+        CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _store.GetUnfinishedByCidAsync(cid, cancellationToken);
     }
 
     public Task<OperationResult<DownloadTask>> StartAsync(
@@ -127,6 +127,19 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
         return MutateAsync(taskId, (task, now) => task.Fail(failure, now), cancellationToken);
     }
 
+    public Task<OperationResult<DownloadTask>> FailIfRunnableAsync(
+        DownloadTaskId taskId,
+        DownloadFailure failure,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return MutateAsync(
+            taskId,
+            static task => task.Phase is DownloadPhase.Queued or DownloadPhase.Downloading,
+            (task, now) => task.Fail(failure, now),
+            cancellationToken);
+    }
+
     public Task<OperationResult<DownloadTask>> FailIfDispatchableAsync(
         DownloadTaskId taskId,
         DownloadFailure failure,
@@ -141,6 +154,15 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
             (task, now) => task.Fail(failure, now),
             cancellationToken);
     }
+
+    public Task<OperationResult<DownloadTask>> ConfirmPausedIfPausingAsync(
+        DownloadTaskId taskId,
+        CancellationToken cancellationToken) =>
+        MutateAsync(
+            taskId,
+            static task => task.Phase == DownloadPhase.Pausing,
+            static (task, now) => task.ConfirmPaused(now),
+            cancellationToken);
 
     public Task<OperationResult<DownloadTask>> DiscardUnpublishedArtifactsAndFailAsync(
         DownloadTaskId taskId,

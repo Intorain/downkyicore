@@ -5,17 +5,61 @@ public sealed class DownloadAdmissionArchitectureTests
     private static readonly string RepositoryRoot = FindRepositoryRoot();
 
     [Fact]
-    public void RemovedBackendDoesNotGateNewDownloadAdmission()
+    public void RetiredGlobalPreflightCannotReturnToTheDownloadAddFlow()
     {
-        var service = ReadSource(
-            "src", "DownKyi.Application", "Downloads", "DownloadTaskApplicationService.cs");
+        string[] retiredTokens =
+        [
+            "CheckNewDownloadAdmissionAsync",
+            "DownloadAdmissionOutcome",
+            "EnsureAdmissionAsync",
+            "DownloadAddFlowOutcome.AdmissionCanceled",
+            "DownloadAddFlowOutcome.AdmissionFailed",
+            "DownloadAddStopReason.AdmissionCanceled",
+            "DownloadAddStopReason.AdmissionFailed",
+            "TipAddDownloadingAdmissionFailed"
+        ];
+        var sourceRoot = Path.Combine(RepositoryRoot, "src");
+        var violations = Directory
+            .EnumerateFiles(sourceRoot, "*", SearchOption.AllDirectories)
+            .Where(path => string.Equals(Path.GetExtension(path), ".cs", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Path.GetExtension(path), ".axaml", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase))
+            .Select(path => new { Path = path, Source = File.ReadAllText(path) })
+            .SelectMany(file => retiredTokens
+                .Where(token => file.Source.Contains(token, StringComparison.Ordinal))
+                .Select(token => $"{Path.GetRelativePath(RepositoryRoot, file.Path)}: {token}"))
+            .ToArray();
+        var reservationContract = ReadSource(
+            "src", "DownKyi.Application", "Downloads", "IDownloadOutputReservationService.cs");
+        var reservationService = ReadSource(
+            "src", "DownKyi.Application", "Downloads", "DownloadTaskApplicationService.OutputReservations.cs");
+        var storeContract = ReadSource(
+            "src", "DownKyi.Application", "Downloads", "IDownloadTaskStore.cs");
+        var admissionService = ReadSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "DownloadTaskAdmissionService.cs");
+        var reservations = ReadSource(
+            "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreOutputReservations.cs");
         var presenterPath = Path.Combine(
             RepositoryRoot,
             "src", "DownKyi.Desktop", "Services", "Download", "LegacyDownloadAdmissionPresenter.cs");
 
-        Assert.Contains("Task.FromResult(OperationResult.Success())", service, StringComparison.Ordinal);
-        Assert.DoesNotContain("IsLegacyUpgradeAdmissionBlockedAsync", service, StringComparison.Ordinal);
+        Assert.True(violations.Length == 0, string.Join(Environment.NewLine, violations));
         Assert.False(File.Exists(presenterPath));
+        Assert.DoesNotContain("IsOutputPathReservedAsync", reservationContract, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsOutputPathReservedAsync", reservationService, StringComparison.Ordinal);
+        Assert.Contains("IsOutputPathReservedAsync", storeContract, StringComparison.Ordinal);
+
+        Assert.Contains("public async Task AdmitAsync(", admissionService, StringComparison.Ordinal);
+        Assert.Contains("_admissionGate.WaitAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("_runtimeAvailability.EnsureAcceptingTasks();", admissionService, StringComparison.Ordinal);
+        Assert.Contains("_projections.AddDownloadingAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("_database.ExecuteImmediateTransactionAsync", reservations, StringComparison.Ordinal);
+        Assert.Contains("HasOutputClaimConflictCoreAsync", reservations, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -94,12 +138,19 @@ public sealed class DownloadAdmissionArchitectureTests
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadDuplicatePolicy.cs");
         var outputResolver = ReadSource(
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadOutputPathResolver.cs");
+        var outputLayout = ReadSource(
+            "src", "DownKyi.Desktop", "Services", "Download", "DownloadOutputLayout.cs");
         var reservations = ReadSource(
             "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreOutputReservations.cs");
         var recovery = ReadSource(
             "src", "DownKyi.Infrastructure", "Downloads", "DownloadStoreReservationKeyCompatibility.cs");
+        var store = ReadSource(
+            "src", "DownKyi.Application", "Downloads", "IDownloadTaskStore.cs");
 
         Assert.Contains("record struct DownloadActionClaims", contract, StringComparison.Ordinal);
+        Assert.Contains("record struct DownloadOutputOwnership", contract, StringComparison.Ordinal);
+        Assert.Contains("ConflictsWith(DownloadOutputOwnership other)", contract, StringComparison.Ordinal);
+        Assert.Contains("Cid != other.Cid || Claims.Overlaps(other.Claims)", contract, StringComparison.Ordinal);
         Assert.Contains("Nfo = 32", contract, StringComparison.Ordinal);
         Assert.Contains("SubtractFrom(DownloadContentSelection", contract, StringComparison.Ordinal);
         Assert.Contains("coveredClaims.SubtractFrom(requestedContent)", coverage, StringComparison.Ordinal);
@@ -109,20 +160,83 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("ResolvePhysicalBasePath", coverage, StringComparison.Ordinal);
         Assert.DoesNotContain("OperatingSystem.IsMacOS", coverage, StringComparison.Ordinal);
         Assert.Contains("AllowExistingBasePath: hasMatchingOutputOwner", duplicatePolicy, StringComparison.Ordinal);
-        Assert.Contains("DownloadActionClaim.Nfo", outputResolver, StringComparison.Ordinal);
-        Assert.Contains("reader.GetInt64(2) != requestedCid", reservations, StringComparison.Ordinal);
-        Assert.Contains("existingClaims.Overlaps(requestedClaims)", reservations, StringComparison.Ordinal);
+        Assert.Contains("DownloadOutputLayout.HasOutputClaimConflict", outputResolver, StringComparison.Ordinal);
+        Assert.Contains("DownloadActionClaim.Nfo", outputLayout, StringComparison.Ordinal);
+        Assert.Contains("ConflictsWith(requestedOwnership)", store, StringComparison.Ordinal);
+        Assert.Contains("ConflictsWith(requestedOwnership)", reservations, StringComparison.Ordinal);
+        Assert.DoesNotContain("task.Metadata.Media.Cid != requestedCid", store, StringComparison.Ordinal);
+        Assert.DoesNotContain("reader.GetInt64(2) != requestedCid", reservations, StringComparison.Ordinal);
+        Assert.DoesNotContain("existingClaims.Overlaps(requestedClaims)", reservations, StringComparison.Ordinal);
         Assert.Contains("db.nfo_request IS NOT NULL", reservations, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskSqlReader.SelectColumns", recovery, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskRecordMapper.Read", recovery, StringComparison.Ordinal);
         Assert.Contains("SqliteDownloadStoreQuarantine.RecordAsync", recovery, StringComparison.Ordinal);
         Assert.Contains("task.Plan.ActionClaims", recovery, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadStoreJson.ReadContentSelection", recovery, StringComparison.Ordinal);
-        Assert.Contains("reservation.Cid != row.Cid", recovery, StringComparison.Ordinal);
-        Assert.Contains("reservation.Claims.Overlaps(row.Claims)", recovery, StringComparison.Ordinal);
+        Assert.Contains("ConflictsWith(currentOwnership)", recovery, StringComparison.Ordinal);
+        Assert.DoesNotContain("reservation.Cid != row.Cid", recovery, StringComparison.Ordinal);
+        Assert.DoesNotContain("reservation.Claims.Overlaps(row.Claims)", recovery, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadOutputClaims", coverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("DownloadOutputClaims", store, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadOutputClaims", reservations, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadOutputClaims", recovery, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void QuarantineExclusionSqlHasOneOwner()
+    {
+        string[] exclusionTokens =
+        [
+            "q.source_table = 'downloading'",
+            "q.source_table = 'download_history'"
+        ];
+        var ownerPath = Path.Combine(
+            RepositoryRoot,
+            "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreQuarantine.cs");
+        var violations = Directory
+            .EnumerateFiles(Path.Combine(RepositoryRoot, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => !string.Equals(path, ownerPath, StringComparison.OrdinalIgnoreCase))
+            .Select(path => new { Path = path, Source = File.ReadAllText(path) })
+            .SelectMany(file => exclusionTokens
+                .Where(token => file.Source.Contains(token, StringComparison.Ordinal))
+                .Select(token => $"{Path.GetRelativePath(RepositoryRoot, file.Path)}: {token}"))
+            .ToArray();
+        var owner = File.ReadAllText(ownerPath);
+        var queries = ReadSource(
+            "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreQueries.cs");
+        var reservations = ReadSource(
+            "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreOutputReservations.cs");
+        var recovery = ReadSource(
+            "src", "DownKyi.Infrastructure", "Downloads", "DownloadStoreReservationKeyCompatibility.cs");
+
+        Assert.True(violations.Length == 0, string.Join(Environment.NewLine, violations));
+        Assert.Contains("ExcludeDownloadingRecordSql", owner, StringComparison.Ordinal);
+        Assert.Contains("ExcludeDownloadHistoryRecordSql", owner, StringComparison.Ordinal);
+        Assert.All(exclusionTokens, token => Assert.Contains(token, owner, StringComparison.Ordinal));
+        Assert.Contains(
+            "SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql",
+            queries,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SqliteDownloadStoreQuarantine.ExcludeDownloadHistoryRecordSql",
+            queries,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql",
+            reservations,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql",
+            recovery,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("LEFT JOIN download_quarantine q", recovery, StringComparison.Ordinal);
+        Assert.Contains("SqliteDownloadStoreQuarantine.RecordAsync", recovery, StringComparison.Ordinal);
     }
 
     private static string ReadSource(params string[] segments)
