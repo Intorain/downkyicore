@@ -100,14 +100,14 @@ internal sealed class DownloadTransferCoordinator
                     addressIndex + 1 < addresses.Length,
                     canRefreshAddresses);
             }
-            _logger.LogWarningMessage(
-                $"Download transfer attempt failed; " +
-                $"backend={_backend.Name}; " +
-                $"attempt={attempt}/{_retryPolicy.MaximumAttempts}; " +
-                $"failure={lastResult.FailureKind}; " +
-                $"error={lastResult.ErrorCode}; " +
-                $"next={decision.Action}; " +
-                $"delaySeconds={decision.Delay.TotalSeconds:0.###}");
+            _logger.LogWarningMessage(FormatFailureDiagnostic(
+                _backend.Name,
+                attempt,
+                _retryPolicy.MaximumAttempts,
+                lastResult.FailureKind,
+                lastResult.ErrorCode,
+                decision.Action,
+                decision.Delay));
             if (decision.Delay > TimeSpan.Zero)
             {
                 await Task.Delay(
@@ -171,6 +171,19 @@ internal sealed class DownloadTransferCoordinator
         }
 
         return lastResult;
+    }
+
+    internal static string FormatFailureDiagnostic(
+        string backend,
+        int attempt,
+        int maximumAttempts,
+        DownloadTransferFailureKind failureKind,
+        string errorCode,
+        DownloadRetryAction nextAction,
+        TimeSpan delay)
+    {
+        return FormattableString.Invariant(
+            $"Download transfer attempt failed; backend={backend}; attempt={attempt}/{maximumAttempts}; failure={failureKind}; error={errorCode}; next={nextAction}; delaySeconds={delay.TotalSeconds:0.###}");
     }
 
     private async Task<DownloadTransferResult?> ResetForSourceChangeAsync(
