@@ -232,7 +232,7 @@ public sealed class ReleaseSafetyRegressionTests
     }
 
     [Fact]
-    public void ReleaseTagProvenanceRejectsLightweightAndNonMainTags()
+    public void ReleaseTagProvenanceAllowsFrozenMainAndRejectsLightweightAndNonMainTags()
     {
         var root = CreateTemporaryDirectory();
         var remote = Path.Combine(root, "remote.git");
@@ -261,11 +261,25 @@ public sealed class ReleaseSafetyRegressionTests
                 repository);
             Assert.Equal(0, valid.ExitCode);
 
+            File.AppendAllText(Path.Combine(repository, "fixture.txt"), "\nnext release");
+            RunRequired("git", ["add", "fixture.txt"], repository);
+            RunRequired("git", ["commit", "-m", "next release fixture"], repository);
+            RunRequired("git", ["push", "origin", "main"], repository);
+            var advancedMain = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+            Assert.NotEqual(mainCommit, advancedMain);
+            RunRequired("git", ["checkout", "--detach", mainCommit], repository);
+            var frozenMain = RunPowerShell(
+                validator,
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", mainCommit],
+                repository);
+            Assert.Equal(0, frozenMain.ExitCode);
+            RunRequired("git", ["switch", "main"], repository);
+
             RunRequired("git", ["tag", "-d", releaseTag], repository);
             RunRequired("git", ["tag", releaseTag], repository);
             var lightweight = RunPowerShell(
                 validator,
-                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", mainCommit],
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", advancedMain],
                 repository);
             Assert.NotEqual(0, lightweight.ExitCode);
             Assert.Contains("annotated tag", NormalizeDiagnostic(lightweight), StringComparison.OrdinalIgnoreCase);
@@ -305,6 +319,62 @@ public sealed class ReleaseSafetyRegressionTests
                 ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", releaseOnlyCommit],
                 repository);
             Assert.NotEqual(0, nonMain.ExitCode);
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(root);
+        }
+    }
+
+    [Fact]
+    public void ReleaseTagProvenanceRejectsMergedFeatureCommitOutsideMainFirstParentHistory()
+    {
+        var root = CreateTemporaryDirectory();
+        var remote = Path.Combine(root, "remote.git");
+        var repository = Path.Combine(root, "repository");
+        var validator = Path.Combine(RepositoryRoot, "script", "validate-release-subject.ps1");
+        var releaseTag = $"v{RepositoryVersion}";
+
+        try
+        {
+            RunRequired("git", ["init", "--bare", remote], root);
+            RunRequired("git", ["init", "-b", "main", repository], root);
+            RunRequired("git", ["config", "user.name", "Release Fixture"], repository);
+            RunRequired("git", ["config", "user.email", "release-fixture@example.invalid"], repository);
+            File.WriteAllText(Path.Combine(repository, "version.txt"), RepositoryVersion);
+            File.WriteAllText(Path.Combine(repository, "fixture.txt"), "main");
+            RunRequired("git", ["add", "version.txt", "fixture.txt"], repository);
+            RunRequired("git", ["commit", "-m", "main fixture"], repository);
+            RunRequired("git", ["remote", "add", "origin", remote], repository);
+            RunRequired("git", ["push", "-u", "origin", "main"], repository);
+
+            RunRequired("git", ["checkout", "-b", "feature-fixture"], repository);
+            File.WriteAllText(Path.Combine(repository, "feature.txt"), "feature");
+            RunRequired("git", ["add", "feature.txt"], repository);
+            RunRequired("git", ["commit", "-m", "feature fixture"], repository);
+            var featureCommit = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+
+            RunRequired("git", ["switch", "main"], repository);
+            File.WriteAllText(Path.Combine(repository, "integration.txt"), "main integration");
+            RunRequired("git", ["add", "integration.txt"], repository);
+            RunRequired("git", ["commit", "-m", "main integration fixture"], repository);
+            RunRequired(
+                "git",
+                ["merge", "--no-ff", "feature-fixture", "-m", "merge feature fixture"],
+                repository);
+            var mergedMain = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+            RunRequired("git", ["push", "origin", "main"], repository);
+            RunRequired("git", ["merge-base", "--is-ancestor", featureCommit, mergedMain], repository);
+
+            RunRequired("git", ["tag", "-a", releaseTag, featureCommit, "-m", releaseTag], repository);
+            RunRequired("git", ["checkout", "--detach", featureCommit], repository);
+            var result = RunPowerShell(
+                validator,
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", featureCommit],
+                repository);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("first-parent history", NormalizeDiagnostic(result), StringComparison.OrdinalIgnoreCase);
         }
         finally
         {

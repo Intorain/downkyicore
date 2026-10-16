@@ -46,8 +46,16 @@ if ($trackedChanges) {
 
 Invoke-SubjectGit fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main' | Out-Null
 $mainCommit = Invoke-SubjectGit rev-parse 'refs/remotes/origin/main^{commit}'
-if (-not [string]::Equals($SubjectSha, $mainCommit, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Release subject $SubjectSha does not equal current main $mainCommit."
+$mainFirstParentHistory = (Invoke-SubjectGit rev-list --first-parent $mainCommit) -split '\r?\n'
+$subjectWasMainHead = $false
+foreach ($commit in $mainFirstParentHistory) {
+    if ([string]::Equals($commit, $SubjectSha, [StringComparison]::OrdinalIgnoreCase)) {
+        $subjectWasMainHead = $true
+        break
+    }
+}
+if (-not $subjectWasMainHead) {
+    throw "Release subject $SubjectSha is not in current main first-parent history at $mainCommit."
 }
 
 Write-Output "Validated exact $expectedReleaseVersion release subject at $SubjectSha."
