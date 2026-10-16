@@ -87,9 +87,9 @@ cross-platform stress proof，不得移除。
 ## 下載資料卡
 
 - **Use when**：SQLite、migration、active/history、restore、quarantine、paging。
-- **Owner**：active=`DownloadTask` → `DownloadTaskApplicationService` → `IDownloadTaskStore`；history=`DownloadHistoryService` → `IDownloadHistoryStore`；完成 transaction=`IDownloadCompletionStore`；SQL／JSON=`SqliteDownloadTaskStore`。
-- **Invariant**：不從 UI／lossy history 重建 active task；短連線、WAL、optimistic version、transaction，不用 process-wide DB lock。Collision 以 active 為準，history quarantine 不得冒充 active evidence。Durable commit 先於 UI；progress 可 bounded／coalesced。
-- **Do**：migration 先 backup，單一 transaction DDL，成功後才改 `user_version`。Malformed row 個別 quarantine，不截斷 paging、不記 raw JSON／完整 path／Cookie／URL。啟動載入全部 unfinished + 最新 100 history，其餘 keyset paging。Completion transaction 先於 best-effort cleanup；lossy history 不保 cleanup locator，restart 不補做。
+- **Owner**：active=`DownloadTask` → 同一個 `DownloadTaskApplicationService`（對外提供窄 capability interfaces）→ `IDownloadTaskStore`；history=`DownloadHistoryService` → `IDownloadHistoryStore`；完成 transaction=`IDownloadCompletionStore`；persistence facade=`SqliteDownloadTaskStore`，SQL query／command、reservation、quarantine、schema 與 JSON 各由 Infrastructure 內部 collaborator 負責。
+- **Invariant**：不從 UI／lossy history 重建 active task；重複判斷只讀 durable active／history，UI collection 只是 projection。短連線、WAL、optimistic version、transaction，不用 process-wide DB lock。Collision 以 active 為準，history quarantine 不得冒充 active evidence。Durable commit 先於 UI projection 與 queue handoff；progress 可 bounded／coalesced。
+- **Do**：migration 先 backup，單一 transaction DDL，成功後才改 `user_version`。Malformed row 個別 quarantine，不截斷 paging、不記 raw JSON／完整 path／Cookie／URL。啟動載入全部 unfinished + 最新 100 history 供 UI projection，其餘 keyset paging；重複判斷直接查詢符合條件的 durable candidates。Completion transaction 先於 best-effort cleanup；lossy history 不保 cleanup locator，restart 不補做。
 - **Proof**：transition／migration／rollback／collision／paging tests；更新 `SQLite3MC.PCLRaw.bundle` 跑 `LegacySqlCipherCompatibilityTests`。
 - **Stop**：第二 persistence owner、UI/history 猜 state、無 migration／rollback 的格式變更。
 - **Details**：[Architecture：Download invariant](../ARCHITECTURE.md#download-invariant)。
@@ -99,8 +99,8 @@ cross-platform stress proof，不得移除。
 ## 傳輸與媒體卡
 
 - **Use when**：queue、content conflict、retry、resume、resource identity、range transfer、DURL、mux、FFmpeg、media refresh、HTTP cancellation。
-- **Owner**：selection conflict=`DownloadContentConflictResolver`；admission=`DownloadTaskAdmissionService`；finalized media=`DownloadMediaContract`；retry=coordinator；attempt=backend；integrity=validator；FFmpeg lifecycle=`FfmpegProcessRunner`。
-- **Invariant**：conflict 在 task 建立前解決並保存 finalized selection；refresh 可換 URL，不可改 transport／quality／codec／audio-video intent。worker 只收 `DownloadTaskId`；built-in backend 擁有唯一 range ledger／resume／integrity；success 仍過 shared integrity；pause／shutdown 保留 partial map、completed keys、progress、version。
+- **Owner**：selection conflict=`DownloadContentConflictResolver`；duplicate=`DownloadDuplicatePolicy`；admission=`DownloadTaskAdmissionService`；post-commit handoff=`DownloadCommittedTaskDispatcher`；output layout=`DownloadOutputLayout`；invalid transfer cleanup=`DownloadTransferArtifactInvalidator`；finalized media=`DownloadMediaContract`；retry=coordinator；attempt=backend；integrity=validator；FFmpeg lifecycle=`FfmpegProcessRunner`。
+- **Invariant**：conflict 在 task 建立前解決並保存 finalized selection；refresh 可換 URL，不可改 transport／quality／codec／audio-video intent。Durable commit 先於 queue handoff；worker 只收 `DownloadTaskId`。清理無效 transfer 時，先刪實體 artifact，同一 completed key 的所有 artifact 都成功後才撤銷 durable evidence。built-in backend 擁有唯一 range ledger／resume／integrity；success 仍過 shared integrity；pause／shutdown 保留 partial map、completed keys、progress、version。
 - **Do**：built-in fresh transfer 只有 strong ETag／可用 Last-Modified 才建立多段 range plan，否則整份內容用單一 request；resume 先比 resource identity，無 strong validator 時，重用前逐段比對所有 retained bytes；mismatch 回 `ResumeRejected`，清該 transfer artifacts 後同地址只重試一次。Legacy task 只由 `DownloadTransferState.HasLegacyProvenance` 分類，upgrade cleanup 只刪 task-private staging，不遷移或處理 staging 外的 A2 狀態。Delete：persist `Canceled` → stop → 刪 artifacts → 刪 row；failure 不算成功。DURL 只拒絕 duplicate `Order`／無可用地址，不新增 positive／gap／contiguity／start-at-1。Mux 用 same-directory temp、不覆蓋 foreign destination；只有 real decode failure 才撤銷 completed evidence。401／403／schema／cancel 不 retry；429 bounded `Retry-After`。
 - **Proof**：content-conflict、`BuiltinRangeDownloaderTests`、`DownloadPipelineStageTests`、delete／integrity tests；loopback 先同步 server 收到 request，不用固定 sleep。
 - **Stop**：第二 retry budget／process owner、自訂 DURL 規則、刪除仍有效 source。
