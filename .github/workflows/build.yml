@@ -723,13 +723,8 @@ jobs:
             -OutputPath "script/macos/publish-manifest-osx-${{ matrix.cpu }}.json"
       - name: Create DMG
         run: |
-          create-dmg \
-          --hdiutil-quiet \
-          --icon 哔哩下载姬.app 165 175 \
-          --icon-size 120 \
-          --app-drop-link 495 175 \
-          --window-size 660 400 \
-          DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg 哔哩下载姬.app
+          chmod +x create-dmg.sh
+          ./create-dmg.sh ${{ steps.macos-app.outputs.version }} ${{ matrix.cpu }}
         working-directory: ./script/macos
       - name: Sign DMG
         if: ${{ env.HAS_MACOS_SIGNING == 'true' }}

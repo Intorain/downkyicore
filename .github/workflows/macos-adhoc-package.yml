@@ -90,13 +90,8 @@ jobs:
       - name: Create DMG
         working-directory: ./script/macos
         run: |
-          create-dmg \
-            --hdiutil-quiet \
-            --icon 哔哩下载姬.app 165 175 \
-            --icon-size 120 \
-            --app-drop-link 495 175 \
-            --window-size 660 400 \
-            DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg 哔哩下载姬.app
+          chmod +x create-dmg.sh
+          ./create-dmg.sh ${{ steps.macos-app.outputs.version }} ${{ matrix.cpu }}
       - name: Validate mounted and installed package contracts
         working-directory: ./script/macos
         env:

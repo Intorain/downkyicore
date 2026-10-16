@@ -766,6 +766,30 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
+    public void MacWorkflowsShareOneDmgLayoutOwner()
+    {
+        var releaseWorkflow = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var adHocWorkflow = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "workflows", "macos-adhoc-package.yml"));
+        var createDmgScript = File.ReadAllText(
+            Path.Combine(RepositoryRoot, "script", "macos", "create-dmg.sh"));
+
+        foreach (var workflow in new[] { releaseWorkflow, adHocWorkflow })
+        {
+            Assert.Contains("./create-dmg.sh ${{ steps.macos-app.outputs.version }} ${{ matrix.cpu }}", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("--icon-size", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("--window-size", workflow, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("create-dmg", createDmgScript, StringComparison.Ordinal);
+        Assert.Contains("--icon-size 120", createDmgScript, StringComparison.Ordinal);
+        Assert.Contains("--app-drop-link 495 175", createDmgScript, StringComparison.Ordinal);
+        Assert.Contains("--window-size 660 400", createDmgScript, StringComparison.Ordinal);
+        Assert.Contains("x64|arm64", createDmgScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MacReleaseAdHocSignsAndVerifiesFinalArtifacts()
     {
         var workflow = File.ReadAllText(
@@ -1006,7 +1030,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("./sign.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("./verify-app-signature.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("flags=.*runtime", workflow, StringComparison.Ordinal);
-        Assert.Contains("create-dmg", workflow, StringComparison.Ordinal);
+        Assert.Contains("./create-dmg.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("./validate-dmg-package.sh", workflow, StringComparison.Ordinal);
         Assert.Contains(
             "- name: Upload verified DMG\n        continue-on-error: ${{ github.event_name == 'pull_request' }}",
