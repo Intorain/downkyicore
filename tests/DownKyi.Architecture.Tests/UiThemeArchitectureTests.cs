@@ -122,6 +122,28 @@ public sealed class UiThemeArchitectureTests
     }
 
     [Fact]
+    public void ButtonsInheritReadableForegroundFromTheirTheme()
+    {
+        var viewsRoot = Path.Combine(RepositoryRoot, "src", "DownKyi.Desktop", "Views");
+        var violations = Directory
+            .EnumerateFiles(viewsRoot, "*.axaml", SearchOption.AllDirectories)
+            .Where(IsRepositorySourcePath)
+            .SelectMany(path => Regex
+                .Matches(File.ReadAllText(path), "<Button\\b(?<attributes>[^>]*)>")
+                .Where(match => match.Groups["attributes"].Value.Contains(
+                    "Foreground=\"{DynamicResource BrushText}\"",
+                    StringComparison.Ordinal))
+                .Select(_ => Path.GetRelativePath(RepositoryRoot, path).Replace('\\', '/')))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            violations.Length == 0,
+            $"Buttons must inherit a readable foreground from their theme: {string.Join(", ", violations)}");
+    }
+
+    [Fact]
     public void SettingsUseSemanticSurfacesAndReadableTypography()
     {
         var settingsRoot = Path.Combine(

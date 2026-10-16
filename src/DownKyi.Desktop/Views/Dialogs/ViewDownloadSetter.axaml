@@ -98,7 +98,6 @@
                         Command="{Binding BrowseCommand}"
                         Content="{DynamicResource Browse}"
                         FontSize="12"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
 
                     <StackPanel
@@ -224,7 +223,6 @@
                         Command="{Binding DownloadCommand}"
                         Content="{DynamicResource Download}"
                         FontSize="12"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
                     <Button
                         Grid.Column="3"
@@ -234,7 +232,6 @@
                         Command="{Binding CloseCommand}"
                         Content="{DynamicResource Cancel}"
                         FontSize="12"
-                        Foreground="{DynamicResource BrushText}"
                         Theme="{StaticResource BtnStyle}" />
                 </Grid>
             </Grid>
