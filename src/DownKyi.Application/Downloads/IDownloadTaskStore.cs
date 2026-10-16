@@ -22,6 +22,13 @@ public interface IDownloadTaskStore
 
     Task<IReadOnlyList<DownloadTask>> GetUnfinishedAsync(CancellationToken cancellationToken);
 
+    async Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+        long cid,
+        CancellationToken cancellationToken) =>
+        (await GetUnfinishedAsync(cancellationToken).ConfigureAwait(false))
+        .Where(task => task.Metadata.Media.Cid == cid)
+        .ToArray();
+
     Task<bool> IsOutputPathReservedAsync(
         string basePath,
         bool ignoreCase,
@@ -39,13 +46,16 @@ public interface IDownloadTaskStore
         CancellationToken cancellationToken)
     {
         var key = DownloadOutputPathKey.Create(basePath, ignoreCase);
+        var requestedOwnership = new DownloadOutputOwnership(requestedCid, requestedClaims);
         return (await GetUnfinishedAsync(cancellationToken).ConfigureAwait(false)).Any(task =>
             string.Equals(
                 DownloadOutputPathKey.Create(task.Output.BasePath, ignoreCase),
                 key,
                 StringComparison.Ordinal)
-            && (task.Metadata.Media.Cid != requestedCid
-                || task.Plan.ActionClaims.Overlaps(requestedClaims)));
+            && new DownloadOutputOwnership(
+                    task.Metadata.Media.Cid,
+                    task.Plan.ActionClaims)
+                .ConflictsWith(requestedOwnership));
     }
 
     Task<OperationResult> DeleteAsync(DownloadTaskId taskId, CancellationToken cancellationToken);

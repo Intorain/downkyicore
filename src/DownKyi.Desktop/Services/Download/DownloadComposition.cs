@@ -25,10 +25,23 @@ internal static class DownloadComposition
         services.AddSingleton<IDownloadStoreRecovery>(provider =>
             provider.GetRequiredService<SqliteDownloadTaskStore>());
         services.AddSingleton<IDownloadHistoryService, DownloadHistoryService>();
-        services.AddSingleton<IDownloadTaskApplicationService, DownloadTaskApplicationService>();
+        services.AddSingleton<DownloadTaskApplicationService>();
+        services.AddSingleton<IDownloadTaskApplicationService>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
+        services.AddSingleton<IDownloadTaskLookup>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
+        services.AddSingleton<IDownloadTaskCatalog>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
+        services.AddSingleton<IDownloadTaskSchedulerService>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
+        services.AddSingleton<IDownloadTaskStateService>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
+        services.AddSingleton<IDownloadOutputReservationService>(provider =>
+            provider.GetRequiredService<DownloadTaskApplicationService>());
 
         services.AddSingleton<DownloadTaskProjectionStore>();
         services.AddSingleton<DownloadTaskStateWriter>();
+        services.AddSingleton<DownloadTransferArtifactInvalidator>();
         services.AddSingleton<DownloadTaskQueueGateway>();
         services.AddSingleton<IDownloadTaskQueue>(provider =>
             provider.GetRequiredService<DownloadTaskQueueGateway>());
@@ -36,8 +49,11 @@ internal static class DownloadComposition
             provider.GetRequiredService<DownloadTaskQueueGateway>());
         services.AddSingleton<IDownloadRuntimeAvailability>(provider =>
             provider.GetRequiredService<DownloadTaskQueueGateway>());
+        services.AddSingleton<DownloadCommittedTaskDispatcher>();
         services.AddSingleton<DownloadTaskAdmissionService>();
         services.AddSingleton<DownloadListState>();
+        services.AddSingleton<IDownloadedListProjection>(provider =>
+            provider.GetRequiredService<DownloadListState>());
         services.AddSingleton<DownloadTaskFileService>();
         services.AddSingleton<DownloadTaskStaging>();
         services.AddSingleton<IDownloadManagerCoordinator, DownloadManagerCoordinator>();

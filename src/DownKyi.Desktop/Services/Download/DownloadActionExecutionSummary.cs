@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace DownKyi.Services.Download;
@@ -33,10 +32,11 @@ internal static class DownloadActionResultEvaluator
 
         if (context.NeedsDanmaku)
         {
-            var danmakuSucceeded = DownloadArtifactsStage.GetDanmakuOutputs(
+            var danmakuSucceeded = DownloadOutputLayout.GetDanmakuOutputPaths(
                     context.WorkingBasePath,
                     context.Input.DanmakuSettings.OutputFormat)
-                .All(output => context.HasPublished(output.Key)
+                .All(output => context.HasPublished(
+                                   DownloadArtifactWriter.GetDanmakuTransferKey(output.Kind))
                                || DownloadFileIntegrity.Check(output.File).IsUsable);
             context.ActionResults.Set(
                 DownloadActionKind.Danmaku,

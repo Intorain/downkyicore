@@ -93,4 +93,35 @@ public sealed class DownloadActionClaimsTests
         Assert.True(withNfo.Contains(DownloadActionClaim.Nfo));
         Assert.True(withNfo.Overlaps(DownloadActionClaims.Nfo));
     }
+
+    [Theory]
+    [InlineData(1L, DownloadActionClaim.None, 1L, DownloadActionClaim.None, false)]
+    [InlineData(1L, DownloadActionClaim.None, 1L, DownloadActionClaim.Media, false)]
+    [InlineData(1L, DownloadActionClaim.Media, 1L, DownloadActionClaim.None, false)]
+    [InlineData(1L, DownloadActionClaim.Media, 1L, DownloadActionClaim.Subtitle, false)]
+    [InlineData(1L, DownloadActionClaim.Media, 1L, DownloadActionClaim.Media, true)]
+    [InlineData(
+        1L,
+        DownloadActionClaim.Media | DownloadActionClaim.Subtitle,
+        1L,
+        DownloadActionClaim.Subtitle,
+        true)]
+    [InlineData(1L, DownloadActionClaim.None, 2L, DownloadActionClaim.None, true)]
+    [InlineData(1L, DownloadActionClaim.Media, 2L, DownloadActionClaim.Subtitle, true)]
+    public void OutputOwnershipConflictsOnDifferentCidOrOverlappingActions(
+        long existingCid,
+        DownloadActionClaim existingClaims,
+        long requestedCid,
+        DownloadActionClaim requestedClaims,
+        bool expectedConflict)
+    {
+        var existing = new DownloadOutputOwnership(
+            existingCid,
+            new DownloadActionClaims(existingClaims));
+        var requested = new DownloadOutputOwnership(
+            requestedCid,
+            new DownloadActionClaims(requestedClaims));
+
+        Assert.Equal(expectedConflict, existing.ConflictsWith(requested));
+    }
 }

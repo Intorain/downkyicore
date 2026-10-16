@@ -359,7 +359,9 @@ public sealed class MuxFailureRecoveryTests
                 new DownloadActivityPresenter(_projectionStore, _stateWriter),
                 Muxer,
                 _stateWriter,
-                NullLogger<MuxStage>.Instance);
+                new DownloadTransferArtifactInvalidator(
+                    _stateWriter,
+                    NullLogger<DownloadTransferArtifactInvalidator>.Instance));
         }
 
         public async Task<DurlTestSource[]> AddDurlSourcesAsync(int count = 3)

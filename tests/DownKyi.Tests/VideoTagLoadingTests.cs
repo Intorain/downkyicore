@@ -481,13 +481,15 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task MultiPageAdmissionReadsCompletedHistoryOnce()
+    public async Task MultiPageAdmissionQueriesOnlyEachDurableCidCandidateSet()
     {
         using var context = CreateContext(generateMetadata: false);
         var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
         first.Cid = 1;
         var second = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
         second.Cid = 2;
+        second.Name = "page-2";
+        second.Order = 2;
         var preparedDownload = await context.PrepareAsync(first, second);
 
         var added = await context.AddToDownloadAsync(
@@ -496,7 +498,29 @@ public sealed class VideoTagLoadingTests : IDisposable
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, added);
-        Assert.Equal(1, context.Store.HistoryPageRequestCount);
+        Assert.Equal(2, context.Store.UnfinishedByCidRequestCount);
+        Assert.Equal(2, context.Store.HistoryByCidRequestCount);
+        Assert.Equal(0, context.Store.HistoryPageRequestCount);
+    }
+
+    [Fact]
+    public async Task SameBatchDuplicateSeesTheTaskPersistedByThePreviousDecision()
+    {
+        using var context = CreateContext(generateMetadata: false);
+        var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        var second = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        var preparedDownload = await context.PrepareAsync(first, second);
+
+        var result = await context.AddToDownloadResultAsync(
+            CreateSelection(_directory),
+            preparedDownload,
+            isAll: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.AddedCount);
+        Assert.Equal(1, result.DuplicateCount);
+        Assert.Equal(1, context.Store.AddCount);
+        Assert.Single(context.ListState.Downloading);
     }
 
     [Fact]
@@ -1207,12 +1231,13 @@ public sealed class VideoTagLoadingTests : IDisposable
             client ??= new TestBilibiliApiClient();
             var physicalOutputPathResolver = resolver
                 ?? new FileSystemPhysicalOutputPathResolver();
+            var stateWriter = new DownloadTaskStateWriter(_taskService);
+            var queue = taskQueue ?? Queue;
             _admission = new DownloadTaskAdmissionService(
                 ListState,
                 _taskService,
                 _projectionStore,
-                new DownloadTaskStateWriter(_taskService),
-                taskQueue ?? Queue,
+                new DownloadCommittedTaskDispatcher(queue, stateWriter),
                 runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
                 physicalOutputPathResolver);
             var duplicatePolicy = new DownloadDuplicatePolicy(
@@ -1503,9 +1528,15 @@ public sealed class VideoTagLoadingTests : IDisposable
         IDownloadHistoryStore,
         IDownloadCompletionStore
     {
+        private readonly List<DownloadTask> _tasks = [];
+
         public int AddCount { get; private set; }
 
         public int HistoryPageRequestCount { get; private set; }
+
+        public int HistoryByCidRequestCount { get; private set; }
+
+        public int UnfinishedByCidRequestCount { get; private set; }
 
         public Func<Task>? AfterAddAsync { get; set; }
 
@@ -1522,6 +1553,7 @@ public sealed class VideoTagLoadingTests : IDisposable
                 throw new IOException("Download task store failed.");
             }
 
+            _tasks.Add(task);
             if (AfterAddAsync != null)
             {
                 await AfterAddAsync().ConfigureAwait(false);
@@ -1540,7 +1572,12 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public Task<OperationResult> DeleteAsync(
             DownloadTaskId taskId,
-            CancellationToken cancellationToken) => Task.FromResult(OperationResult.Success());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _tasks.RemoveAll(task => task.Id == taskId);
+            return Task.FromResult(OperationResult.Success());
+        }
 
         public Task<OperationResult> DeleteHistoryAsync(
             DownloadTaskId taskId,
@@ -1548,7 +1585,11 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public Task<DownloadTask?> FindAsync(
             DownloadTaskId taskId,
-            CancellationToken cancellationToken) => Task.FromResult<DownloadTask?>(null);
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_tasks.SingleOrDefault(task => task.Id == taskId));
+        }
 
         public Task<IReadOnlyList<string>> GetActiveOutputReservationKeysAsync(
             bool ignoreCase,
@@ -1564,13 +1605,35 @@ public sealed class VideoTagLoadingTests : IDisposable
             return Task.FromResult(new DownloadHistoryPage([], null));
         }
 
+        public Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidAsync(
+            long cid,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            HistoryByCidRequestCount++;
+            return Task.FromResult<IReadOnlyList<DownloadHistoryRecord>>([]);
+        }
+
         public Task<IReadOnlyList<QuarantinedDownloadRecord>> GetQuarantinedRecordsAsync(
             CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<QuarantinedDownloadRecord>>(
                 Array.Empty<QuarantinedDownloadRecord>());
 
         public Task<IReadOnlyList<DownloadTask>> GetUnfinishedAsync(
-            CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<DownloadTask>>(
-                Array.Empty<DownloadTask>());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<DownloadTask>>(_tasks.ToArray());
+        }
+
+        public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+            long cid,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            UnfinishedByCidRequestCount++;
+            return Task.FromResult<IReadOnlyList<DownloadTask>>(
+                _tasks.Where(task => task.Metadata.Media.Cid == cid).ToArray());
+        }
 
         public Task<bool> IsOutputPathReservedAsync(
             string basePath,
@@ -1582,13 +1645,28 @@ public sealed class VideoTagLoadingTests : IDisposable
         public Task<OperationResult> UpdateAsync(
             DownloadTask task,
             long expectedVersion,
-            CancellationToken cancellationToken) => Task.FromResult(OperationResult.Success());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var index = _tasks.FindIndex(candidate => candidate.Id == task.Id);
+            if (index >= 0)
+            {
+                _tasks[index] = task;
+            }
+
+            return Task.FromResult(OperationResult.Success());
+        }
 
         public Task<OperationResult> CompleteAsync(
             DownloadTask task,
             DownloadHistoryRecord history,
             long expectedVersion,
-            CancellationToken cancellationToken) => Task.FromResult(OperationResult.Success());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _tasks.RemoveAll(candidate => candidate.Id == task.Id);
+            return Task.FromResult(OperationResult.Success());
+        }
 
         public Task<OperationResult> UpdateProgressAsync(
             DownloadProgressWrite progressWrite,

@@ -6,6 +6,18 @@ namespace DownKyi.Infrastructure.Downloads;
 
 internal sealed class SqliteDownloadStoreQuarantine(SqliteDownloadStoreDatabase database)
 {
+    internal const string ExcludeDownloadingRecordSql = """
+        NOT EXISTS (
+            SELECT 1 FROM download_quarantine q
+            WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+        """;
+
+    internal const string ExcludeDownloadHistoryRecordSql = """
+        NOT EXISTS (
+            SELECT 1 FROM download_quarantine q
+            WHERE q.source_table = 'download_history' AND q.record_id = h.id)
+        """;
+
     private readonly SqliteDownloadStoreDatabase _database = database;
 
     public async Task<IReadOnlyList<QuarantinedDownloadRecord>> GetRecordsAsync(

@@ -1,12 +1,5 @@
 namespace DownKyi.Application.Downloads;
 
-public enum DownloadAdmissionOutcome
-{
-    Allowed,
-    Canceled,
-    Failed
-}
-
 public enum DownloadSelectionOutcome
 {
     Accepted,
@@ -43,8 +36,6 @@ public sealed record DownloadSelectionResult
 public enum DownloadAddFlowOutcome
 {
     Completed,
-    AdmissionCanceled,
-    AdmissionFailed,
     SelectionCanceled,
     SelectionUnavailable
 }

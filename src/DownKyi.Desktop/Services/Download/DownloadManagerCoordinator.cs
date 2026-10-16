@@ -61,6 +61,7 @@ internal sealed class DownloadManagerCoordinator : IDownloadManagerCoordinator, 
     private readonly DownloadTaskProjectionStore _storage;
     private readonly DownloadTaskStateWriter _stateWriter;
     private readonly IDownloadTaskQueue _taskQueue;
+    private readonly DownloadCommittedTaskDispatcher _committedTaskDispatcher;
     private readonly IDownloadSchedulerControl _schedulerControl;
     private readonly IDownloadRuntimeAvailability _runtimeAvailability;
     private readonly DownloadTaskFileService _fileService;
@@ -76,6 +77,7 @@ internal sealed class DownloadManagerCoordinator : IDownloadManagerCoordinator, 
         DownloadTaskProjectionStore storage,
         DownloadTaskStateWriter stateWriter,
         IDownloadTaskQueue taskQueue,
+        DownloadCommittedTaskDispatcher committedTaskDispatcher,
         IDownloadSchedulerControl schedulerControl,
         IDownloadRuntimeAvailability runtimeAvailability,
         DownloadTaskFileService fileService,
@@ -88,6 +90,8 @@ internal sealed class DownloadManagerCoordinator : IDownloadManagerCoordinator, 
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _stateWriter = stateWriter ?? throw new ArgumentNullException(nameof(stateWriter));
         _taskQueue = taskQueue ?? throw new ArgumentNullException(nameof(taskQueue));
+        _committedTaskDispatcher = committedTaskDispatcher
+            ?? throw new ArgumentNullException(nameof(committedTaskDispatcher));
         _schedulerControl = schedulerControl
             ?? throw new ArgumentNullException(nameof(schedulerControl));
         _runtimeAvailability = runtimeAvailability
@@ -303,17 +307,7 @@ internal sealed class DownloadManagerCoordinator : IDownloadManagerCoordinator, 
     {
         _runtimeAvailability.EnsureAcceptingTasks();
         var resumed = await _stateWriter.ResumeAsync(taskId, cancellationToken).ConfigureAwait(true);
-        try
-        {
-            await _taskQueue.EnqueueAsync(resumed.Id, CancellationToken.None).ConfigureAwait(true);
-        }
-        catch (DownloadRuntimeUnavailableException)
-        {
-            await _stateWriter.FailRuntimeUnavailableAsync(
-                resumed.Id,
-                CancellationToken.None).ConfigureAwait(true);
-            throw;
-        }
+        await _committedTaskDispatcher.EnqueueCommittedAsync(resumed.Id).ConfigureAwait(true);
     }
 
     private async Task<IReadOnlyList<DownloadedItem>> LoadDownloadedHistoryCoreAsync()

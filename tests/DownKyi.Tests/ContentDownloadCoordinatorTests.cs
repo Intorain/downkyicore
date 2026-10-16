@@ -68,30 +68,6 @@ public sealed class ContentDownloadCoordinatorTests
     }
 
     [Fact]
-    public async Task BlockedAdmissionRejectsWholeBatchBeforeDirectoryOrItemWork()
-    {
-        var session = new RecordingSession(@"D:\Downloads", admissionAllowed: false);
-        var factory = new RecordingFactory(session);
-        var infoServiceFactory = new RecordingInfoServiceFactory();
-        var coordinator = CreateCoordinator(factory, infoServiceFactory);
-
-        var result = await coordinator.AddAsync(
-            [
-                new ContentDownloadItem("BV17x411w7KC", DownloadInfoKind.Video, true),
-                new ContentDownloadItem("BV1xx411c7mD", DownloadInfoKind.Video, true)
-            ],
-            onlySelected: true,
-            TestContext.Current.CancellationToken);
-
-        Assert.Null(result);
-        Assert.Equal(1, session.AdmissionCheckCount);
-        Assert.Equal(0, session.DirectorySelectionCount);
-        Assert.Equal(0, session.PrepareCount);
-        Assert.Equal(0, session.AddCount);
-        Assert.Empty(infoServiceFactory.CreatedKinds);
-    }
-
-    [Fact]
     public async Task MixedItemsShareOneDirectorySelectionAndQueueInOrder()
     {
         var session = new RecordingSession(@"D:\Downloads");
@@ -298,12 +274,9 @@ public sealed class ContentDownloadCoordinatorTests
 
     private sealed class RecordingSession(
         string? directory,
-        bool admissionAllowed = true,
         Action<int>? afterAdd = null,
         IReadOnlySet<int>? skippedPreparationCalls = null) : IAddToDownloadSession
     {
-        public int AdmissionCheckCount { get; private set; }
-
         public int DirectorySelectionCount { get; private set; }
 
         public int PrepareCount { get; private set; }
@@ -311,16 +284,6 @@ public sealed class ContentDownloadCoordinatorTests
         public int AddCount { get; private set; }
 
         public int? PrepareCountWhenFirstAdded { get; private set; }
-
-        public Task<DownloadAdmissionOutcome> EnsureAdmissionAsync(
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            AdmissionCheckCount++;
-            return Task.FromResult(admissionAllowed
-                ? DownloadAdmissionOutcome.Allowed
-                : DownloadAdmissionOutcome.Canceled);
-        }
 
         public DownloadAddSelection Selection { get; } = new(
             @"D:\Downloads",

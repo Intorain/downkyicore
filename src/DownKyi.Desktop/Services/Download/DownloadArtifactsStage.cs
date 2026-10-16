@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Results;
 
 namespace DownKyi.Services.Download;
@@ -32,11 +30,11 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
         var input = context.Input;
         if (input.NfoRequest != null)
         {
-            var nfoFile = $"{context.WorkingBasePath}.nfo";
+            var nfoFile = DownloadOutputLayout.GetNfoPath(context.WorkingBasePath);
             var nfoResult = await ProduceAndStageAsync(
                 context, "nfo", nfoFile,
                 () => _artifactWriter.GenerateNfoFileAsync(
-                    context.TaskId, context.WorkingBasePath, input.NfoRequest, cancellationToken),
+                    context.TaskId, nfoFile, input.NfoRequest, cancellationToken),
                 cancellationToken).ConfigureAwait(true);
             if (!nfoResult.IsSuccess)
             {
@@ -50,13 +48,14 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 context,
                 "DownloadingDanmaku",
                 cancellationToken).ConfigureAwait(true);
-            var danmakuOutputs = GetDanmakuOutputs(
+            var danmakuOutputs = DownloadOutputLayout.GetDanmakuOutputPaths(
                 context.WorkingBasePath,
                 input.DanmakuSettings.OutputFormat);
             var canReuseOutputs = danmakuOutputs.All(output =>
-                context.HasPublished(output.Key) ||
+                context.HasPublished(DownloadArtifactWriter.GetDanmakuTransferKey(output.Kind)) ||
                 IsDanmakuOutputUsable(output));
-            if (!canReuseOutputs && danmakuOutputs.Any(output => context.HasPublished(output.Key)))
+            if (!canReuseOutputs && danmakuOutputs.Any(output =>
+                    context.HasPublished(DownloadArtifactWriter.GetDanmakuTransferKey(output.Kind))))
             {
                 return StageFailure(OperationError.Unexpected(
                     "download.artifact.danmaku.snapshot-incomplete",
@@ -67,7 +66,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 ? OperationResult.Success(DownloadArtifactWriteResult.Created(
                     danmakuOutputs.Select(output => output.File).ToArray()))
                 : await _artifactWriter.DownloadDanmakuAsync(
-                    context.TaskId, input.Metadata, context.WorkingBasePath,
+                    context.TaskId, input.Metadata, danmakuOutputs,
                     input.DanmakuSettings, cancellationToken).ConfigureAwait(true);
             if (!danmakuResult.IsSuccess)
             {
@@ -76,12 +75,15 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 
             foreach (var output in danmakuOutputs)
             {
-                context.RecordUnpublishedArtifact(output.Key, output.File);
+                context.RecordUnpublishedArtifact(
+                    DownloadArtifactWriter.GetDanmakuTransferKey(output.Kind),
+                    output.File);
             }
 
-            context.DanmakuFile = input.DanmakuSettings.OutputFormat.IncludesAss()
-                ? $"{context.WorkingBasePath}.ass"
-                : null;
+            context.DanmakuFile = danmakuOutputs
+                .Where(output => output.Kind == DownloadDanmakuOutputKind.Ass)
+                .Select(output => output.File)
+                .SingleOrDefault();
         }
 
         context.EnsureActive(cancellationToken);
@@ -127,8 +129,9 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 context,
                 "DownloadingCover",
                 cancellationToken).ConfigureAwait(true);
-            var pageCoverFileName =
-                $"{context.WorkingBasePath}.{GetImageExtension(input.Metadata.PageCoverAddress)}";
+            var pageCoverFileName = DownloadOutputLayout.GetPageCoverPath(
+                context.WorkingBasePath,
+                input.Metadata.PageCoverAddress);
             var pageCoverResult = await ProduceAndStageAsync(
                 context, "page-cover", pageCoverFileName,
                 () => _artifactWriter.DownloadCoverAsync(
@@ -146,8 +149,9 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 context,
                 "DownloadingCover",
                 cancellationToken).ConfigureAwait(true);
-            var coverFileName =
-                $"{context.WorkingBasePath}.Cover.{GetImageExtension(input.Metadata.CoverAddress)}";
+            var coverFileName = DownloadOutputLayout.GetMainCoverPath(
+                context.WorkingBasePath,
+                input.Metadata.CoverAddress);
             var coverResult = await ProduceAndStageAsync(
                 context, "cover", coverFileName,
                 () => _artifactWriter.DownloadCoverAsync(
@@ -273,50 +277,10 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 "A requested download artifact could not be created."));
     }
 
-    internal static IReadOnlyList<DanmakuOutput> GetDanmakuOutputs(
-        string outputBasePath,
-        DanmakuOutputFormat outputFormat)
+    private static bool IsDanmakuOutputUsable(DownloadDanmakuOutputPath output)
     {
-        var outputs = new List<DanmakuOutput>(2);
-        if (outputFormat.IncludesAss())
-        {
-            outputs.Add(new DanmakuOutput(
-                DownloadArtifactWriter.DanmakuAssTransferKey,
-                $"{outputBasePath}.ass"));
-        }
-
-        if (outputFormat.IncludesXml())
-        {
-            outputs.Add(new DanmakuOutput(
-                DownloadArtifactWriter.DanmakuXmlTransferKey,
-                $"{outputBasePath}.xml"));
-        }
-
-        return outputs;
-    }
-
-    private static bool IsDanmakuOutputUsable(DanmakuOutput output)
-    {
-        return output.Key == DownloadArtifactWriter.DanmakuXmlTransferKey
+        return output.Kind == DownloadDanmakuOutputKind.Xml
             ? DownloadFileIntegrity.CheckXml(output.File, "i").IsUsable
             : DownloadFileIntegrity.Check(output.File).IsUsable;
     }
-
-    internal static string GetImageExtension(string? coverUrl)
-    {
-        if (string.IsNullOrWhiteSpace(coverUrl))
-        {
-            return string.Empty;
-        }
-
-        var candidate = coverUrl.StartsWith("//", StringComparison.Ordinal)
-            ? $"{Uri.UriSchemeHttps}:{coverUrl}"
-            : coverUrl;
-        var path = Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
-            ? uri.AbsolutePath
-            : coverUrl.Split('?', '#')[0];
-        return Path.GetExtension(path).TrimStart('.');
-    }
 }
-
-internal readonly record struct DanmakuOutput(string Key, string File);

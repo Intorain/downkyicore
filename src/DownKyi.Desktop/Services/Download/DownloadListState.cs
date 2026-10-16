@@ -8,7 +8,12 @@ using DownKyi.ViewModels.DownloadManager;
 
 namespace DownKyi.Services.Download;
 
-internal sealed class DownloadListState
+internal interface IDownloadedListProjection
+{
+    void RemoveDownloaded(DownloadedItem item);
+}
+
+internal sealed class DownloadListState : IDownloadedListProjection
 {
     private readonly RangeObservableCollection<DownloadingItem> _downloading = new();
     private readonly RangeObservableCollection<DownloadedItem> _downloaded = new();
@@ -64,6 +69,11 @@ internal sealed class DownloadListState
         _removedDownloadedIds.Add(taskId);
         var loadedItem = _downloaded.FirstOrDefault(candidate => GetTaskId(candidate) == taskId);
         return loadedItem != null && _downloaded.Remove(loadedItem);
+    }
+
+    void IDownloadedListProjection.RemoveDownloaded(DownloadedItem item)
+    {
+        RemoveDownloaded(item);
     }
 
     public void ClearDownloaded()

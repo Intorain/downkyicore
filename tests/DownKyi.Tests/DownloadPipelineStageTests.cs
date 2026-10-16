@@ -1342,6 +1342,33 @@ public sealed class DownloadPipelineStageTests
         Assert.Equal("https://example.invalid/audio", Assert.Single(request.Urls));
     }
 
+    [Fact]
+    public async Task MediaStageDeletesInvalidCompletedTransferBeforeRevokingDurableKey()
+    {
+        using var fixture = await MediaStageFixture.CreateAsync(
+            CreateVideoOnlyPlayUrl(),
+            downloadAudio: false,
+            downloadVideo: true,
+            backendResults:
+            [
+                DownloadTransferResult.Failed(
+                    DownloadTransferFailureKind.Permanent,
+                    "download.transfer.test-failure")
+            ]).ConfigureAwait(true);
+        var invalidVideo = await fixture.AddCompletedUnusableVideoTransferAsync()
+            .ConfigureAwait(true);
+
+        var result = await fixture.Stage.ExecuteAsync(
+            fixture.Context,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.False(File.Exists(invalidVideo.FilePath));
+        var task = await fixture.GetTaskAsync().ConfigureAwait(true);
+        Assert.DoesNotContain(invalidVideo.Key, task.Transfer.CompletedFileKeys);
+        Assert.Single(fixture.Backend.Requests);
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -1480,14 +1507,18 @@ public sealed class DownloadPipelineStageTests
     }
 
     [Fact]
-    public void MuxStageSelectsOutputFromRequestedStreamShape()
+    public void OutputLayoutSelectsDashPathFromRequestedStreamShape()
     {
         using var settings = new TestSettingsStore();
         var videoContext = CreateContext(settings.Store.Current);
         videoContext.VideoFile = "video-stream";
         Assert.EndsWith(
             ".mp4",
-            MuxStage.GetDashOutputPath(videoContext),
+            DownloadOutputLayout.GetDashMediaPath(
+                videoContext.WorkingBasePath,
+                hasVideo: true,
+                audioCodecId: videoContext.Input.Metadata.AudioCodec.Id,
+                transcodeAacToMp3: videoContext.Input.VideoSettings.IsTranscodingAacToMp3),
             StringComparison.Ordinal);
 
         var audioContext = CreateContext(
@@ -1495,7 +1526,11 @@ public sealed class DownloadPipelineStageTests
             requestedContent: DownloadContentSelection.None with { Audio = true });
         Assert.EndsWith(
             ".mp3",
-            MuxStage.GetDashOutputPath(audioContext),
+            DownloadOutputLayout.GetDashMediaPath(
+                audioContext.WorkingBasePath,
+                hasVideo: false,
+                audioCodecId: audioContext.Input.Metadata.AudioCodec.Id,
+                transcodeAacToMp3: audioContext.Input.VideoSettings.IsTranscodingAacToMp3),
             StringComparison.Ordinal);
 
         var losslessContext = CreateContext(
@@ -1509,7 +1544,11 @@ public sealed class DownloadPipelineStageTests
             audioCodecId: 30251);
         Assert.EndsWith(
             ".flac",
-            MuxStage.GetDashOutputPath(losslessContext),
+            DownloadOutputLayout.GetDashMediaPath(
+                losslessContext.WorkingBasePath,
+                hasVideo: false,
+                audioCodecId: losslessContext.Input.Metadata.AudioCodec.Id,
+                transcodeAacToMp3: losslessContext.Input.VideoSettings.IsTranscodingAacToMp3),
             StringComparison.Ordinal);
     }
 
@@ -1699,6 +1738,29 @@ public sealed class DownloadPipelineStageTests
                 markCompleted: true,
                 writeUsableFile: true);
 
+        public async Task<(string Key, string FilePath)> AddCompletedUnusableVideoTransferAsync()
+        {
+            var transfer = await AddTransferAsync(
+                id: 80,
+                codecs: "avc1",
+                fileName: "invalid-completed-video.m4s",
+                markCompleted: true,
+                writeUsableFile: false).ConfigureAwait(true);
+            await File.WriteAllBytesAsync(
+                transfer.FilePath,
+                [],
+                TestContext.Current.CancellationToken).ConfigureAwait(true);
+            return transfer;
+        }
+
+        public async Task<DownloadTask> GetTaskAsync()
+        {
+            return await _tasks.FindAsync(
+                       Context.TaskId,
+                       TestContext.Current.CancellationToken).ConfigureAwait(true)
+                   ?? throw new InvalidOperationException("Test task disappeared.");
+        }
+
         private async Task<(string Key, string FilePath)> AddTransferAsync(
             int id,
             string codecs,
@@ -1825,6 +1887,9 @@ public sealed class DownloadPipelineStageTests
             var stage = new DownloadMediaStage(
                 projections,
                 stateWriter,
+                new DownloadTransferArtifactInvalidator(
+                    stateWriter,
+                    NullLogger<DownloadTransferArtifactInvalidator>.Instance),
                 new DownloadTransferCoordinator(
                     backend,
                     new DownloadRetryPolicy(),

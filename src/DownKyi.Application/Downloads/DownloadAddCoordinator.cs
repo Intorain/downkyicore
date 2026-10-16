@@ -3,26 +3,13 @@ namespace DownKyi.Application.Downloads;
 public static class DownloadAddCoordinator
 {
     public static async Task<DownloadAddFlowResult<TResult>> AddToDownloadIfSelectionAcceptedAsync<TResult>(
-        Func<Task<DownloadAdmissionOutcome>> ensureAdmissionAsync,
         Func<Task<DownloadSelectionResult>> selectDownloadAsync,
         Func<DownloadAddSelection, Task<TResult>> addToDownloadAsync,
         CancellationToken cancellationToken = default)
         where TResult : struct
     {
-        ArgumentNullException.ThrowIfNull(ensureAdmissionAsync);
         ArgumentNullException.ThrowIfNull(selectDownloadAsync);
         ArgumentNullException.ThrowIfNull(addToDownloadAsync);
-        var admission = await ensureAdmissionAsync().ConfigureAwait(false);
-        if (admission != DownloadAdmissionOutcome.Allowed)
-        {
-            return new DownloadAddFlowResult<TResult>(admission switch
-            {
-                DownloadAdmissionOutcome.Canceled => DownloadAddFlowOutcome.AdmissionCanceled,
-                DownloadAdmissionOutcome.Failed => DownloadAddFlowOutcome.AdmissionFailed,
-                _ => throw new InvalidOperationException($"Unsupported admission outcome: {admission:G}.")
-            }, null);
-        }
-
         cancellationToken.ThrowIfCancellationRequested();
         var selectionResult = await selectDownloadAsync().ConfigureAwait(false);
         if (selectionResult.Outcome != DownloadSelectionOutcome.Accepted)

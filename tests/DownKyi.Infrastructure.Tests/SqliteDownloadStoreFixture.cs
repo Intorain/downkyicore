@@ -94,11 +94,12 @@ internal sealed partial class SqliteDownloadStoreFixture : IDisposable
     internal DownloadTask CreateCompletedTask(
         string id,
         long finishedTimestamp,
-        string? outputPath = null)
+        string? outputPath = null,
+        long cid = 2)
     {
         var task = DownloadTask.Create(
             new DownloadTaskId(id),
-            CreateMetadata(id),
+            CreateMetadata(id, cid),
             CreatePlan(),
             new DownloadOutput(outputPath ?? Path.Combine(_directory, id), "1 GB"),
             _clock.UtcNow);

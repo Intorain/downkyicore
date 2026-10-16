@@ -57,7 +57,6 @@ internal sealed class VideoDetailDownloadCoordinator : IVideoDetailDownloadCoord
             .Take(2)
             .ToArray();
         var flow = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
-            () => addService.EnsureAdmissionAsync(cancellationToken),
             () => addService.SelectDownloadAsync(
                 selectedPages.Length == 1 ? selectedPages[0] : null,
                 cancellationToken),
@@ -89,12 +88,6 @@ internal sealed class VideoDetailDownloadCoordinator : IVideoDetailDownloadCoord
         {
             DownloadAddFlowOutcome.Completed => flow.Value
                 ?? throw new InvalidOperationException("A completed download operation requires a result."),
-            DownloadAddFlowOutcome.AdmissionCanceled => DownloadAddResult.Stopped(
-                DownloadAddOutcome.Canceled,
-                DownloadAddStopReason.AdmissionCanceled),
-            DownloadAddFlowOutcome.AdmissionFailed => DownloadAddResult.Stopped(
-                DownloadAddOutcome.Failed,
-                DownloadAddStopReason.AdmissionFailed),
             DownloadAddFlowOutcome.SelectionCanceled => DownloadAddResult.Stopped(
                 DownloadAddOutcome.Canceled,
                 DownloadAddStopReason.SelectionCanceled),

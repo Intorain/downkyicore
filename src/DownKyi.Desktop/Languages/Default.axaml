@@ -158,7 +158,6 @@
     <system:String x:Key="TipAddDownloadingUnsupportedInput">当前输入无法建立下载任务。</system:String>
     <system:String x:Key="TipAddDownloadingCanceled">已取消新增下载任务。</system:String>
     <system:String x:Key="TipAddDownloadingCanceledAfterProgress">{0} 操作随后取消。</system:String>
-    <system:String x:Key="TipAddDownloadingAdmissionFailed">下载任务准入未完成，未新增任务。</system:String>
     <system:String x:Key="TipAddDownloadingSelectionUnavailable">下载目录不可用，未新增任务。</system:String>
     <system:String x:Key="TipAddDownloadingSummary">新增 {0} 项；重复 {1} 项，跳过 {2} 项，失败 {3} 项。</system:String>
     <system:String x:Key="TipAddDownloadingNoAddedSummary">未新增任务；重复 {0} 项，跳过 {1} 项，失败 {2} 项。</system:String>

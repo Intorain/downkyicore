@@ -13,18 +13,19 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadDuplicatePolicy
 {
-    private readonly DownloadListState _downloadLists;
+    private readonly IDownloadedListProjection _downloadedListProjection;
     private readonly DownloadTaskProjectionStore _projectionStore;
     private readonly IPhysicalOutputPathResolver _physicalOutputPathResolver;
     private readonly IAppDialogService _dialogService;
 
     public DownloadDuplicatePolicy(
-        DownloadListState downloadLists,
+        IDownloadedListProjection downloadedListProjection,
         DownloadTaskProjectionStore projectionStore,
         IPhysicalOutputPathResolver physicalOutputPathResolver,
         IAppDialogService dialogService)
     {
-        _downloadLists = downloadLists ?? throw new ArgumentNullException(nameof(downloadLists));
+        _downloadedListProjection = downloadedListProjection
+            ?? throw new ArgumentNullException(nameof(downloadedListProjection));
         _projectionStore = projectionStore ?? throw new ArgumentNullException(nameof(projectionStore));
         _physicalOutputPathResolver = physicalOutputPathResolver
             ?? throw new ArgumentNullException(nameof(physicalOutputPathResolver));
@@ -34,9 +35,7 @@ internal sealed class DownloadDuplicatePolicy
     public async Task<DownloadDuplicateResolution> ResolveAsync(
         DownloadingItem requestedItem,
         RepeatDownloadStrategy strategy,
-        CancellationToken cancellationToken,
-        Lazy<Task<List<DownloadedItem>>>? completedCandidates = null,
-        Lazy<Task<List<DownloadingItem>>>? activeCandidates = null)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(requestedItem);
         cancellationToken.ThrowIfCancellationRequested();
@@ -44,10 +43,8 @@ internal sealed class DownloadDuplicatePolicy
         var requestedContent = requestedItem.DownloadBase.NeedDownloadContent;
         var remainingContent = requestedContent;
         var hasMatchingOutputOwner = false;
-        var active = activeCandidates == null
-            ? await LoadActiveCandidatesAsync(cancellationToken).ConfigureAwait(true)
-            : await activeCandidates.Value.ConfigureAwait(true);
-        MergeLiveActiveCandidates(active);
+        var cid = requestedItem.DownloadBase.Cid;
+        var active = await LoadActiveCandidatesAsync(cid, cancellationToken).ConfigureAwait(true);
         foreach (var item in active)
         {
             var matchesOutputOwner = DownloadActionCoverage.MatchesOutputOwner(
@@ -67,10 +64,7 @@ internal sealed class DownloadDuplicatePolicy
             }
         }
 
-        var candidates = completedCandidates == null
-            ? await LoadCompletedCandidatesAsync(cancellationToken).ConfigureAwait(true)
-            : await completedCandidates.Value.ConfigureAwait(true);
-        MergeLiveCompletedCandidates(candidates);
+        var candidates = await LoadCompletedCandidatesAsync(cid, cancellationToken).ConfigureAwait(true);
         if (strategy == RepeatDownloadStrategy.ReDownload)
         {
             hasMatchingOutputOwner |= candidates.Any(item =>
@@ -122,66 +116,33 @@ internal sealed class DownloadDuplicatePolicy
     internal async Task<bool> ShouldSkipAsync(
         DownloadingItem requestedItem,
         RepeatDownloadStrategy strategy,
-        CancellationToken cancellationToken,
-        Lazy<Task<List<DownloadedItem>>>? completedCandidates = null,
-        Lazy<Task<List<DownloadingItem>>>? activeCandidates = null) =>
+        CancellationToken cancellationToken) =>
         (await ResolveAsync(
             requestedItem,
             strategy,
-            cancellationToken,
-            completedCandidates,
-            activeCandidates).ConfigureAwait(true)).IsFullyCovered;
+            cancellationToken).ConfigureAwait(true)).IsFullyCovered;
 
-    public async Task<List<DownloadingItem>> LoadActiveCandidatesAsync(
+    private async Task<List<DownloadingItem>> LoadActiveCandidatesAsync(
+        long cid,
         CancellationToken cancellationToken)
     {
-        var startup = await _projectionStore
-            .GetDownloadingStateAsync(cancellationToken)
+        var candidates = await _projectionStore
+            .GetDownloadingByCidAsync(cid, cancellationToken)
             .ConfigureAwait(true);
-        return new List<DownloadingItem>(startup.Projections);
+        return new List<DownloadingItem>(candidates);
     }
 
-    public async Task<List<DownloadedItem>> LoadCompletedCandidatesAsync(
+    private async Task<List<DownloadedItem>> LoadCompletedCandidatesAsync(
+        long cid,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var downloadedItems = await _projectionStore
-            .GetDownloadedAsync(cancellationToken)
+            .GetDownloadedByCidAsync(cid, cancellationToken)
             .ConfigureAwait(true);
         return new List<DownloadedItem>(downloadedItems);
     }
-
-    private void MergeLiveCompletedCandidates(List<DownloadedItem> completedCandidates)
-    {
-        var candidateIds = completedCandidates
-            .Select(GetTaskId)
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var item in _downloadLists.Downloaded)
-        {
-            if (candidateIds.Add(GetTaskId(item)))
-            {
-                completedCandidates.Add(item);
-            }
-        }
-    }
-
-    private void MergeLiveActiveCandidates(List<DownloadingItem> activeCandidates)
-    {
-        var candidateIds = activeCandidates
-            .Select(static item => item.DownloadBase.Id)
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var item in _downloadLists.Downloading.ToArray())
-        {
-            if (candidateIds.Add(item.DownloadBase.Id))
-            {
-                activeCandidates.Add(item);
-            }
-        }
-    }
-
-    private static string GetTaskId(DownloadedItem item) =>
-        item.HistoryRecord?.Id.Value ?? item.DownloadBase.Id;
 
     private async Task<bool> ShouldRedownloadAsync(
         DownloadedItem item,
@@ -203,7 +164,7 @@ internal sealed class DownloadDuplicatePolicy
         await _projectionStore
             .RemoveDownloadedAsync(item, cancellationToken)
             .ConfigureAwait(true);
-        _downloadLists.RemoveDownloaded(item);
+        _downloadedListProjection.RemoveDownloaded(item);
         return true;
     }
 

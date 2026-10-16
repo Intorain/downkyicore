@@ -490,7 +490,7 @@ internal static class CurrentDownloadStoreWriter
         await gate.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task EnsureIndexesAsync(
+    internal static async Task EnsureIndexesAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         CancellationToken cancellationToken)
@@ -504,6 +504,10 @@ internal static class CurrentDownloadStoreWriter
                 ON download_history(finished_timestamp DESC, id DESC);
             CREATE INDEX IF NOT EXISTS ix_download_base_main_title_order
                 ON download_base(main_title, [order]);
+            CREATE INDEX IF NOT EXISTS ix_download_base_cid
+                ON download_base(cid);
+            CREATE INDEX IF NOT EXISTS ix_download_history_cid
+                ON download_history(cid);
             CREATE INDEX IF NOT EXISTS ix_download_base_file_path
                 ON download_base(file_path);
             CREATE INDEX IF NOT EXISTS ix_download_base_file_path_nocase

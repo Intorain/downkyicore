@@ -114,6 +114,11 @@ public sealed class SqliteDownloadTaskStore :
     public async Task<IReadOnlyList<DownloadTask>> GetUnfinishedAsync(CancellationToken cancellationToken) =>
         await _queries.GetUnfinishedAsync(cancellationToken).ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+        long cid,
+        CancellationToken cancellationToken) =>
+        await _queries.GetUnfinishedByCidAsync(cid, cancellationToken).ConfigureAwait(false);
+
     public async Task<bool> IsOutputPathReservedAsync(
         string basePath,
         bool ignoreCase,
@@ -149,6 +154,11 @@ public sealed class SqliteDownloadTaskStore :
         int pageSize,
         CancellationToken cancellationToken) =>
         await _queries.GetHistoryPageAsync(cursor, pageSize, cancellationToken).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidAsync(
+        long cid,
+        CancellationToken cancellationToken) =>
+        await _queries.GetHistoryByCidAsync(cid, cancellationToken).ConfigureAwait(false);
 
     public async Task<OperationResult> DeleteAsync(
         DownloadTaskId taskId,

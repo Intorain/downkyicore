@@ -992,12 +992,12 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         IPhysicalOutputPathResolver? resolver = null,
         IDownloadRuntimeAvailability? runtimeAvailability = null)
     {
+        var stateWriter = new DownloadTaskStateWriter(tasks);
         return new DownloadTaskAdmissionService(
             listState,
             tasks,
             projections,
-            new DownloadTaskStateWriter(tasks),
-            queue,
+            new DownloadCommittedTaskDispatcher(queue, stateWriter),
             runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
             resolver ?? new RecordingPhysicalOutputPathResolver(static path => path));
     }

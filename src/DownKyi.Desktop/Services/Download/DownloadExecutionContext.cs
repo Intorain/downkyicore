@@ -77,14 +77,11 @@ internal sealed class DownloadExecutionContext
             return false;
         }
 
-        var extensions = NeedsVideo
-            ? new[] { ".mp4" }
-            : NeedsAudio
-                ? new[] { ".mp3", ".aac", ".flac" }
-                : [];
-        foreach (var extension in extensions)
+        foreach (var path in DownloadOutputLayout.GetReusableStagedMediaPaths(
+                     WorkingBasePath,
+                     NeedsVideo,
+                     NeedsAudio))
         {
-            var path = WorkingBasePath + extension;
             if (DownloadFileIntegrity.Check(path).IsUsable)
             {
                 OutputMedia = path;

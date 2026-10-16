@@ -62,7 +62,7 @@ public sealed class DurlDownloadIdentityTests
     [InlineData("images/cover.png#thumbnail", "png")]
     public void CoverExtensionIgnoresUriQueryAndFragment(string source, string expected)
     {
-        Assert.Equal(expected, DownloadArtifactsStage.GetImageExtension(source));
+        Assert.Equal(expected, DownloadOutputLayout.GetSourceExtension(source));
     }
 
     [Fact]
@@ -595,6 +595,9 @@ public sealed class DurlDownloadIdentityTests
             MediaStage = new DownloadMediaStage(
                 _projections,
                 writer,
+                new DownloadTransferArtifactInvalidator(
+                    writer,
+                    NullLogger<DownloadTransferArtifactInvalidator>.Instance),
                 new DownloadTransferCoordinator(
                     Backend,
                     new DownloadRetryPolicy(),

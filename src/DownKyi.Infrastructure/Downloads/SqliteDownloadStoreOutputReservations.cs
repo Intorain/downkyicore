@@ -90,43 +90,35 @@ internal sealed class SqliteDownloadStoreOutputReservations(SqliteDownloadStoreD
         using var command = connection.CreateCommand();
         if (ignoreCase)
         {
-            command.CommandText = """
+            command.CommandText = $"""
                 SELECT 1, NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE (db.output_reservation_key = @key
                        OR db.file_path = @file_path COLLATE NOCASE)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 UNION ALL
                 SELECT 0, db.file_path
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE db.output_reservation_key IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 """;
         }
         else
         {
-            command.CommandText = """
+            command.CommandText = $"""
                 SELECT 1, NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE (db.output_reservation_key = @key OR db.file_path = @file_path)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 UNION ALL
                 SELECT 0, db.file_path
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE db.output_reservation_key IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 """;
         }
         var key = DownloadOutputPathKey.Create(basePath, ignoreCase);
@@ -152,13 +144,11 @@ internal sealed class SqliteDownloadStoreOutputReservations(SqliteDownloadStoreD
     {
         using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         using var command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT db.file_path
             FROM download_base db
             INNER JOIN downloading dl ON dl.id = db.id
-            WHERE NOT EXISTS (
-                SELECT 1 FROM download_quarantine q
-                WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+            WHERE {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
             """;
         using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         var keys = new HashSet<string>(StringComparer.Ordinal);
@@ -205,48 +195,41 @@ internal sealed class SqliteDownloadStoreOutputReservations(SqliteDownloadStoreD
         command.Transaction = transaction;
         if (ignoreCase)
         {
-            command.CommandText = """
+            command.CommandText = $"""
                 SELECT 1, NULL, db.cid, db.need_download_content, db.nfo_request IS NOT NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE (db.output_reservation_key = @key
                        OR db.file_path = @file_path COLLATE NOCASE)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 UNION ALL
                 SELECT 0, db.file_path, db.cid, db.need_download_content, db.nfo_request IS NOT NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE db.output_reservation_key IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 """;
         }
         else
         {
-            command.CommandText = """
+            command.CommandText = $"""
                 SELECT 1, NULL, db.cid, db.need_download_content, db.nfo_request IS NOT NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE (db.output_reservation_key = @key OR db.file_path = @file_path)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 UNION ALL
                 SELECT 0, db.file_path, db.cid, db.need_download_content, db.nfo_request IS NOT NULL
                 FROM download_base db
                 INNER JOIN downloading dl ON dl.id = db.id
                 WHERE db.output_reservation_key IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM download_quarantine q
-                      WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+                  AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
                 """;
         }
         command.Parameters.AddWithValue("@key", key);
         command.Parameters.AddWithValue("@file_path", basePath);
         using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        var requestedOwnership = new DownloadOutputOwnership(requestedCid, requestedClaims);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             if (reader.GetInt32(0) != 1
@@ -263,8 +246,8 @@ internal sealed class SqliteDownloadStoreOutputReservations(SqliteDownloadStoreD
             var existingClaims = DownloadActionClaims.From(
                 existingContent,
                 includesNfo: reader.GetInt32(4) != 0);
-            if (reader.GetInt64(2) != requestedCid
-                || existingClaims.Overlaps(requestedClaims))
+            var existingOwnership = new DownloadOutputOwnership(reader.GetInt64(2), existingClaims);
+            if (existingOwnership.ConflictsWith(requestedOwnership))
             {
                 return true;
             }

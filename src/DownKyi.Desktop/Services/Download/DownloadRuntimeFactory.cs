@@ -20,7 +20,9 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
     private readonly DownloadListState _downloadLists;
     private readonly DownloadTaskProjectionStore _projectionStore;
     private readonly DownloadTaskStateWriter _stateWriter;
-    private readonly IDownloadTaskApplicationService _tasks;
+    private readonly DownloadTransferArtifactInvalidator _artifactInvalidator;
+    private readonly IDownloadTaskLookup _taskLookup;
+    private readonly IDownloadTaskSchedulerService _taskScheduler;
     private readonly IUserNotificationService _notificationService;
     private readonly DownloadDiagnosticLogger _diagnosticLogger;
     private readonly FfmpegProcessor _ffmpegProcessor;
@@ -36,7 +38,9 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         DownloadListState downloadLists,
         DownloadTaskProjectionStore projectionStore,
         DownloadTaskStateWriter stateWriter,
-        IDownloadTaskApplicationService tasks,
+        DownloadTransferArtifactInvalidator artifactInvalidator,
+        IDownloadTaskLookup taskLookup,
+        IDownloadTaskSchedulerService taskScheduler,
         IUserNotificationService notificationService,
         IUiDispatcher uiDispatcher,
         ISettingsStore settingsStore,
@@ -52,7 +56,10 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         _projectionStore = projectionStore
             ?? throw new ArgumentNullException(nameof(projectionStore));
         _stateWriter = stateWriter ?? throw new ArgumentNullException(nameof(stateWriter));
-        _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
+        _artifactInvalidator = artifactInvalidator
+            ?? throw new ArgumentNullException(nameof(artifactInvalidator));
+        _taskLookup = taskLookup ?? throw new ArgumentNullException(nameof(taskLookup));
+        _taskScheduler = taskScheduler ?? throw new ArgumentNullException(nameof(taskScheduler));
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
@@ -80,7 +87,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
             _loggerFactory.CreateLogger<DownloadArtifactWriter>(),
             _client);
         var shutdownRecovery = new DownloadTaskShutdownRecovery(
-            _tasks,
+            _taskLookup,
             _stateWriter);
         var presenter = new DownloadActivityPresenter(_projectionStore, _stateWriter);
         var contextFactory = new DownloadExecutionContextFactory(
@@ -110,6 +117,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
             new DownloadMediaStage(
                 _projectionStore,
                 _stateWriter,
+                _artifactInvalidator,
                 transferCoordinator,
                 playbackResolver,
                 presenter,
@@ -119,7 +127,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 presenter,
                 _ffmpegProcessor,
                 _stateWriter,
-                _loggerFactory.CreateLogger<MuxStage>()),
+                _artifactInvalidator),
             new ValidateStage(_ffmpegProcessor),
             new FinalizeStage(
                 _projectionStore,
@@ -140,7 +148,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         return new DownloadOrchestrator(
             pipeline,
             _stateWriter,
-            _tasks,
+            _taskScheduler,
             network.MaxCurrentDownloads,
             _loggerFactory.CreateLogger<DownloadOrchestrator>());
     }

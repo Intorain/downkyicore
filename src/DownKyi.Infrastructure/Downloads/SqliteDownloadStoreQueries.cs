@@ -20,12 +20,9 @@ internal sealed class SqliteDownloadStoreQueries(
         ArgumentNullException.ThrowIfNull(taskId);
         using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         using var command = connection.CreateCommand();
-        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + """
+        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + $"""
             WHERE db.id = @id
-              AND NOT EXISTS (
-                  SELECT 1 FROM download_quarantine q
-                  WHERE q.record_id = db.id
-                    AND q.source_table = 'downloading')
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
             """;
         command.Parameters.AddWithValue("@id", taskId.Value);
         using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -59,12 +56,30 @@ internal sealed class SqliteDownloadStoreQueries(
     {
         using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         using var command = connection.CreateCommand();
-        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + """
-            WHERE NOT EXISTS (
-                  SELECT 1 FROM download_quarantine q
-                  WHERE q.source_table = 'downloading' AND q.record_id = db.id)
+        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + $"""
+            WHERE {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
             ORDER BY db.main_title COLLATE NOCASE, db.[order] ASC, db.id ASC
             """;
+        return await ReadManyAsync(
+            connection,
+            command,
+            "downloading",
+            _clock.UtcNow,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+        long cid,
+        CancellationToken cancellationToken)
+    {
+        using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        using var command = connection.CreateCommand();
+        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + $"""
+            WHERE db.cid = @cid
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
+            ORDER BY db.main_title COLLATE NOCASE, db.[order] ASC, db.id ASC
+            """;
+        command.Parameters.AddWithValue("@cid", cid);
         return await ReadManyAsync(
             connection,
             command,
@@ -82,13 +97,11 @@ internal sealed class SqliteDownloadStoreQueries(
         ArgumentOutOfRangeException.ThrowIfGreaterThan(pageSize, MaximumHistoryPageSize);
         using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         using var command = connection.CreateCommand();
-        command.CommandText = DownloadHistoryRecordMapper.SelectColumns + "\n" + """
+        command.CommandText = DownloadHistoryRecordMapper.SelectColumns + "\n" + $"""
             WHERE (@cursor_timestamp IS NULL
                    OR h.finished_timestamp < @cursor_timestamp
                    OR (h.finished_timestamp = @cursor_timestamp AND h.id < @cursor_id))
-              AND NOT EXISTS (
-                  SELECT 1 FROM download_quarantine q
-                  WHERE q.source_table = 'download_history' AND q.record_id = h.id)
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadHistoryRecordSql}
             ORDER BY h.finished_timestamp DESC, h.id DESC
             LIMIT @limit
             """;
@@ -139,6 +152,26 @@ internal sealed class SqliteDownloadStoreQueries(
         }
 
         return new DownloadHistoryPage(items, nextCursor);
+    }
+
+    public async Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidAsync(
+        long cid,
+        CancellationToken cancellationToken)
+    {
+        using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        using var command = connection.CreateCommand();
+        command.CommandText = DownloadHistoryRecordMapper.SelectColumns + "\n" + $"""
+            WHERE h.cid = @cid
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadHistoryRecordSql}
+            ORDER BY h.finished_timestamp DESC, h.id DESC
+            """;
+        command.Parameters.AddWithValue("@cid", cid);
+        var result = await ReadHistoryManyAsync(
+            connection,
+            command,
+            _clock.UtcNow,
+            cancellationToken).ConfigureAwait(false);
+        return result.Records;
     }
 
     private static async Task<(IReadOnlyList<DownloadHistoryRecord> Records, int RowsRead)>

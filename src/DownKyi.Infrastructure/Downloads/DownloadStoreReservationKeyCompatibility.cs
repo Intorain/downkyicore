@@ -29,7 +29,7 @@ internal static class DownloadStoreReservationKeyCompatibility
                     clock,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var targetReservations = new Dictionary<string, List<ReservationClaim>>(
+            var targetReservations = new Dictionary<string, List<DownloadOutputOwnership>>(
                 StringComparer.Ordinal);
             var changes = new List<(string Id, string Target)>();
             foreach (var row in rows)
@@ -41,14 +41,14 @@ internal static class DownloadStoreReservationKeyCompatibility
                     targetReservations.Add(target, existingReservations);
                 }
 
+                var currentOwnership = new DownloadOutputOwnership(row.Cid, row.Claims);
                 if (existingReservations.Any(reservation =>
-                        reservation.Cid != row.Cid
-                        || reservation.Claims.Overlaps(row.Claims)))
+                        reservation.ConflictsWith(currentOwnership)))
                 {
                     throw new InvalidOperationException(BlockedMessage);
                 }
 
-                existingReservations.Add(new ReservationClaim(row.Cid, row.Claims));
+                existingReservations.Add(currentOwnership);
 
                 if (!StringComparer.Ordinal.Equals(row.StoredKey, target))
                 {
@@ -95,10 +95,8 @@ internal static class DownloadStoreReservationKeyCompatibility
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + """
-            LEFT JOIN download_quarantine q
-                   ON q.source_table = 'downloading' AND q.record_id = db.id
-            WHERE q.record_id IS NULL
+        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + $"""
+            WHERE {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
             ORDER BY db.id
             """;
         var rows = new List<ReservationRow>();
@@ -196,10 +194,6 @@ internal static class DownloadStoreReservationKeyCompatibility
         string Id,
         string Path,
         string? StoredKey,
-        long Cid,
-        DownloadActionClaims Claims);
-
-    private sealed record ReservationClaim(
         long Cid,
         DownloadActionClaims Claims);
 }

@@ -49,30 +49,9 @@ public sealed class VideoDetailDownloadCoordinatorTests
     }
 
     [Fact]
-    public async Task BlockedAdmissionStopsBeforeVideoDetailDirectorySelection()
-    {
-        var session = new RecordingSession();
-        var factory = new RecordingFactory(session);
-        var coordinator = CreateCoordinator(factory);
-
-        var result = await coordinator.AddAsync(
-            "BV17x411w7KC",
-            new VideoInfoView(),
-            [],
-            isAll: false,
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(DownloadAddOutcome.Canceled, result.Outcome);
-        Assert.Equal(DownloadAddStopReason.AdmissionCanceled, result.StopReason);
-        Assert.Equal(1, session.AdmissionCheckCount);
-        Assert.Equal(0, session.DirectorySelectionCount);
-        Assert.Equal(0, session.AddCount);
-    }
-
-    [Fact]
     public async Task CanceledSelectionReturnsCanceledWithoutCallingPreparation()
     {
-        var session = new RecordingSession(admissionAllowed: true, selectionAccepted: false);
+        var session = new RecordingSession(selectionAccepted: false);
         var coordinator = CreateCoordinator(new RecordingFactory(session));
 
         var result = await coordinator.AddAsync(
@@ -92,7 +71,7 @@ public sealed class VideoDetailDownloadCoordinatorTests
     [Fact]
     public async Task ExistingVideoDataIsPreparedBeforeTheExplicitSelectionIsAdded()
     {
-        var session = new RecordingSession(admissionAllowed: true);
+        var session = new RecordingSession();
         var coordinator = CreateCoordinator(new RecordingFactory(session));
         var video = new VideoInfoView();
         var page = new VideoPage
@@ -146,12 +125,8 @@ public sealed class VideoDetailDownloadCoordinatorTests
 
     }
 
-    private sealed class RecordingSession(
-        bool admissionAllowed = false,
-        bool selectionAccepted = true) : IAddToDownloadSession
+    private sealed class RecordingSession(bool selectionAccepted = true) : IAddToDownloadSession
     {
-        public int AdmissionCheckCount { get; private set; }
-
         public int DirectorySelectionCount { get; private set; }
 
         public int AddCount { get; private set; }
@@ -169,16 +144,6 @@ public sealed class VideoDetailDownloadCoordinatorTests
         public FinalizedDownload? ReceivedFinalizedDownload { get; private set; }
 
         public VideoPage? ReceivedSubtitlePage { get; private set; }
-
-        public Task<DownloadAdmissionOutcome> EnsureAdmissionAsync(
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            AdmissionCheckCount++;
-            return Task.FromResult(admissionAllowed
-                ? DownloadAdmissionOutcome.Allowed
-                : DownloadAdmissionOutcome.Canceled);
-        }
 
         public Task<DownloadSelectionResult> SelectDownloadAsync(
             VideoPage? subtitlePage = null,

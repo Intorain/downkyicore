@@ -487,11 +487,13 @@ public sealed class DownloadManagerCoordinatorTests
                 : null;
             var fileService = new DownloadTaskFileService(
                 NullLogger<DownloadTaskFileService>.Instance, Staging, StateWriter);
+            var queue = taskQueue ?? Queue;
             Coordinator = new DownloadManagerCoordinator(
                 ApplicationCancellation,
                 Storage,
                 StateWriter,
-                taskQueue ?? Queue,
+                queue,
+                new DownloadCommittedTaskDispatcher(queue, StateWriter),
                 schedulerControl ?? Scheduler,
                 runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
                 fileService,
@@ -549,6 +551,7 @@ public sealed class DownloadManagerCoordinatorTests
             StateWriter = new DownloadTaskStateWriter(TaskService);
             Coordinator = new DownloadManagerCoordinator(
                 ApplicationCancellation, Storage, StateWriter, Queue,
+                new DownloadCommittedTaskDispatcher(Queue, StateWriter),
                 Scheduler,
                 new ReadyDownloadRuntimeAvailability(),
                 new DownloadTaskFileService(
