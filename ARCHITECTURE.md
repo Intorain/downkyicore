@@ -57,11 +57,13 @@ flowchart LR
     Select["typed content selection"] --> Prepare["DownloadPreparationService"]
     Prepare --> Plan["DownloadActionPlanner"]
     Plan --> Add["AddToDownloadService"]
-    Add --> Admission["DownloadTaskAdmissionService"]
+    Add --> Duplicate["durable duplicate policy"]
+    Duplicate --> Admission["DownloadTaskAdmissionService"]
     Admission --> App["Application commands"]
     App --> Domain["Domain DownloadTask"]
     App --> Store["SQLite store"]
-    Store --> Queue["Queue DownloadTaskId"]
+    Store --> Dispatch["post-commit dispatcher"]
+    Dispatch --> Queue["Queue DownloadTaskId"]
     Queue --> Runtime["orchestrator + pipeline"]
     Runtime --> Backend["selected transfer backend"]
     Runtime --> Media["artifacts + FFmpeg + validation"]
@@ -71,13 +73,17 @@ flowchart LR
 
 ### Durable state
 
-- 所有 durable command 都先載入 aggregate、執行合法 transition、以 optimistic version 寫入 SQLite，再發布 committed snapshot。若先更新 UI，crash 後 UI 與可恢復狀態會分裂。
+- 對既有 task 的 durable command 必須先載入 aggregate、執行合法 transition、以 optimistic version 寫入 SQLite，再發布 committed snapshot。若先更新 UI，crash 後 UI 與可恢復狀態會分裂。
+- 新 task 必須先持久化，才能加入 UI projection 或交給 queue。commit 完成後，原始 UI caller 的 cancellation 不得遺棄 handoff；queue runtime 不可用時由 post-commit dispatcher 持久化 typed failure，不能留下沒有 durable 結果的 task。
 - Runtime 不得從 mutable UI model 或 lossy history 重建 Domain task。`DownloadTask.Restore` 只允許 SQLite materializer 與 legacy migration adapter 使用。
 - 使用者要求的 audio／video／danmaku／subtitle／cover 由 Domain `DownloadContentSelection` 表達；舊字串 map 只存在於 dialog、SQLite 與 NRBF compatibility boundary。
 - 選擇與執行必須保留四個不同語義：`Requested` 是使用者意圖、`Available` 是已知資源能力、`Finalized` 是使用者確認後可建立 task 的動作、`Result` 是檔案執行證據。不得用 playback presence、空集合或 null 同時代替這些狀態。
 - `DownloadPreparationService` 只有在 requested content 含 media 時查詢 playback／quality；subtitle／danmaku／cover-only 準備仍可取得必要 metadata，但不得觸發 media stream discovery。
 - `PreparedDownload` 以允許的輸出組合描述 media capability，而不是把 audio／video presence 當成可獨立選擇。DURL 只支援 video-only 與 audio+video，不支援 audio-only；`DownloadActionPlanner` 是 page selection 與 finalized action 的唯一 owner，空 selection 不得建立 task。`DownloadContentConflictResolver` 只處理 media capability／quality 衝突；media 不可用時保留獨立動作，並由明確的 continue／skip 決策收斂。同一下載操作中的純 lower-quality substitutions 必須在 task 入列前由 planner 收集，顯示一次含每頁實際替代品質的 batch decision；接受或略過只能作用於該畫面列出的頁面，其他類型的 content conflict 不得被這個批次決策吞掉。後續 refresh 不得改變已確定的 transport、quality、codec 或 audio／video intent。
-- `DownloadActionClaims` 是重複 coverage、實體輸出占用、SQLite admission 與 reservation-key 恢復共用的 action-level 契約；固定粒度為 media、subtitle、danmaku ASS、danmaku XML、cover、NFO。`DownloadDuplicatePolicy` 分別判斷同一 output owner 與已覆蓋動作：output owner 與 admission 必須共用 `IPhysicalOutputPathResolver`，以同一實際路徑識別 symlink／alias，前者允許互補 sidecar 保留原 base path，後者才扣除 residual selection；completed task 只有在對應 published artifact 仍可用時才覆蓋該 action。同一 owner 的 media coverage 保留 audio／video 動作形態，但重新解析出的 resolution、codec 或 transport 差異不是新的 media action；需要不同媒體規格時使用明確的重新下載策略。SQLite 由 persisted `DownloadContentSelection` 與 `nfo_request` 重建同一組 claims；同一 CID 的 canonical base path 可容納互不重疊的 action，但不同 CID 或重疊 claim 必須由前置路徑分配、admission transaction 與啟動恢復一致拒絕。通知只由發起操作的 ViewModel 依 counts 與 planning stop reason 發布一次，policy 不擁有通知。
+- `DownloadActionClaims` 是重複 coverage、實體輸出占用、SQLite admission 與 reservation-key 恢復共用的 action-level 契約；固定粒度為 media、subtitle、danmaku ASS、danmaku XML、cover、NFO。SQLite 必須由 persisted `DownloadContentSelection` 與 `nfo_request` 重建同一組 claims。
+- `DownloadDuplicatePolicy` 只以 persistence-backed active／history candidates 判斷 output owner 與已覆蓋動作；`DownloadListState` 與 UI collections 都只是 projection，不能作為重複證據。completed task 只有在對應 published artifact 仍可用時才覆蓋該 action；Ask 確認刪除時必須先刪 durable history，再移除 UI projection。
+- output owner 與 admission 必須共用 `IPhysicalOutputPathResolver`，以同一實際路徑識別 symlink／alias。前者允許互補 sidecar 保留原 base path，後者才扣除 residual selection；同一 CID 的 canonical base path 可容納互不重疊的 action，不同 CID 或重疊 claim 則由前置路徑分配、admission transaction 與啟動恢復一致拒絕。同一 owner 的 media coverage 保留 audio／video 動作形態，但重新解析出的 resolution、codec 或 transport 差異不是新的 media action；需要不同媒體規格時使用明確的重新下載策略。
+- 通知只由發起操作的 ViewModel 依 counts 與 planning stop reason 發布一次，policy 不擁有通知。
 - 啟動恢復、新增與續傳只傳 `DownloadTaskId`，不得輪詢 UI collection。啟動查詢同時提供 Domain snapshots 與 projections；runtime decision 只用前者。
 
 ### Execution 與 retry
@@ -96,13 +102,15 @@ flowchart LR
 ### Artifact 與完成邊界
 
 - 來源、partial、resume sidecar 與 completed key 在所有必要 stage 通過前都是 retry checkpoint。Artifact、mux、validation、cancellation 或 durable completion 失敗都必須保留。
+- `DownloadOutputLayout` 是 media、subtitle、danmaku、NFO、cover 邏輯輸出路徑與 file-family mapping 的唯一 owner；stage 與 physical path resolver 擁有 I/O、完整性、發布與實體 identity，不得各自複製 suffix／image 規則表。
+- 無效 transfer artifact 必須先完成實體清理，才能撤銷其 completed key。同一 key 的所有 artifact 都清理成功才可更新 durable state；任何清理失敗都保留 completed evidence 並 fail closed。
 - FFmpeg 只能發布已驗證輸出，且不得因一般非零 exit code 推定來源損壞。只有 fail-on-error decode 的明確證據才可撤銷對應 completed key、identity 與 source。
 - 只有 finalize 成功提交 Domain `Completed` 後，既有 file service 才能清理該任務的精確來源與 sidecars。
 - `FfmpegProcessRunner` 是 FFmpeg concurrency、timeout、cancellation 與 process tree 的唯一 owner。
 
 ### Runtime lifecycle
 
-`DownloadComposition.AddDownloadModule()` 是唯一註冊入口。Queue gateway 的 queue／availability interfaces 必須解析到同一 singleton；bootstrap hosted service 的 service／hosted aliases 也必須共用同一 singleton。拆成不同 instance 會產生第二套 queue、start／stop 或 dispose owner。
+`DownloadComposition.AddDownloadModule()` 是唯一註冊入口。Application 的 lookup／catalog／scheduler／state／output-reservation capability interfaces 必須解析到同一個 `DownloadTaskApplicationService` singleton；consumer 依賴需要的窄介面，不得因此建立平行 state owner。Queue gateway 的 queue／availability interfaces 必須解析到同一 singleton；bootstrap hosted service 的 service／hosted aliases 也必須共用同一 singleton。拆成不同 instance 會產生第二套 state、queue、start／stop 或 dispose owner。
 
 ## Built-in transfer security boundary
 
