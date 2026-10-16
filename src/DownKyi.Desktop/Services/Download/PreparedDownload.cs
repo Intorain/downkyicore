@@ -233,6 +233,8 @@ internal sealed record DownloadQualitySubstitutions(
 
 internal sealed record PreparedDownloadPage(
     VideoPage Page,
+    VideoQuality? VideoQuality,
+    string AudioQualityFormat,
     DownloadMediaCapabilities AvailableMedia,
     DownloadQualitySubstitutions QualitySubstitutions);
 
@@ -261,21 +263,37 @@ internal sealed record PreparedDownload(
                     section.VideoPages.Select(page =>
                     {
                         ArgumentNullException.ThrowIfNull(page);
+                        var videoQuality = CopyVideoQuality(page.VideoQuality);
+                        var audioQualityFormat = page.AudioQualityFormat;
                         return new PreparedDownloadPage(
                             page,
+                            videoQuality,
+                            audioQualityFormat,
                             DownloadMediaCapabilities.From(
                                 page.PlaybackAvailability,
-                                page.VideoQuality,
-                                page.AudioQualityFormat),
+                                videoQuality,
+                                audioQualityFormat),
                             DownloadQualitySubstitutions.From(page));
                     }).ToArray());
             }).ToArray());
     }
+
+    private static VideoQuality? CopyVideoQuality(VideoQuality? source) => source == null
+        ? null
+        : new VideoQuality
+        {
+            Quality = source.Quality,
+            QualityFormat = source.QualityFormat,
+            IsDurl = source.IsDurl,
+            SelectedVideoCodec = source.SelectedVideoCodec
+        };
 }
 
 internal sealed record FinalizedDownloadPage(
     VideoPage Page,
     VideoQuality? VideoQuality,
+    string AudioQualityFormat,
+    DownloadMediaCapabilities AvailableMedia,
     DownloadContentSelection RequestedContent,
     DownloadContentSelection FinalizedContent);
 

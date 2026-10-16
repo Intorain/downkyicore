@@ -25,6 +25,8 @@ internal static class DownloadTaskDraftFactory
         int sectionCount,
         VideoPage page,
         VideoQuality? videoQuality,
+        string audioQualityFormat,
+        DownloadMediaCapabilities availableMedia,
         ApplicationSettings settings,
         DownloadContentSelection content)
     {
@@ -41,11 +43,9 @@ internal static class DownloadTaskDraftFactory
                 nameof(content));
         }
 
-        var capability = DownloadMediaCapabilities.From(
-            page.PlaybackAvailability,
-            videoQuality,
-            page.AudioQualityFormat);
-        if (!capability.Supports(content))
+        ArgumentNullException.ThrowIfNull(audioQualityFormat);
+        ArgumentNullException.ThrowIfNull(availableMedia);
+        if (!availableMedia.Supports(content))
         {
             throw new InvalidOperationException(
                 "A media download draft requires a supported finalized playback selection.");
@@ -62,7 +62,7 @@ internal static class DownloadTaskDraftFactory
             : content.Audio ? DownloadMediaKind.Dash : DownloadMediaKind.None;
         var selectedVideo = content.Video ? videoQuality : null;
         var audioCodec = PlaybackQualityCatalog.GetAudioQualities()
-            .FirstOrDefault(quality => quality.Name == page.AudioQualityFormat) ?? new Quality();
+            .FirstOrDefault(quality => quality.Name == audioQualityFormat) ?? new Quality();
         var downloadBase = new DownloadBase
         {
             Bvid = page.Bvid,
@@ -79,6 +79,7 @@ internal static class DownloadTaskDraftFactory
                 sectionCount,
                 page,
                 selectedVideo,
+                audioQualityFormat,
                 settings),
             Order = page.Order,
             MainTitle = video.Title,
@@ -136,6 +137,7 @@ internal static class DownloadTaskDraftFactory
         int sectionCount,
         VideoPage page,
         VideoQuality? videoQuality,
+        string audioQualityFormat,
         ApplicationSettings settings)
     {
         var sectionName = sectionCount > 1 ? section.Title : string.Empty;
@@ -144,7 +146,7 @@ internal static class DownloadTaskDraftFactory
             .SetMainTitle(Format.FormatFileName(video.Title))
             .SetPageTitle(Format.FormatFileName(page.Name))
             .SetVideoZone(video.VideoZone.Split('>')[0])
-            .SetAudioQuality(page.AudioQualityFormat)
+            .SetAudioQuality(audioQualityFormat)
             .SetVideoQuality(videoQuality?.QualityFormat ?? string.Empty)
             .SetVideoCodec(GetCodecLabel(videoQuality?.SelectedVideoCodec ?? string.Empty))
             .SetVideoPublishTime(page.PublishTime)

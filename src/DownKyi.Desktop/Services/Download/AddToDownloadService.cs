@@ -204,6 +204,8 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                         finalizedDownload.Sections.Count,
                         page,
                         finalizedPage.VideoQuality,
+                        finalizedPage.AudioQualityFormat,
+                        finalizedPage.AvailableMedia,
                         settings,
                         finalizedPage.FinalizedContent);
                     var duplicateResolution = await _duplicatePolicy
