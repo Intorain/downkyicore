@@ -48,7 +48,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         foreach (var jobName in new[] { "build-windows", "build-linux", "validate-linux-arm64", "build-macos" })
         {
             var job = GetYamlBlock(NormalizeWorkflowLines(workflow), $"  {jobName}:", 2);
-            Assert.Contains(job, line => line.Contains("Get-FileHash", StringComparison.Ordinal));
+            Assert.Contains(job, line => line.Contains("write-package-checksum.ps1", StringComparison.Ordinal));
         }
 
         Assert.Contains("./script/assemble-release-assets.ps1", workflow, StringComparison.Ordinal);
@@ -63,6 +63,25 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("Verify immutable release publication", workflow, StringComparison.Ordinal);
         Assert.Contains(".immutable == true", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("artifacts: artifacts/*", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseWorkflowsShareOnePackageChecksumSidecarOwner()
+    {
+        var releaseWorkflow = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var adHocWorkflow = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "workflows", "macos-adhoc-package.yml"));
+        var checksumWriter = File.ReadAllText(
+            Path.Combine(RepositoryRoot, "script", "write-package-checksum.ps1"));
+
+        Assert.Equal(4, Regex.Count(releaseWorkflow, "write-package-checksum\\.ps1"));
+        Assert.Equal(1, Regex.Count(adHocWorkflow, "write-package-checksum\\.ps1"));
+        Assert.DoesNotContain("Get-FileHash", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("Get-FileHash", adHocWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Get-FileHash", checksumWriter, StringComparison.Ordinal);
+        Assert.Contains(".ToLowerInvariant()", checksumWriter, StringComparison.Ordinal);
+        Assert.Contains("$hash  $($package.Name)", checksumWriter, StringComparison.Ordinal);
     }
 
     [Fact]

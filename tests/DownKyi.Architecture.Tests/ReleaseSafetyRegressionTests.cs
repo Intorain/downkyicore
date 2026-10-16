@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace DownKyi.Architecture.Tests;
@@ -58,6 +59,36 @@ public sealed class ReleaseSafetyRegressionTests
             packageValidator,
             StringComparison.Ordinal);
         Assert.DoesNotContain("& 7z", packageValidator, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackageChecksumWriterProducesCanonicalSidecarAndFailsClosed()
+    {
+        var root = CreateTemporaryDirectory();
+        var writer = Path.Combine(RepositoryRoot, "script", "write-package-checksum.ps1");
+        var package = Path.Combine(root, "fixture package.zip");
+        var content = "release package fixture"u8.ToArray();
+
+        try
+        {
+            File.WriteAllBytes(package, content);
+            var result = RunPowerShell(writer, ["-PackagePath", package], root);
+
+            Assert.Equal(0, result.ExitCode);
+            var expectedHash = Convert.ToHexStringLower(SHA256.HashData(content));
+            Assert.Equal(
+                $"{expectedHash}  {Path.GetFileName(package)}{Environment.NewLine}",
+                File.ReadAllText($"{package}.sha256"));
+
+            var missingPackage = Path.Combine(root, "missing.zip");
+            var missingResult = RunPowerShell(writer, ["-PackagePath", missingPackage], root);
+            Assert.NotEqual(0, missingResult.ExitCode);
+            Assert.False(File.Exists($"{missingPackage}.sha256"));
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(root);
+        }
     }
 
     [Fact]
