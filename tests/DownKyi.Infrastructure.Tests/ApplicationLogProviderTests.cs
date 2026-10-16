@@ -18,11 +18,11 @@ public sealed class ApplicationLogProviderTests : IDisposable
     private static readonly Action<ILogger, Exception?> TransferAttemptFailed = LoggerMessage.Define(
         MicrosoftLogLevel.Warning,
         new EventId(1002, "WarningMessage"),
-        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delaySeconds=0.5.");
+        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500");
     private static readonly Action<ILogger, Exception?> UnrecognizedSensitiveWarning = LoggerMessage.Define(
         MicrosoftLogLevel.Warning,
         new EventId(1002, "WarningMessage"),
-        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delaySeconds=0.5. Authorization: Bearer opaque-bearer-value https://example.test/file?X-Amz-Signature=opaque-signature");
+        "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500 Authorization: Bearer opaque-bearer-value https://example.test/file?X-Amz-Signature=opaque-signature");
     private static readonly Action<ILogger, int, Exception?> RecentEntry = LoggerMessage.Define<int>(
         MicrosoftLogLevel.Information,
         new EventId(2, nameof(RecentEntry)),
@@ -249,7 +249,7 @@ public sealed class ApplicationLogProviderTests : IDisposable
             Assert.Contains("Error message: Download database schema 9", errors,
                 StringComparison.Ordinal);
             Assert.Contains(
-                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delaySeconds=0.5.",
+                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500",
                 errors,
                 StringComparison.Ordinal);
             Assert.DoesNotContain("entry=1", errors, StringComparison.Ordinal);

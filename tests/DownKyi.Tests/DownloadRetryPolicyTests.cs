@@ -11,7 +11,7 @@ namespace DownKyi.Tests;
 public sealed class DownloadRetryPolicyTests
 {
     [Fact]
-    public void TransferFailureDiagnosticUsesInvariantDecimalSeparator()
+    public void TransferFailureDiagnosticUsesInvariantIntegerMilliseconds()
     {
         var originalCulture = CultureInfo.CurrentCulture;
         try
@@ -28,9 +28,9 @@ public sealed class DownloadRetryPolicyTests
                 delay: TimeSpan.FromMilliseconds(500));
 
             Assert.Equal(
-                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delaySeconds=0.5",
+                "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500",
                 diagnostic);
-            Assert.DoesNotContain("0٫5", diagnostic, StringComparison.Ordinal);
+            Assert.DoesNotContain("٫", diagnostic, StringComparison.Ordinal);
         }
         finally
         {

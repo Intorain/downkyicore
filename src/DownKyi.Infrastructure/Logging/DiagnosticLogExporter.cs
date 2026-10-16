@@ -140,7 +140,7 @@ internal sealed partial class DiagnosticLogExporter(
         "failure=(?:TransientNetwork|RateLimited|ExpiredAddress|ResumeRejected|InvalidMedia|CandidateRejected|Disk|Tls|Permanent); " +
         "error=download\\.transfer\\.[a-z0-9.-]+; " +
         "next=(?:Stop|RetrySameAddress|TryNextAddress|RefreshAddresses); " +
-        "delaySeconds=(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,3})?\\.\\z",
+        "delayMilliseconds=(?:0|[1-9][0-9]*)\\z",
         RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex TransferAttemptDiagnosticRegex();
 

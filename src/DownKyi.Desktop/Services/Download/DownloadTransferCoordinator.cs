@@ -182,8 +182,9 @@ internal sealed class DownloadTransferCoordinator
         DownloadRetryAction nextAction,
         TimeSpan delay)
     {
+        var delayMilliseconds = delay.Ticks / TimeSpan.TicksPerMillisecond;
         return FormattableString.Invariant(
-            $"Download transfer attempt failed; backend={backend}; attempt={attempt}/{maximumAttempts}; failure={failureKind}; error={errorCode}; next={nextAction}; delaySeconds={delay.TotalSeconds:0.###}");
+            $"Download transfer attempt failed; backend={backend}; attempt={attempt}/{maximumAttempts}; failure={failureKind}; error={errorCode}; next={nextAction}; delayMilliseconds={delayMilliseconds}");
     }
 
     private async Task<DownloadTransferResult?> ResetForSourceChangeAsync(
