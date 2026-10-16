@@ -30,6 +30,7 @@ internal sealed record FeedbackDiagnosticEvent(
     string Level,
     string Component,
     int EventId,
+    string Message,
     string ExceptionDiagnostic);
 
 [JsonSourceGenerationOptions(

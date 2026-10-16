@@ -15,6 +15,10 @@ public sealed class ApplicationLogProviderTests : IDisposable
         MicrosoftLogLevel.Error,
         new EventId(1, nameof(RequestFailed)),
         "Request failed for https://example.test/file?access_key=query-secret user=alice@example.test mid=123456");
+    private static readonly Action<ILogger, Exception?> TransferAttemptFailed = LoggerMessage.Define(
+        MicrosoftLogLevel.Warning,
+        new EventId(7, nameof(TransferAttemptFailed)),
+        "Download transfer attempt failed; backend=built-in; attempt=5/5; failure=ExpiredAddress; error=download.transfer.http-403; next=Stop; delaySeconds=0.");
     private static readonly Action<ILogger, int, Exception?> RecentEntry = LoggerMessage.Define<int>(
         MicrosoftLogLevel.Information,
         new EventId(2, nameof(RecentEntry)),
@@ -191,7 +195,7 @@ public sealed class ApplicationLogProviderTests : IDisposable
     }
 
     [Fact]
-    public async Task FeedbackPackageWhitelistsPersistedErrorFieldsAfterRestart()
+    public async Task FeedbackPackageIncludesRedactedPersistedMessagesAfterRestart()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var firstProvider = CreateProvider();
@@ -199,6 +203,7 @@ public sealed class ApplicationLogProviderTests : IDisposable
         RecentEntry(logger, 1, null);
         using (logger.BeginScope("cookie=scope-private"))
         {
+            TransferAttemptFailed(logger, null);
             RequestFailed(logger, new InvalidOperationException(
                 "opaque-private-value-73918 C:\\Users\\alice\\Videos\\private.mp4"));
             RequestFailed(logger, new DownloadStoreSchemaMismatchException(
@@ -224,7 +229,8 @@ public sealed class ApplicationLogProviderTests : IDisposable
             var manifest = await ReadArchiveEntryAsync(archive, "manifest.json", cancellationToken)
                 .ConfigureAwait(true);
             using var manifestJson = JsonDocument.Parse(manifest);
-            Assert.Equal(2, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
+            Assert.Equal(2, manifestJson.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(3, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
 
             var errors = await ReadArchiveEntryAsync(archive, "errors.jsonl", cancellationToken)
                 .ConfigureAwait(true);
@@ -235,13 +241,20 @@ public sealed class ApplicationLogProviderTests : IDisposable
                 errors, StringComparison.Ordinal);
             Assert.Contains("Error message: Download database schema 9", errors,
                 StringComparison.Ordinal);
+            Assert.Contains(
+                "Download transfer attempt failed; backend=built-in; attempt=5/5; failure=ExpiredAddress; error=download.transfer.http-403; next=Stop; delaySeconds=0.",
+                errors,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "Request failed for https://example.test/file?access_key=[redacted] user=[email] mid=[redacted]",
+                errors,
+                StringComparison.Ordinal);
             Assert.DoesNotContain("entry=1", errors, StringComparison.Ordinal);
-            Assert.DoesNotContain("Request failed for", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("opaque-private-value-73918", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("private.mp4", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("query-secret", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("scope-private", errors, StringComparison.Ordinal);
-            Assert.DoesNotContain("\"message\"", errors, StringComparison.Ordinal);
+            Assert.Contains("\"message\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"exceptionText\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"scope\"", errors, StringComparison.Ordinal);
             Assert.DoesNotContain("\"processId\"", errors, StringComparison.Ordinal);

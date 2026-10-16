@@ -70,16 +70,17 @@ internal sealed class DiagnosticLogExporter(
         {
             var records = await ReadNewestRecordsAsync(cancellationToken, errorsOnly: true)
                 .ConfigureAwait(false);
-            var events = records.Select(static record => new FeedbackDiagnosticEvent(
+            var events = records.Select(record => new FeedbackDiagnosticEvent(
                 record.Timestamp,
                 record.Level.ToString(),
                 record.Category.StartsWith("DownKyi.", StringComparison.Ordinal)
                     ? record.Category
                     : "external",
                 record.EventId.Id,
+                redactor.Redact(record.Message),
                 record.SafeExceptionDiagnostic)).ToArray();
             var manifest = new FeedbackDiagnosticManifest(
-                SchemaVersion: 1,
+                SchemaVersion: 2,
                 GeneratedAtUtc: timestamp,
                 ApplicationVersion: typeof(DiagnosticLogExporter).Assembly.GetName().Version?.ToString()
                                     ?? "unknown",
