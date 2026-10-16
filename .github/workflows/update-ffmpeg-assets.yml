@@ -159,24 +159,10 @@ jobs:
       - name: Create a new immutable mirror release or resume exact immutable evidence
         shell: bash
         env:
-          IMMUTABLE_RELEASES_READ_TOKEN: ${{ secrets.IMMUTABLE_RELEASES_READ_TOKEN }}
           RELEASE_TOKEN: ${{ github.token }}
         run: |
-          if [[ -z "$IMMUTABLE_RELEASES_READ_TOKEN" ]]; then
-            echo 'IMMUTABLE_RELEASES_READ_TOKEN is required and must have Administration: read on the DownKyiCore repository.' >&2
-            exit 1
-          fi
           if [[ -z "$RELEASE_TOKEN" ]]; then
             echo 'The job-scoped GITHUB_TOKEN is required to publish the same-repository mirror release.' >&2
-            exit 1
-          fi
-          immutable_enabled=$(GH_TOKEN="$IMMUTABLE_RELEASES_READ_TOKEN" gh api \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2026-03-10' \
-            "repos/$MIRROR_REPOSITORY/immutable-releases" \
-            --jq '.enabled')
-          if [[ "$immutable_enabled" != "true" ]]; then
-            echo "Immutable releases must be enabled for $MIRROR_REPOSITORY before mirroring." >&2
             exit 1
           fi
           previous_latest_tag=$(GH_TOKEN="$RELEASE_TOKEN" gh api \

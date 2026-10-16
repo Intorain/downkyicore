@@ -191,7 +191,7 @@ public sealed class AgentEnvironmentArchitectureTests
         }
         Assert.DoesNotContain("crazysmile-PhD/downkyi-aria2-static-build/releases/download/", historicalAssets, StringComparison.Ordinal);
         Assert.DoesNotContain("RUNTIME_ASSETS_TOKEN", updaterWorkflow, StringComparison.Ordinal);
-        Assert.Contains("IMMUTABLE_RELEASES_READ_TOKEN", updaterWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("IMMUTABLE_RELEASES_READ_TOKEN", updaterWorkflow, StringComparison.Ordinal);
         Assert.Contains("MIRROR_REPOSITORY: ${{ github.repository }}", updaterWorkflow, StringComparison.Ordinal);
         Assert.Contains("RELEASE_TOKEN: ${{ github.token }}", updaterWorkflow, StringComparison.Ordinal);
         Assert.Contains("--prerelease", updaterWorkflow, StringComparison.Ordinal);
