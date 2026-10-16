@@ -327,6 +327,62 @@ public sealed class ReleaseSafetyRegressionTests
     }
 
     [Fact]
+    public void ReleaseTagProvenanceRejectsMergedFeatureCommitOutsideMainFirstParentHistory()
+    {
+        var root = CreateTemporaryDirectory();
+        var remote = Path.Combine(root, "remote.git");
+        var repository = Path.Combine(root, "repository");
+        var validator = Path.Combine(RepositoryRoot, "script", "validate-release-subject.ps1");
+        var releaseTag = $"v{RepositoryVersion}";
+
+        try
+        {
+            RunRequired("git", ["init", "--bare", remote], root);
+            RunRequired("git", ["init", "-b", "main", repository], root);
+            RunRequired("git", ["config", "user.name", "Release Fixture"], repository);
+            RunRequired("git", ["config", "user.email", "release-fixture@example.invalid"], repository);
+            File.WriteAllText(Path.Combine(repository, "version.txt"), RepositoryVersion);
+            File.WriteAllText(Path.Combine(repository, "fixture.txt"), "main");
+            RunRequired("git", ["add", "version.txt", "fixture.txt"], repository);
+            RunRequired("git", ["commit", "-m", "main fixture"], repository);
+            RunRequired("git", ["remote", "add", "origin", remote], repository);
+            RunRequired("git", ["push", "-u", "origin", "main"], repository);
+
+            RunRequired("git", ["checkout", "-b", "feature-fixture"], repository);
+            File.WriteAllText(Path.Combine(repository, "feature.txt"), "feature");
+            RunRequired("git", ["add", "feature.txt"], repository);
+            RunRequired("git", ["commit", "-m", "feature fixture"], repository);
+            var featureCommit = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+
+            RunRequired("git", ["switch", "main"], repository);
+            File.WriteAllText(Path.Combine(repository, "integration.txt"), "main integration");
+            RunRequired("git", ["add", "integration.txt"], repository);
+            RunRequired("git", ["commit", "-m", "main integration fixture"], repository);
+            RunRequired(
+                "git",
+                ["merge", "--no-ff", "feature-fixture", "-m", "merge feature fixture"],
+                repository);
+            var mergedMain = RunRequired("git", ["rev-parse", "HEAD"], repository).StandardOutput.Trim();
+            RunRequired("git", ["push", "origin", "main"], repository);
+            RunRequired("git", ["merge-base", "--is-ancestor", featureCommit, mergedMain], repository);
+
+            RunRequired("git", ["tag", "-a", releaseTag, featureCommit, "-m", releaseTag], repository);
+            RunRequired("git", ["checkout", "--detach", featureCommit], repository);
+            var result = RunPowerShell(
+                validator,
+                ["-SubjectDirectory", repository, "-ReleaseVersion", releaseTag, "-SubjectSha", featureCommit],
+                repository);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("first-parent history", NormalizeDiagnostic(result), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(root);
+        }
+    }
+
+    [Fact]
     public void MacOsReleaseTrustRejectsPartialCredentials()
     {
         var root = CreateTemporaryDirectory();
