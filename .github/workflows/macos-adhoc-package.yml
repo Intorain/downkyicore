@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/macos-adhoc-package.yml'
+      - '.github/actions/build-macos-app/action.yml'
       - 'DownKyi/**/*.csproj'
       - 'DownKyi.Core/**/*.csproj'
       - 'src/**/*.csproj'
@@ -63,36 +64,12 @@ jobs:
         uses: $/.github/actions/setup-python
         with:
           python-version-file: .python-version
-      - name: Read version
-        id: version
-        run: echo "content=$(tr -d '\r\n' < version.txt)" >> "$GITHUB_OUTPUT"
-      - name: Download and verify upstream runtime dependencies
-        working-directory: ./script
-        run: |
-          chmod +x ffmpeg.sh
-          ./ffmpeg.sh mac ${{ matrix.cpu }}
-      - name: Publish ${{ matrix.cpu }} app
-        id: publish-output
-        run: |
-          dotnet restore DownKyi/DownKyi.csproj -r osx-${{ matrix.cpu }}
-          dotnet publish DownKyi/DownKyi.csproj --no-restore --self-contained -r osx-${{ matrix.cpu }} -c Release -p:DebugType=None -p:DebugSymbols=false
-          target_framework="$(dotnet msbuild DownKyi/DownKyi.csproj -nologo -verbosity:quiet -getProperty:TargetFramework -p:Configuration=Release)"
-          test -n "$target_framework"
-          test "${target_framework#*$'\n'}" = "$target_framework"
-          printf 'directory=DownKyi/bin/Release/%s/osx-%s/publish\n' "$target_framework" '${{ matrix.cpu }}' >> "$GITHUB_OUTPUT"
-      - name: Package app bundle
-        working-directory: ./script/macos
-        run: |
-          chmod +x package.sh set-bundle-version.sh
-          ./package.sh ${{ matrix.cpu }} ${{ steps.version.outputs.content }}
-      - name: Validate packaged runtime
-        shell: pwsh
-        run: |
-          ./script/validate-publish-output.ps1 `
-            -PublishDirectory "${{ steps.publish-output.outputs.directory }}" `
-            -RuntimeIdentifier "osx-${{ matrix.cpu }}" `
-            -ExpectedVersion "${{ steps.version.outputs.content }}" `
-            -OutputPath "script/macos/publish-manifest-osx-${{ matrix.cpu }}.json"
+      - name: Build and validate macOS app bundle
+        id: macos-app
+        uses: ./.github/actions/build-macos-app
+        with:
+          cpu: ${{ matrix.cpu }}
+          manifest-path: script/macos/publish-manifest-osx-${{ matrix.cpu }}.json
       - name: Ad-hoc sign app
         working-directory: ./script/macos
         env:
@@ -119,24 +96,24 @@ jobs:
             --icon-size 120 \
             --app-drop-link 495 175 \
             --window-size 660 400 \
-            DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}.dmg 哔哩下载姬.app
+            DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg 哔哩下载姬.app
       - name: Validate mounted and installed package contracts
         working-directory: ./script/macos
         env:
           MACOS_VERIFY_GATEKEEPER: 'false'
-        run: ./validate-dmg-package.sh DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}.dmg ${{ steps.version.outputs.content }} osx-${{ matrix.cpu }}
+        run: ./validate-dmg-package.sh DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg ${{ steps.macos-app.outputs.version }} osx-${{ matrix.cpu }}
       - name: Hash DMG
         shell: pwsh
         run: |
-          $package = "script/macos/DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}.dmg"
+          $package = "script/macos/DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg"
           $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -LiteralPath "$package.sha256" -Encoding ascii
       - name: Upload verified DMG
         continue-on-error: ${{ github.event_name == 'pull_request' }}
         uses: $/.github/actions/upload-artifact
         with:
-          name: DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}-adhoc-${{ matrix.os }}
+          name: DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}-adhoc-${{ matrix.os }}
           path: |
-            script/macos/DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}.dmg
-            script/macos/DownKyi-${{ steps.version.outputs.content }}-osx-${{ matrix.cpu }}.dmg.sha256
+            script/macos/DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg
+            script/macos/DownKyi-${{ steps.macos-app.outputs.version }}-osx-${{ matrix.cpu }}.dmg.sha256
             script/macos/publish-manifest-osx-${{ matrix.cpu }}.json

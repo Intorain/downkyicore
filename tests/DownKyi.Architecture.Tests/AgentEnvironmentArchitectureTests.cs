@@ -569,6 +569,7 @@ public sealed class AgentEnvironmentArchitectureTests
             "script/validate-build-run-artifacts.ps1",
             "script/assemble-release-assets.ps1",
             "script/validate-publish-output.ps1",
+            ".github/actions/build-macos-app/action.yml",
             ".github/workflows/build.yml");
 
         var operations = Read("docs/operations/verification-and-rollback.md");
