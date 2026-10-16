@@ -1,0 +1,53 @@
+name: Build macOS app bundle
+description: Publish, assemble, and validate one macOS app bundle before signing.
+
+inputs:
+  cpu:
+    description: Target CPU used to derive the osx runtime identifier.
+    required: true
+  manifest-path:
+    description: Destination for the validated pre-sign publish manifest.
+    required: true
+
+outputs:
+  version:
+    description: Version read from the repository-owned version.txt.
+    value: ${{ steps.version.outputs.content }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read version
+      id: version
+      shell: bash
+      run: echo "content=$(tr -d '\r\n' < version.txt)" >> "$GITHUB_OUTPUT"
+    - name: Download and verify upstream runtime dependencies
+      shell: bash
+      working-directory: ./script
+      run: |
+        chmod +x ffmpeg.sh
+        ./ffmpeg.sh mac ${{ inputs.cpu }}
+    - name: Publish app
+      id: publish-output
+      shell: bash
+      run: |
+        dotnet restore DownKyi/DownKyi.csproj -r osx-${{ inputs.cpu }}
+        dotnet publish DownKyi/DownKyi.csproj --no-restore --self-contained -r osx-${{ inputs.cpu }} -c Release -p:DebugType=None -p:DebugSymbols=false
+        target_framework="$(dotnet msbuild DownKyi/DownKyi.csproj -nologo -verbosity:quiet -getProperty:TargetFramework -p:Configuration=Release)"
+        test -n "$target_framework"
+        test "${target_framework#*$'\n'}" = "$target_framework"
+        printf 'directory=DownKyi/bin/Release/%s/osx-%s/publish\n' "$target_framework" '${{ inputs.cpu }}' >> "$GITHUB_OUTPUT"
+    - name: Package app bundle
+      shell: bash
+      working-directory: ./script/macos
+      run: |
+        chmod +x package.sh set-bundle-version.sh
+        ./package.sh ${{ inputs.cpu }} ${{ steps.version.outputs.content }}
+    - name: Validate packaged runtime
+      shell: pwsh
+      run: |
+        ./script/validate-publish-output.ps1 `
+          -PublishDirectory "${{ steps.publish-output.outputs.directory }}" `
+          -RuntimeIdentifier "osx-${{ inputs.cpu }}" `
+          -ExpectedVersion "${{ steps.version.outputs.content }}" `
+          -OutputPath "${{ inputs.manifest-path }}"

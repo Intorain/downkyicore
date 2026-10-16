@@ -328,6 +328,7 @@ public sealed class ReleaseWorkflowArchitectureTests
             ("script/validate-build-run-artifacts.ps1", []),
             ("script/pupnet/stage-canonical-publish.sh", []),
             ("script/validate-publish-output.ps1", ["macos"]),
+            (".github/actions/build-macos-app/action.yml", ["build", "macos"]),
             ("script/macos/validate-dmg-package.sh", ["macos"]),
             ("script/download-external-asset.ps1", ["build"]),
             ("script/resolve-release-plan.ps1", ["build"]),
@@ -738,18 +739,29 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void MacPackageBuildRestoresTheRequestedRuntimeBeforePublishing()
+    public void MacWorkflowsShareOneAppBuildAction()
     {
-        var workflow = File.ReadAllText(
+        var action = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "actions", "build-macos-app", "action.yml"));
+        var releaseWorkflow = File.ReadAllText(
             Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var adHocWorkflow = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "workflows", "macos-adhoc-package.yml"));
+
+        foreach (var workflow in new[] { releaseWorkflow, adHocWorkflow })
+        {
+            Assert.Contains("uses: ./.github/actions/build-macos-app", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("dotnet publish DownKyi/DownKyi.csproj", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("./ffmpeg.sh mac ${{ matrix.cpu }}", workflow, StringComparison.Ordinal);
+        }
 
         Assert.Contains(
-            "dotnet restore DownKyi/DownKyi.csproj -r osx-${{ matrix.cpu }}",
-            workflow,
+            "dotnet restore DownKyi/DownKyi.csproj -r osx-${{ inputs.cpu }}",
+            action,
             StringComparison.Ordinal);
         Assert.Contains(
-            "dotnet publish DownKyi/DownKyi.csproj --no-restore --self-contained -r osx-${{ matrix.cpu }}",
-            workflow,
+            "dotnet publish DownKyi/DownKyi.csproj --no-restore --self-contained -r osx-${{ inputs.cpu }}",
+            action,
             StringComparison.Ordinal);
     }
 
@@ -758,6 +770,8 @@ public sealed class ReleaseWorkflowArchitectureTests
     {
         var workflow = File.ReadAllText(
             Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var appBuildAction = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "actions", "build-macos-app", "action.yml"));
         var signScript = File.ReadAllText(
             Path.Combine(RepositoryRoot, "script", "macos", "sign.sh"));
         var codesignCommonScript = File.ReadAllText(
@@ -796,8 +810,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("Validate mounted and installed macOS package contracts", workflow, StringComparison.Ordinal);
         AssertInOrder(
             workflow,
-            "Package app",
-            "Validate packaged runtime",
+            "Build and validate macOS app bundle",
             "Sign app",
             "Verify signed app trust",
             "Notarize app",
@@ -811,6 +824,13 @@ public sealed class ReleaseWorkflowArchitectureTests
             "Validate mounted and installed macOS package contracts",
             "Hash DMG",
             "Upload build artifacts");
+        AssertInOrder(
+            appBuildAction,
+            "Read version",
+            "Download and verify upstream runtime dependencies",
+            "Publish app",
+            "Package app bundle",
+            "Validate packaged runtime");
 
         Assert.DoesNotContain("biao yao", signScript, StringComparison.Ordinal);
         Assert.DoesNotContain("codesign --deep --force", signScript, StringComparison.Ordinal);
@@ -857,9 +877,10 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("xcrun stapler validate", verifyDmgScript, StringComparison.Ordinal);
         Assert.Contains("spctl --assess --type open --context context:primary-signature", verifyDmgScript, StringComparison.Ordinal);
         Assert.Contains(
-            "-OutputPath \"artifacts/macos/pre-sign-publish-manifest-osx-${{ matrix.cpu }}.json\"",
+            "manifest-path: artifacts/macos/pre-sign-publish-manifest-osx-${{ matrix.cpu }}.json",
             workflow,
             StringComparison.Ordinal);
+        Assert.Contains("-OutputPath \"${{ inputs.manifest-path }}\"", appBuildAction, StringComparison.Ordinal);
         Assert.Contains(
             "-PublishDirectory \"script/macos/哔哩下载姬.app/Contents/MacOS\"",
             workflow,
@@ -894,8 +915,7 @@ public sealed class ReleaseWorkflowArchitectureTests
         foreach (var stepName in new[]
                  {
                      "Run macOS packaging regressions",
-                     "Build ${{ matrix.cpu }}",
-                     "Package app",
+                     "Build and validate macOS app bundle",
                      "Sign app",
                      "Verify signed app trust",
                      "Seal final signed app manifest",
@@ -927,6 +947,8 @@ public sealed class ReleaseWorkflowArchitectureTests
     {
         var workflow = File.ReadAllText(
             Path.Combine(RepositoryRoot, ".github", "workflows", "macos-adhoc-package.yml"));
+        var appBuildAction = File.ReadAllText(
+            Path.Combine(RepositoryRoot, ".github", "actions", "build-macos-app", "action.yml"));
         var lines = workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var pullRequest = GetYamlBlock(lines, "  pull_request:", 2);
         var pathBlock = GetYamlBlock(pullRequest.ToArray(), "    paths:", 4);
@@ -952,7 +974,8 @@ public sealed class ReleaseWorkflowArchitectureTests
                      "script/ffmpeg-assets.py",
                      "script/validate-publish-output.ps1",
                      "script/assets/**",
-                     "script/macos/**"
+                     "script/macos/**",
+                     ".github/actions/build-macos-app/action.yml"
                  })
         {
             Assert.Contains(packageInput, triggerPaths);
@@ -973,7 +996,13 @@ public sealed class ReleaseWorkflowArchitectureTests
             Assert.DoesNotContain(broadOrDuplicateInput, triggerPaths);
         }
 
-        Assert.Contains("dotnet publish", workflow, StringComparison.Ordinal);
+        Assert.Contains("uses: ./.github/actions/build-macos-app", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet publish", workflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet publish", appBuildAction, StringComparison.Ordinal);
+        Assert.Contains(
+            "manifest-path: script/macos/publish-manifest-osx-${{ matrix.cpu }}.json",
+            workflow,
+            StringComparison.Ordinal);
         Assert.Contains("./sign.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("./verify-app-signature.sh", workflow, StringComparison.Ordinal);
         Assert.Contains("flags=.*runtime", workflow, StringComparison.Ordinal);
