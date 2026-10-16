@@ -259,6 +259,36 @@ public sealed class DownloadContentConflictResolverTests
     }
 
     [Fact]
+    public async Task PlannerKeepsPreparedPlaybackSelectionWhenPageChangesAfterPreparation()
+    {
+        var dialogs = new RecordingDialogService();
+        var page = CreatePage(video: true, audio: true);
+        var pageVideoQuality = Assert.IsType<VideoQuality>(page.VideoQuality);
+        var prepared = CreatePreparedDownload(page);
+        var preparedPage = Assert.Single(Assert.Single(prepared.Sections).Pages);
+        var preparedVideoQuality = Assert.IsType<VideoQuality>(preparedPage.VideoQuality);
+
+        pageVideoQuality.SelectedVideoCodec = "AV1";
+        page.VideoQuality = null;
+        page.AudioQualityFormat = string.Empty;
+        page.PlaybackAvailability = null;
+
+        var finalized = await ResolveAsync(
+            dialogs,
+            DownloadContentSelection.None with { Audio = true, Video = true },
+            prepared);
+
+        var selected = Assert.Single(Assert.Single(finalized.Sections).Pages);
+        Assert.NotSame(pageVideoQuality, selected.VideoQuality);
+        Assert.Equal(80, preparedVideoQuality.Quality);
+        Assert.Equal(preparedVideoQuality.Quality, selected.VideoQuality!.Quality);
+        Assert.Equal("H.264/AVC", selected.VideoQuality.SelectedVideoCodec);
+        Assert.Equal("高质量", selected.AudioQualityFormat);
+        Assert.Equal(preparedPage.AvailableMedia, selected.AvailableMedia);
+        Assert.Empty(dialogs.Requests);
+    }
+
+    [Fact]
     public async Task IndependentDashAudioRemainsAvailableWithDurlVideo()
     {
         var dialogs = new RecordingDialogService();

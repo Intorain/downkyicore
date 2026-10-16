@@ -641,7 +641,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Subtitle: false,
             Cover: true);
 
-        var item = DownloadTaskDraftFactory.Create(
+        var item = CreateDraft(
             _directory,
             video,
             section,
@@ -699,7 +699,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             Title = "section",
             VideoPages = [page]
         };
-        var first = DownloadTaskDraftFactory.Create(
+        var first = CreateDraft(
             _directory,
             video,
             section,
@@ -711,7 +711,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(first.DownloadBase.FilePath)!);
         File.WriteAllText($"{first.DownloadBase.FilePath}.mp4", "occupied");
 
-        var second = DownloadTaskDraftFactory.Create(
+        var second = CreateDraft(
             _directory,
             video,
             section,
@@ -743,7 +743,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             VideoPages = [page]
         };
 
-        var error = Assert.Throws<InvalidOperationException>(() => DownloadTaskDraftFactory.Create(
+        var error = Assert.Throws<InvalidOperationException>(() => CreateDraft(
             _directory,
             video,
             section,
@@ -784,7 +784,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         var video = new VideoInfoView { Title = "main", VideoZone = "Technology" };
         var section = new VideoSection { VideoPages = [page] };
 
-        var item = DownloadTaskDraftFactory.Create(
+        var item = CreateDraft(
             _directory,
             video,
             section,
@@ -797,6 +797,45 @@ public sealed class DownloadAddOwnerTests : IDisposable
         Assert.Equal(DownloadMediaKind.Dash, item.DownloadBase.NeedDownloadContent.MediaKind);
         Assert.Equal(0, item.Resolution.Id);
         Assert.Equal(string.Empty, item.VideoCodecName);
+        Assert.Equal(30280, item.AudioCodec.Id);
+    }
+
+    [Fact]
+    public void DraftFactoryUsesFinalizedPlaybackSnapshotAfterPageChanges()
+    {
+        Directory.CreateDirectory(_directory);
+        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+            Path.Combine(_directory, "settings.json"));
+        var page = CreatePage();
+        page.AudioQualityFormat = "高质量";
+        var videoQuality = Assert.IsType<VideoQuality>(page.VideoQuality);
+        var audioQualityFormat = page.AudioQualityFormat;
+        var availableMedia = DownloadMediaCapabilities.From(
+            page.PlaybackAvailability,
+            videoQuality,
+            audioQualityFormat);
+        var video = new VideoInfoView { Title = "main", VideoZone = "Technology" };
+        var section = new VideoSection { VideoPages = [page] };
+
+        page.VideoQuality = null;
+        page.AudioQualityFormat = string.Empty;
+        page.PlaybackAvailability = null;
+
+        var item = DownloadTaskDraftFactory.Create(
+            _directory,
+            video,
+            section,
+            1,
+            page,
+            videoQuality,
+            audioQualityFormat,
+            availableMedia,
+            settingsStore.Current,
+            DownloadContentSelection.None with { Audio = true, Video = true });
+
+        Assert.Equal(DownloadMediaKind.Dash, item.DownloadBase.NeedDownloadContent.MediaKind);
+        Assert.Equal(80, item.Resolution.Id);
+        Assert.Equal("H.264/AVC", item.VideoCodecName);
         Assert.Equal(30280, item.AudioCodec.Id);
     }
 
@@ -820,7 +859,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
             VideoPages = [page]
         };
 
-        var item = DownloadTaskDraftFactory.Create(
+        var item = CreateDraft(
             _directory,
             video,
             section,
@@ -861,7 +900,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         var video = new VideoInfoView { Title = "main", VideoZone = "Technology" };
         var section = new VideoSection { VideoPages = [page] };
 
-        var item = DownloadTaskDraftFactory.Create(
+        var item = CreateDraft(
             _directory,
             video,
             section,
@@ -882,6 +921,33 @@ public sealed class DownloadAddOwnerTests : IDisposable
         {
             Directory.Delete(_directory, recursive: true);
         }
+    }
+
+    private static DownloadingItem CreateDraft(
+        string directory,
+        VideoInfoView video,
+        VideoSection section,
+        int sectionCount,
+        VideoPage page,
+        VideoQuality? videoQuality,
+        DownKyi.Core.Settings.ApplicationSettings settings,
+        DownloadContentSelection content)
+    {
+        var audioQualityFormat = page.AudioQualityFormat;
+        return DownloadTaskDraftFactory.Create(
+            directory,
+            video,
+            section,
+            sectionCount,
+            page,
+            videoQuality,
+            audioQualityFormat,
+            DownloadMediaCapabilities.From(
+                page.PlaybackAvailability,
+                videoQuality,
+                audioQualityFormat),
+            settings,
+            content);
     }
 
     private static VideoPage CreatePage()

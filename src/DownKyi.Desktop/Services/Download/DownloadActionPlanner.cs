@@ -168,7 +168,9 @@ internal sealed class DownloadActionPlanner
                 {
                     pages.Add(new FinalizedDownloadPage(
                         page,
-                        page.VideoQuality,
+                        preparedPage.VideoQuality,
+                        preparedPage.AudioQualityFormat,
+                        preparedPage.AvailableMedia,
                         requestedContent,
                         finalizedContent));
                 }
