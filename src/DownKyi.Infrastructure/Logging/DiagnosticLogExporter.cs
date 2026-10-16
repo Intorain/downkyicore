@@ -2,17 +2,21 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using DownKyi.Application.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Infrastructure.Logging;
 
-internal sealed class DiagnosticLogExporter(
+internal sealed partial class DiagnosticLogExporter(
     ApplicationLogOptions options,
     ISensitiveDataRedactor redactor,
     ApplicationLogRetentionManager retention,
     TimeProvider timeProvider)
 {
+    private const string TransferCoordinatorCategory =
+        "DownKyi.Services.Download.DownloadTransferCoordinator";
+
     public async Task<string> ExportAsync(
         Func<ApplicationLogMetrics> getMetrics,
         CancellationToken cancellationToken)
@@ -77,7 +81,7 @@ internal sealed class DiagnosticLogExporter(
                     ? record.Category
                     : "external",
                 record.EventId.Id,
-                redactor.Redact(record.Message),
+                redactor.Redact(ProjectFeedbackMessage(record)),
                 record.SafeExceptionDiagnostic)).ToArray();
             var manifest = new FeedbackDiagnosticManifest(
                 SchemaVersion: 2,
@@ -114,6 +118,31 @@ internal sealed class DiagnosticLogExporter(
             retention.ReleaseDiagnosticDirectory(diagnosticDirectory, delete: !completed);
         }
     }
+
+    private static string ProjectFeedbackMessage(ApplicationLogRecord record)
+    {
+        if (!string.Equals(
+                record.Category,
+                TransferCoordinatorCategory,
+                StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        return TransferAttemptDiagnosticRegex().IsMatch(record.Message)
+            ? record.Message
+            : string.Empty;
+    }
+
+    [GeneratedRegex(
+        "\\ADownload transfer attempt failed; backend=built-in; " +
+        "attempt=[1-9][0-9]*/[1-9][0-9]*; " +
+        "failure=(?:TransientNetwork|RateLimited|ExpiredAddress|ResumeRejected|InvalidMedia|CandidateRejected|Disk|Tls|Permanent); " +
+        "error=download\\.transfer\\.[a-z0-9.-]+; " +
+        "next=(?:Stop|RetrySameAddress|TryNextAddress|RefreshAddresses); " +
+        "delaySeconds=(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,3})?\\.\\z",
+        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
+    private static partial Regex TransferAttemptDiagnosticRegex();
 
     private static async Task WriteFeedbackManifestAsync(
         ZipArchive archive,
