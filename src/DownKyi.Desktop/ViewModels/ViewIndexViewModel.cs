@@ -11,6 +11,7 @@ using DownKyi.Core.Settings;
 using DownKyi.Images;
 using DownKyi.Services;
 using DownKyi.Services.Account;
+using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels;
@@ -215,7 +216,7 @@ internal class ViewIndexViewModel : ViewModelBase, IIndexSurfaceViewModel
     /// <summary>
     /// 进入B站链接的处理逻辑，
     /// 只负责处理输入，并跳转到视频详情页。<para/>
-    /// 不是支持的格式，则进入搜索页面。
+    /// 不是支持的格式，则保留输入并向使用者说明。
     /// </summary>
     private void EnterBili()
     {
@@ -226,7 +227,11 @@ internal class ViewIndexViewModel : ViewModelBase, IIndexSurfaceViewModel
 
         _logger.LogDebugMessage("Processing search input.");
         InputText = Regex.Replace(InputText, @"[【]*[^【]*[^】]*[】 ]", "");
-        _searchService.BiliInput(InputText, AppRoute.Index);
+        if (!_searchService.BiliInput(InputText, AppRoute.Index))
+        {
+            Notifications.Show(DictionaryResource.GetString("TipUnsupportedSearchInput"));
+            return;
+        }
 
         InputText = string.Empty;
     }

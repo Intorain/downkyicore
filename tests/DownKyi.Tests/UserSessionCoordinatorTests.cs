@@ -56,6 +56,33 @@ public sealed class UserSessionCoordinatorTests
     }
 
     [Fact]
+    public void UnsupportedIndexSearchPreservesInputAndExplainsWhyNothingHappened()
+    {
+        using var settings = new TestSettingsStore();
+        var coordinator = new RecordingUserSessionCoordinator();
+        var navigation = new StubNavigationService();
+        var interactions = new TestDesktopInteractionContext(navigation);
+        var searchService = new SearchService(settings.Store, navigation);
+        string? notification = null;
+        interactions.Notifications.NotificationRaised += (_, e) => notification = e.Message;
+        using var viewModel = new ViewIndexViewModel(
+            interactions,
+            coordinator,
+            settings.Store,
+            searchService,
+            NullLogger<ViewIndexViewModel>.Instance)
+        {
+            InputText = "not-a-bilibili-id"
+        };
+
+        viewModel.InputCommand.Execute(null);
+
+        Assert.Empty(navigation.Requests);
+        Assert.Equal("not-a-bilibili-id", viewModel.InputText);
+        Assert.NotNull(notification);
+    }
+
+    [Fact]
     public async Task RefreshPreservesCancellationBeforeNetworkWork()
     {
         using var settings = new TestSettingsStore();
