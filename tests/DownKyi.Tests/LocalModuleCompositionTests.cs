@@ -76,6 +76,10 @@ public sealed class LocalModuleCompositionTests
             Assert.Same(taskService, host.Services.GetRequiredService<IDownloadTaskSchedulerService>());
             Assert.Same(taskService, host.Services.GetRequiredService<IDownloadTaskStateService>());
             Assert.Same(taskService, host.Services.GetRequiredService<IDownloadOutputReservationService>());
+            Assert.Same(
+                host.Services.GetRequiredService<SqliteDownloadTaskStore>(),
+                host.Services.GetRequiredService<IDownloadStoreRecovery>());
+            Assert.NotNull(host.Services.GetRequiredService<DownloadStoreRecoveryPresenter>());
 
             var batchOwner = host.Services.GetRequiredService<ContentDownloadBatchOwner>();
             Assert.Same(batchOwner, host.Services.GetRequiredService<IContentDownloadCoordinator>());

@@ -1,5 +1,6 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
+using DownKyi.Infrastructure.Downloads;
 using DownKyi.Services.Startup;
 using DownKyi.ViewModels.Dialogs;
 using Microsoft.Data.Sqlite;
@@ -39,6 +40,46 @@ public sealed class StartupDiagnosticsDialogViewModelTests
             item => Assert.Equal(
                 StartupDiagnosticKind.LegacyMigrationFailed,
                 item.Diagnostic.Kind));
+    }
+
+    [Fact]
+    public async Task ResetActionIsAvailableOnlyForDownloadProjectionFailure()
+    {
+        var viewModel = new StartupDiagnosticsDialogViewModel(
+            new RedactingLogService(),
+            new RecordingClipboardService(),
+            new RecordingPlatformLauncher(),
+            new RecordingNotificationService(),
+            NullLogger<StartupDiagnosticsDialogViewModel>.Instance);
+        var projectionFailure = new InvalidOperationException(
+            "bootstrap wrapper",
+            new DownloadStoreProjectionException("projection failed"));
+        viewModel.OnDialogOpened(CreateRequest(
+            StartupDiagnostic.ForDownloadBootstrap(projectionFailure)));
+
+        var projectionItem = Assert.Single(viewModel.Items);
+        Assert.True(projectionItem.CanResetDownloadStore);
+        Assert.Equal(
+            StartupDiagnosticKind.DownloadStoreProjectionFailed,
+            projectionItem.Diagnostic.Kind);
+        var closeCompletion = new TaskCompletionSource<AppDialogResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.CloseRequested += (_, closeResult) =>
+            closeCompletion.TrySetResult(closeResult);
+        projectionItem.ResetDownloadStoreCommand.Execute(null);
+
+        var result = await closeCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(AppDialogOutcome.Accepted, result.Outcome);
+        Assert.Same(
+            projectionFailure,
+            Assert.IsType<StartupDiagnostic>(
+                result.Parameters[StartupDiagnosticsDialogViewModel.RecoveryDiagnosticParameter])
+                .Failure);
+
+        viewModel.OnDialogOpened(CreateRequest(
+            StartupDiagnostic.ForDownloadBootstrap(
+                new SqliteException("database is locked", 5))));
+        Assert.False(Assert.Single(viewModel.Items).CanResetDownloadStore);
     }
 
     [Fact]

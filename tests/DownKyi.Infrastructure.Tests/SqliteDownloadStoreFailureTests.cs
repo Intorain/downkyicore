@@ -86,7 +86,7 @@ public sealed class SqliteDownloadStoreFailureTests : IDisposable
         await _fixture.CreateIncompatibleLegacyDatabaseAsync();
         using var store = _fixture.CreateStore();
 
-        await Assert.ThrowsAsync<SqliteException>(() =>
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
             store.InitializeAsync(TestContext.Current.CancellationToken));
 
         using var connection = await _fixture.OpenReadOnlyConnectionAsync().ConfigureAwait(true);
@@ -96,6 +96,47 @@ public sealed class SqliteDownloadStoreFailureTests : IDisposable
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
             "download.db.schema-*.bak"));
+    }
+
+    [Fact]
+    public async Task ProjectionFailureCanBackupAndResetToAnEmptyStore()
+    {
+        await _fixture.CreateIncompatibleLegacyDatabaseAsync();
+        using var store = _fixture.CreateStore();
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
+            store.InitializeAsync(TestContext.Current.CancellationToken));
+
+        await store.BackupAndResetAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+        Assert.Empty((await store.GetHistoryPageAsync(
+            null,
+            10,
+            TestContext.Current.CancellationToken)).Items);
+        Assert.Single(Directory.GetFiles(
+            Path.Combine(_fixture.TempDirectory, "Backup"),
+            "download.db.schema-*.bak"));
+    }
+
+    [Fact]
+    public async Task MissingRequiredSourceColumnIsRejectedBeforeProjectionCommit()
+    {
+        using (var current = _fixture.CreateStore())
+        {
+            await current.InitializeAsync(TestContext.Current.CancellationToken);
+        }
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "ALTER TABLE download_base DROP COLUMN bvid";
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var reopened = _fixture.CreateStore();
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
+            reopened.InitializeAsync(TestContext.Current.CancellationToken));
+
+        Assert.DoesNotContain("bvid", await _fixture.ReadTableColumnsAsync("download_base"));
     }
 
     [Fact]

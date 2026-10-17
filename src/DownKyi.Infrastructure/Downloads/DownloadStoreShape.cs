@@ -9,4 +9,7 @@ internal sealed record DownloadStoreShape(
 
     public bool HasColumn(string table, string column) =>
         Tables.TryGetValue(table, out var columns) && columns.Contains(column);
+
+    public bool HasColumns(string table, IEnumerable<string> columns) =>
+        Tables.TryGetValue(table, out var existing) && columns.All(existing.Contains);
 }

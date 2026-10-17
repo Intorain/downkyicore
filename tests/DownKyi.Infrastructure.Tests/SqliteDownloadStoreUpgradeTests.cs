@@ -517,6 +517,33 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task ProjectionReplacesANonEmptyInvalidStagingToken()
+    {
+        var expected = _fixture.CreatePausedTask("v7-invalid-staging-token");
+        _fixture.CopyHistoricalDatabase(7);
+        await _fixture.InsertHistoricalTaskAsync(expected, 7);
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE download_base
+                SET staging_token = 'not-a-guid'
+                WHERE id = @id
+                """;
+            command.Parameters.AddWithValue("@id", expected.Id.Value);
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var reopened = _fixture.CreateStore();
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        var restored = Assert.Single(
+            await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+
+        Assert.True(Guid.TryParseExact(restored.Output.StagingToken, "N", out _));
+        Assert.NotEqual("not-a-guid", restored.Output.StagingToken);
+    }
+
+    [Fact]
     public async Task VersionFourRowMigratesWithNoInventedNfoIntent()
     {
         await _fixture.CreateVersionFourDatabaseAsync();

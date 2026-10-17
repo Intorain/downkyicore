@@ -382,10 +382,17 @@
     <system:String x:Key="StartupDownloadMissingDescription">缺少必要的程序文件，或安装内容不完整。</system:String>
     <system:String x:Key="StartupDownloadFailureDescription">下载系统初始化时发生错误。</system:String>
     <system:String x:Key="StartupDownloadFailureImpact">下载功能无法使用，其他功能仍可继续使用。</system:String>
+    <system:String x:Key="StartupDownloadStoreFailureTitle">下载资料库无法读取</system:String>
+    <system:String x:Key="StartupDownloadStoreFailureDescription">现有下载资料库无法投影为当前结构。可以先保留完整备份，再建立空白资料库。</system:String>
+    <system:String x:Key="StartupDownloadStoreFailureImpact">在重建前下载功能无法使用；重建后旧记录不会显示，但原资料库仍保存在备份中。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureTitle">旧版数据迁移失败</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureDescription">无法完成部分旧版下载记录的数据转换。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureImpact">部分历史下载数据可能无法正常显示。</system:String>
     <system:String x:Key="ViewFullErrorDetails">查看完整错误详情</system:String>
+    <system:String x:Key="ResetDownloadStore">备份并建立空白资料库…</system:String>
+    <system:String x:Key="DownloadStoreResetConfirmation">将完整备份现有下载资料库，再建立空白资料库并重新启动应用。新资料库不会包含原下载队列、历史或续传状态；已经下载的媒体文件、登录信息和程序设置不会被删除。是否继续？</system:String>
+    <system:String x:Key="DownloadStoreResetFailed">无法完成下载资料库的备份与重建。已有资料不会被自动删除，请复制错误信息并在 GitHub 建立议题。</system:String>
+    <system:String x:Key="DownloadStoreResetRestartFailed">下载资料库已经备份并重建，但无法自动重新启动。请手动关闭并重新打开 DownKyi。</system:String>
     <system:String x:Key="CopyAllDiagnostics">复制全部诊断</system:String>
     <system:String x:Key="ErrorDetailsCopied">错误信息已复制</system:String>
     <system:String x:Key="CreateGitHubIssue">在 GitHub 建立议题</system:String>

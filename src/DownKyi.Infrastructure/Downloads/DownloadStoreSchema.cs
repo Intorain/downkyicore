@@ -1,3 +1,4 @@
+using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using Microsoft.Data.Sqlite;
 
@@ -10,6 +11,7 @@ internal static class DownloadStoreSchema
         string databasePath,
         bool databaseExisted,
         IClock clock,
+        IPhysicalOutputPathResolver physicalOutputPathResolver,
         CancellationToken cancellationToken)
     {
         var shape = await DownloadStoreShapeReader
@@ -20,6 +22,11 @@ internal static class DownloadStoreSchema
             await DownloadStoreBackup
                 .CreateAsync(connection, databasePath, clock, cancellationToken)
                 .ConfigureAwait(false);
+        }
+        if (!shape.IsNew && !HasRequiredProjectionInputs(shape))
+        {
+            throw new DownloadStoreProjectionException(
+                "The download database is missing columns required to preserve its records.");
         }
 
         using var transaction = (SqliteTransaction)await connection
@@ -38,10 +45,17 @@ internal static class DownloadStoreSchema
                     connection,
                     transaction,
                     shape,
+                    physicalOutputPathResolver,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private static bool HasRequiredProjectionInputs(DownloadStoreShape shape) =>
+        DownloadStoreTargetSchema.RequiredInputColumns.All(table =>
+            table.Key is not ("downloaded" or "download_history")
+                ? shape.HasColumns(table.Key, table.Value)
+                : !shape.HasTable(table.Key) || shape.HasColumns(table.Key, table.Value));
 }

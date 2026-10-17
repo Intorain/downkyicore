@@ -22,6 +22,8 @@ internal static class DownloadComposition
             provider.GetRequiredService<SqliteDownloadTaskStore>());
         services.AddSingleton<IDownloadCompletionStore>(provider =>
             provider.GetRequiredService<SqliteDownloadTaskStore>());
+        services.AddSingleton<IDownloadStoreRecovery>(provider =>
+            provider.GetRequiredService<SqliteDownloadTaskStore>());
         services.AddSingleton<IDownloadHistoryService, DownloadHistoryService>();
         services.AddSingleton<DownloadTaskApplicationService>();
         services.AddSingleton<IDownloadTaskApplicationService>(provider =>
@@ -48,6 +50,7 @@ internal static class DownloadComposition
         services.AddSingleton<IDownloadRuntimeAvailability>(provider =>
             provider.GetRequiredService<DownloadTaskQueueGateway>());
         services.AddSingleton<DownloadCommittedTaskDispatcher>();
+        services.AddSingleton<DownloadStoreRecoveryPresenter>();
         services.AddSingleton<DownloadTaskAdmissionService>();
         services.AddSingleton<DownloadListState>();
         services.AddSingleton<IDownloadedListProjection>(provider =>

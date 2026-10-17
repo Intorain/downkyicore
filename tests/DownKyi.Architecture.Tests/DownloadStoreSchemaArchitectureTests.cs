@@ -23,7 +23,8 @@ public sealed class DownloadStoreSchemaArchitectureTests
         Assert.DoesNotContain("Legacy", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CurrentVersion", source, StringComparison.Ordinal);
         Assert.DoesNotContain("user_version", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
+        Assert.Contains("HasRequiredProjectionInputs", source, StringComparison.Ordinal);
+        Assert.Contains("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public sealed class DownloadStoreSchemaArchitectureTests
     }
 
     [Fact]
-    public void CurrentWriterProjectsMissingColumnsWithoutInterpretingLegacyRows()
+    public void CurrentWriterProjectsMissingColumnsAndDerivedReservationKeys()
     {
         var source = ReadDownloadSource("CurrentDownloadStoreWriter.cs");
 
@@ -65,9 +66,9 @@ public sealed class DownloadStoreSchemaArchitectureTests
         Assert.DoesNotContain("UserVersion", source, StringComparison.Ordinal);
         Assert.DoesNotContain("user_version", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadStoreSchemaV", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
+        Assert.Contains("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
         Assert.DoesNotContain("MapLegacyStatus", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("DownloadOutputPathKey", source, StringComparison.Ordinal);
+        Assert.Contains("DownloadOutputPathKey", source, StringComparison.Ordinal);
         Assert.DoesNotContain("SET source_table = 'downloading'", source, StringComparison.Ordinal);
     }
 
