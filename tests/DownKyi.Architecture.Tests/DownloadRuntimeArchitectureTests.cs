@@ -456,7 +456,6 @@ public sealed class DownloadRuntimeArchitectureTests
             "DownloadArtifactsStage.cs",
             "DownloadArtifactWriter.cs",
             "MuxStage.cs",
-            "DownloadExpectedDurationResolver.cs",
             "ValidateStage.cs",
             "FinalizeStage.cs"
         ];
@@ -658,11 +657,6 @@ public sealed class DownloadRuntimeArchitectureTests
                 muxSource,
                 "overwriteDestination: false",
                 System.Text.RegularExpressions.RegexOptions.CultureInvariant));
-        Assert.Contains("InvalidInputPaths", muxSource, StringComparison.Ordinal);
-        Assert.Contains(
-            "_artifactInvalidator.InvalidateAsync",
-            muxSource,
-            StringComparison.Ordinal);
         Assert.Contains(
             "_artifactInvalidator.InvalidateAsync",
             mediaSource,
@@ -674,10 +668,6 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.DoesNotContain(
             "InvalidateCompletedFileAsync",
             mediaSource,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "FfmpegOperationFailureKind.InvalidInput",
-            muxSource,
             StringComparison.Ordinal);
         Assert.Contains(
             "DownloadTransferFileCleanup.DeleteInvalidArtifacts",

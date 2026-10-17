@@ -28,11 +28,11 @@ internal static class DownloadFileIntegrity
         var actualBytes = new FileInfo(path).Length;
         var requiredBytes = expectedBytes > 0 ? expectedBytes : totalBytesToReceive;
         if (actualBytes <= 0 ||
-            requiredBytes > 0 && actualBytes < requiredBytes ||
-            requiredBytes > 0 && receivedBytes > 0 && receivedBytes < requiredBytes)
+            requiredBytes > 0 && actualBytes != requiredBytes ||
+            requiredBytes > 0 && receivedBytes > 0 && receivedBytes != requiredBytes)
         {
             return DownloadFileIntegrityResult.Invalid(
-                $"Downloaded media file is incomplete. expectedBytes={requiredBytes}; receivedBytes={receivedBytes}; actualBytes={actualBytes}");
+                $"Downloaded media file length does not match the server. expectedBytes={requiredBytes}; receivedBytes={receivedBytes}; actualBytes={actualBytes}");
         }
 
         if (LooksLikeErrorPayload(path))

@@ -383,7 +383,7 @@ public sealed class DownloadArtifactStageTests
             var published = Path.Combine(directory, "output.xml");
             context.PublishedArtifacts["danmaku"] = published;
             await File.WriteAllBytesAsync(published, [1], TestContext.Current.CancellationToken);
-            var stage = new ValidateStage(new StubFfmpegMediaStreamValidator());
+            var stage = new ValidateStage();
 
             var beforeRemoval = await stage.ExecuteAsync(context, TestContext.Current.CancellationToken);
             Assert.True(beforeRemoval.IsSuccess);
@@ -730,7 +730,7 @@ public sealed class DownloadArtifactStageTests
             .ConfigureAwait(true);
 
         var run = await DownloadPipeline.ExecuteStagesAsync(
-            [context.Stage, new ValidateStage(new StubFfmpegMediaStreamValidator())],
+            [context.Stage, new ValidateStage()],
             context.Execution,
             TestContext.Current.CancellationToken).ConfigureAwait(true);
 

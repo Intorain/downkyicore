@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DownKyi.Core.FFmpeg;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 
@@ -12,17 +11,9 @@ namespace DownKyi.Services.Download;
 
 internal sealed class ValidateStage : IDownloadPipelineStage
 {
-    private readonly IFfmpegMediaStreamValidator _mediaStreamValidator;
-
-    public ValidateStage(IFfmpegMediaStreamValidator mediaStreamValidator)
-    {
-        _mediaStreamValidator = mediaStreamValidator
-            ?? throw new ArgumentNullException(nameof(mediaStreamValidator));
-    }
-
     public string Name => nameof(ValidateStage);
 
-    public async Task<OperationResult<DownloadStageResult>> ExecuteAsync(
+    public Task<OperationResult<DownloadStageResult>> ExecuteAsync(
         DownloadExecutionContext context,
         CancellationToken cancellationToken)
     {
@@ -40,26 +31,11 @@ internal sealed class ValidateStage : IDownloadPipelineStage
                     ? !context.HasUsablePublishedMedia()
                     : !File.Exists(mediaFile)))
             {
-                return DownloadStageResult.Failure(
+                return Task.FromResult(DownloadStageResult.Failure(
                     "download.validate.media",
                     "The finalized media file is missing or invalid.",
-                    OperationErrorKind.Validation);
+                    OperationErrorKind.Validation));
             }
-
-            if ((context.NeedsAudio || context.NeedsVideo) &&
-                !await _mediaStreamValidator.ValidateRequiredStreamsAsync(
-                    mediaFile!,
-                    context.NeedsAudio,
-                    context.NeedsVideo,
-                    DownloadExpectedDurationResolver.Resolve(context),
-                    cancellationToken).ConfigureAwait(true))
-            {
-                return DownloadStageResult.Failure(
-                    "download.validate.media",
-                    "The finalized media file has a missing or undecodable required audio or video stream.",
-                    OperationErrorKind.Validation);
-            }
-
         }
 
         if (context.NeedsDanmaku &&
@@ -68,48 +44,49 @@ internal sealed class ValidateStage : IDownloadPipelineStage
                     context.Input.DanmakuSettings.OutputFormat)
                 .Any(output => !HasUsableDanmakuOutput(context, output)))
         {
-            return DownloadStageResult.Failure(
+            return Task.FromResult(DownloadStageResult.Failure(
                 "download.validate.danmaku",
                 "The requested danmaku file was not created or is invalid.",
-                OperationErrorKind.Validation);
+                OperationErrorKind.Validation));
         }
 
         if (context.NeedsSubtitle && !HasCompleteSubtitleOutput(context))
         {
-            return DownloadStageResult.Failure(
+            return Task.FromResult(DownloadStageResult.Failure(
                 "download.validate.subtitle",
                 "One or more requested subtitle files were not created.",
-                OperationErrorKind.Validation);
+                OperationErrorKind.Validation));
         }
 
         if (context.PublishedArtifacts.Values.Any(path =>
                 !DownloadFileIntegrity.Check(path).IsUsable))
         {
-            return DownloadStageResult.Failure(
+            return Task.FromResult(DownloadStageResult.Failure(
                 "download.validate.published-missing",
                 "A recorded published artifact is missing or invalid.",
-                OperationErrorKind.Validation);
+                OperationErrorKind.Validation));
         }
 
         if (context.UnpublishedArtifacts.Values.Any(path =>
                 !DownloadFileIntegrity.Check(path).IsUsable))
         {
-            return DownloadStageResult.Failure(
+            return Task.FromResult(DownloadStageResult.Failure(
                 "download.validate.unpublished-invalid",
                 "An unpublished download artifact is missing or invalid.",
-                OperationErrorKind.Validation);
+                OperationErrorKind.Validation));
         }
 
         if (!context.ActionResults.HasSucceeded)
         {
-            return DownloadStageResult.Failure(
+            return Task.FromResult(DownloadStageResult.Failure(
                 "download.validate.no-resource",
                 "None of the requested download actions produced an output.",
-                OperationErrorKind.NotFound);
+                OperationErrorKind.NotFound));
         }
 
         context.MarkArtifactsValidated();
-        return DownloadStageResult.Success(Name);
+        return Task.FromResult<OperationResult<DownloadStageResult>>(
+            DownloadStageResult.Success(Name));
     }
 
     private static bool HasUsableDanmakuOutput(
