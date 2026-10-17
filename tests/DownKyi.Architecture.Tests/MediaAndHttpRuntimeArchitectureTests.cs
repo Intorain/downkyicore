@@ -81,24 +81,12 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
         Assert.DoesNotContain("LoadActiveCandidatesAsync", sessionSource, StringComparison.Ordinal);
 
         Assert.DoesNotContain("DownloadListState", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains("IDownloadedListProjection", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskProjectionStore", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("GetDownloadingByCidAsync", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("GetDownloadedByCidAsync", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains(
-            "var active = await LoadActiveCandidatesAsync(cid",
-            duplicateSource,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "var candidates = await LoadCompletedCandidatesAsync(cid",
-            duplicateSource,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("MergeLiveActiveCandidates", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("MergeLiveCompletedCandidates", duplicateSource, StringComparison.Ordinal);
-        Assert.True(
-            duplicateSource.IndexOf(".RemoveDownloadedAsync(item", StringComparison.Ordinal)
-            < duplicateSource.IndexOf("_downloadedListProjection.RemoveDownloaded(item)", StringComparison.Ordinal),
-            "Accepted re-download must remove durable history before updating the UI projection.");
+        Assert.DoesNotContain("NeedDownloadContent", duplicateSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoveDownloadedAsync", duplicateSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IPhysicalOutputPathResolver", duplicateSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IUserNotificationService", duplicateSource, StringComparison.Ordinal);
         Assert.Contains("IAppDialogService", duplicateSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ISettingsStore", duplicateSource, StringComparison.Ordinal);

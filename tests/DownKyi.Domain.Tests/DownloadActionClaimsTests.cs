@@ -53,24 +53,6 @@ public sealed class DownloadActionClaimsTests
     }
 
     [Fact]
-    public void CoveredClaimsSubtractOnlyTheirPhysicalActions()
-    {
-        var covered = DownloadActionClaims.Media
-            .Union(DownloadActionClaims.Subtitle)
-            .Union(DownloadActionClaims.FromDanmaku(DownloadDanmakuOutputFormat.Ass))
-            .Union(DownloadActionClaims.Cover);
-
-        var remaining = covered.SubtractFrom(DownloadContentSelection.All);
-
-        Assert.False(remaining.Audio);
-        Assert.False(remaining.Video);
-        Assert.False(remaining.Subtitle);
-        Assert.False(remaining.Cover);
-        Assert.True(remaining.Danmaku);
-        Assert.Equal(DownloadDanmakuOutputFormat.Xml, remaining.DanmakuOutputFormat);
-    }
-
-    [Fact]
     public void EmptySubtitleSelectionDoesNotOwnAnOutputClaim()
     {
         var selection = new DownloadContentSelection(false, false, false, true, false)

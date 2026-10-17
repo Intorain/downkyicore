@@ -146,7 +146,6 @@ public sealed class DownloadOutputLayoutTests
         Assert.Equal(isMedia, DownloadOutputLayout.IsMediaExtension(extension));
         Assert.Equal(isAudio, DownloadOutputLayout.IsAudioExtension(extension));
         Assert.Equal(isImage, DownloadOutputLayout.IsImageExtension(extension));
-        Assert.Equal(isAudio, DownloadOutputLayout.IsAudioMediaPath(BasePath + extension));
     }
 
     [Theory]
@@ -175,19 +174,4 @@ public sealed class DownloadOutputLayoutTests
         Assert.Equal(expected, conflict);
     }
 
-    [Theory]
-    [InlineData(".mp4", true)]
-    [InlineData("_English.srt", true)]
-    [InlineData("-other.mp4", false)]
-    [InlineData("", false)]
-    public void HistoricalArtifactFamilyPreservesDotAndUnderscorePrefixes(
-        string suffix,
-        bool expected)
-    {
-        Assert.Equal(
-            expected,
-            DownloadOutputLayout.IsHistoricalArtifactPathFamily(
-                BasePath,
-                BasePath + suffix));
-    }
 }

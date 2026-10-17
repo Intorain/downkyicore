@@ -38,11 +38,10 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
             ?? throw new ArgumentNullException(nameof(physicalOutputPathResolver));
     }
 
-    public async Task AdmitAsync(
+    public async Task<bool> AdmitAsync(
         DownloadingItem item,
         bool autoAddNumberSuffix,
-        CancellationToken cancellationToken,
-        bool allowExistingBasePath = false)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(item);
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -50,6 +49,14 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         try
         {
             _runtimeAvailability.EnsureAcceptingTasks();
+            var active = await _projections
+                .GetDownloadingByCidAsync(item.DownloadBase.Cid, cancellationToken)
+                .ConfigureAwait(true);
+            if (active.Count > 0)
+            {
+                return false;
+            }
+
             var physicalBasePath = _physicalOutputPathResolver.ResolvePhysicalBasePath(
                 item.DownloadBase.FilePath);
             var requestedClaims = DownloadActionClaims.From(
@@ -68,7 +75,6 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
                     DownloadOutputPathKey.UsesCaseInsensitiveComparison,
                     token),
                 cancellationToken,
-                allowExistingBasePath,
                 path => DownloadOutputPathResolver.HasExistingOutputClaimConflict(
                     path,
                     requestedClaims)).ConfigureAwait(true);
@@ -80,6 +86,7 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
             _downloadLists.AddDownloading(item);
             var taskId = new DownloadTaskId(item.DownloadBase.Id);
             await _committedTaskDispatcher.EnqueueCommittedAsync(taskId).ConfigureAwait(true);
+            return true;
         }
         finally
         {

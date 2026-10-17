@@ -144,12 +144,6 @@ internal static class DownloadOutputLayout
         || extension.Equals(".gif", StringComparison.OrdinalIgnoreCase)
         || extension.Equals(".avif", StringComparison.OrdinalIgnoreCase);
 
-    public static bool IsAudioMediaPath(string path)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        return IsAudioExtension(Path.GetExtension(path));
-    }
-
     public static bool HasOutputClaimConflict(
         string outputBasePath,
         string existingFile,
@@ -202,16 +196,6 @@ internal static class DownloadOutputLayout
                && IsImageExtension(extension)
                && (PlatformComparer.Equals(stemKey, baseKey)
                    || stemKey.StartsWith(baseKey + ".Cover", PlatformComparison));
-    }
-
-    public static bool IsHistoricalArtifactPathFamily(
-        string outputBasePathKey,
-        string artifactPathKey)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputBasePathKey);
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactPathKey);
-        return artifactPathKey.StartsWith(outputBasePathKey + ".", StringComparison.Ordinal)
-               || artifactPathKey.StartsWith(outputBasePathKey + "_", StringComparison.Ordinal);
     }
 
     private static string CreateComparisonKey(string path) =>

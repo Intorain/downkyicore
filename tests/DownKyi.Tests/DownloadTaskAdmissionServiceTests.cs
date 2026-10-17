@@ -34,8 +34,8 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         var queue = new RecordingDownloadTaskQueue();
         using var admission = CreateAdmission(listState, tasks, projections, queue);
         var basePath = Path.Combine(_directory, "same-output");
-        var first = CreateItem("first", basePath);
-        var second = CreateItem("second", basePath);
+        var first = CreateItem("first", basePath, cid: 1001);
+        var second = CreateItem("second", basePath, cid: 2002);
 
         await Task.WhenAll(
             admission.AdmitAsync(first, true, TestContext.Current.CancellationToken),
@@ -50,6 +50,31 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         Assert.Contains($"{basePath}(1)", persistedPaths);
         Assert.Equal(2, listState.Downloading.Count);
         Assert.Equal(2, queue.Enqueued.Count);
+    }
+
+    [Fact]
+    public async Task ConcurrentAdmissionsForSameCidPersistOnlyOneTask()
+    {
+        Directory.CreateDirectory(_directory);
+        using var store = CreateStore();
+        var clock = new SystemClock();
+        var historyService = DownloadHistoryService.CreateForSharedStore(store);
+        using var tasks = new DownloadTaskApplicationService(store, historyService, clock);
+        using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
+        var listState = new DownloadListState();
+        var queue = new RecordingDownloadTaskQueue();
+        using var admission = CreateAdmission(listState, tasks, projections, queue);
+        var first = CreateItem("first", Path.Combine(_directory, "first"), cid: 1001);
+        var second = CreateItem("second", Path.Combine(_directory, "second"), cid: 1001);
+
+        var admitted = await Task.WhenAll(
+            admission.AdmitAsync(first, true, TestContext.Current.CancellationToken),
+            admission.AdmitAsync(second, true, TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+        Assert.Single(admitted, result => result);
+        Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+        Assert.Single(listState.Downloading);
+        Assert.Single(queue.Enqueued);
     }
 
     [Fact]
@@ -84,8 +109,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath, media.DownloadBase.FilePath);
         Assert.Equal(basePath + "(1)", subtitle.DownloadBase.FilePath);
@@ -123,8 +147,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: false,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true));
+            cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal(basePath, subtitle.DownloadBase.FilePath);
         Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
@@ -134,7 +157,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SameCidOverlappingActionsKeepExistingCollisionBehavior()
+    public async Task SameCidOverlappingActionsAreRejectedBeforeCollisionResolution()
     {
         Directory.CreateDirectory(_directory);
         using var store = CreateStore();
@@ -155,10 +178,13 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         second.DownloadBase.NeedDownloadContent =
             DownloadContentSelection.None with { Video = true };
 
-        await admission.AdmitAsync(first, true, TestContext.Current.CancellationToken);
-        await admission.AdmitAsync(second, true, TestContext.Current.CancellationToken);
+        Assert.True(await admission.AdmitAsync(
+            first, true, TestContext.Current.CancellationToken));
+        Assert.False(await admission.AdmitAsync(
+            second, true, TestContext.Current.CancellationToken));
 
-        Assert.Equal(basePath + "(1)", second.DownloadBase.FilePath);
+        Assert.Equal(basePath, second.DownloadBase.FilePath);
+        Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -337,7 +363,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DisjointResidualActionSharesTheOwnedBasePath()
+    public async Task SameCidDisjointActionIsRejectedBeforeCollisionResolution()
     {
         Directory.CreateDirectory(_directory);
         using var store = CreateStore();
@@ -367,16 +393,15 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             SelectedSubtitleTrackIds = [11]
         };
 
-        await admission.AdmitAsync(
+        var admitted = await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
+        Assert.False(admitted);
         Assert.Equal(basePath, subtitle.DownloadBase.FilePath);
-        Assert.Equal(2, list.Downloading.Count);
-        Assert.Equal(2, (await tasks.GetUnfinishedAsync(
-            TestContext.Current.CancellationToken)).Count);
+        Assert.Single(list.Downloading);
+        Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -408,8 +433,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath + "(1)", subtitle.DownloadBase.FilePath);
     }
@@ -439,8 +463,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             item,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath + "(1)", item.DownloadBase.FilePath);
     }
@@ -880,6 +903,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         }
 
         Assert.Equal(0, store.GetUnfinishedCallCount);
+        Assert.Equal(admissionCount, store.CidProbeCount);
         Assert.Equal(admissionCount - 1, store.ReservationSnapshotCount);
         Assert.Equal(admissionCount, store.ReservationProbeCount);
         Assert.Equal(admissionCount, store.AddCallCount);
@@ -914,6 +938,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         Assert.Equal(0, store.ReservationSnapshotCount);
         Assert.Equal(admissionCount, store.AddCallCount);
         Assert.Equal(0, store.GetUnfinishedCallCount);
+        Assert.Equal(admissionCount, store.CidProbeCount);
     }
 
     [Fact]
@@ -1002,7 +1027,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             resolver ?? new RecordingPhysicalOutputPathResolver(static path => path));
     }
 
-    private static DownloadingItem CreateItem(string id, string basePath, long cid = 0)
+    private static DownloadingItem CreateItem(string id, string basePath, long? cid = null)
     {
         return new DownloadingItem
         {
@@ -1010,7 +1035,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             {
                 Id = id,
                 Bvid = $"BV-{id}",
-                Cid = cid,
+                Cid = cid ?? CreateCid(id),
                 MainTitle = id,
                 Name = id,
                 FilePath = basePath
@@ -1021,6 +1046,17 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
                 DownloadStatus = DownloadStatus.WaitForDownload
             }
         };
+    }
+
+    private static long CreateCid(string id)
+    {
+        var value = 17L;
+        foreach (var character in id)
+        {
+            value = unchecked((value * 31) + character);
+        }
+
+        return value & long.MaxValue;
     }
 
     private sealed class CountingDownloadTaskStore(IDownloadTaskStore inner) :
@@ -1035,6 +1071,8 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         public bool RejectAdds { get; init; }
 
         public int GetUnfinishedCallCount { get; private set; }
+
+        public int CidProbeCount { get; private set; }
 
         public int ReservationProbeCount { get; private set; }
 
@@ -1089,6 +1127,14 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         {
             GetUnfinishedCallCount++;
             return inner.GetUnfinishedAsync(cancellationToken);
+        }
+
+        public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
+            long cid,
+            CancellationToken cancellationToken)
+        {
+            CidProbeCount++;
+            return inner.GetUnfinishedByCidAsync(cid, cancellationToken);
         }
 
         public Task<bool> IsOutputPathReservedAsync(
