@@ -3,14 +3,12 @@ using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Core.FFmpeg;
 
-public sealed record FfmpegConcatSegment(int Order, string FilePath, TimeSpan ExpectedDuration);
+public sealed record FfmpegConcatSegment(int Order, string FilePath);
 
 public enum FfmpegOperationFailureKind
 {
     None,
     NoInput,
-    InvalidInput,
-    InputAccess,
     ProcessUnavailable,
     ProcessFailure,
     Timeout,
@@ -20,39 +18,17 @@ public enum FfmpegOperationFailureKind
     OutputIoFailure
 }
 
-public enum FfmpegInputFailureKind
-{
-    Missing,
-    Empty,
-    DecodeCorruption,
-    Inaccessible,
-    UnsupportedFileType,
-    DiagnosticUnavailable,
-    DiagnosticTimeout,
-    DiagnosticFailure
-}
-
-public sealed record FfmpegInputFailure(string Path, FfmpegInputFailureKind Kind)
-{
-    public bool CanInvalidate => Kind is FfmpegInputFailureKind.Missing
-        or FfmpegInputFailureKind.Empty
-        or FfmpegInputFailureKind.DecodeCorruption;
-}
-
 public sealed record FfmpegOperationResult
 {
     public FfmpegOperationResult(
         bool succeeded,
         string? outputPath,
-        string? failureReason,
-        TimeSpan duration)
+        string? failureReason)
         : this(
             succeeded,
             outputPath,
             failureReason,
-            duration,
-            succeeded ? FfmpegOperationFailureKind.None : FfmpegOperationFailureKind.ProcessFailure,
-            [])
+            succeeded ? FfmpegOperationFailureKind.None : FfmpegOperationFailureKind.ProcessFailure)
     {
     }
 
@@ -60,27 +36,8 @@ public sealed record FfmpegOperationResult
         bool succeeded,
         string? outputPath,
         string? failureReason,
-        TimeSpan duration,
-        IReadOnlyList<string> invalidInputPaths)
-        : this(
-            succeeded,
-            outputPath,
-            failureReason,
-            duration,
-            GetCompatibilityFailureKind(succeeded, invalidInputPaths),
-            CreateCompatibilityInputFailures(invalidInputPaths))
+        FfmpegOperationFailureKind failureKind)
     {
-    }
-
-    public FfmpegOperationResult(
-        bool succeeded,
-        string? outputPath,
-        string? failureReason,
-        TimeSpan duration,
-        FfmpegOperationFailureKind failureKind,
-        IReadOnlyList<FfmpegInputFailure> inputFailures)
-    {
-        ArgumentNullException.ThrowIfNull(inputFailures);
         if (succeeded != (failureKind == FfmpegOperationFailureKind.None))
         {
             throw new ArgumentException(
@@ -91,14 +48,7 @@ public sealed record FfmpegOperationResult
         Succeeded = succeeded;
         OutputPath = outputPath;
         FailureReason = failureReason;
-        Duration = duration;
         FailureKind = failureKind;
-        InputFailures = inputFailures.ToArray();
-        InvalidInputPaths = InputFailures
-            .Where(failure => failure.CanInvalidate)
-            .Select(failure => failure.Path)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
     }
 
     public bool Succeeded { get; }
@@ -107,34 +57,7 @@ public sealed record FfmpegOperationResult
 
     public string? FailureReason { get; }
 
-    public TimeSpan Duration { get; }
-
     public FfmpegOperationFailureKind FailureKind { get; }
-
-    public IReadOnlyList<FfmpegInputFailure> InputFailures { get; }
-
-    public IReadOnlyList<string> InvalidInputPaths { get; }
-
-    private static FfmpegOperationFailureKind GetCompatibilityFailureKind(
-        bool succeeded,
-        IReadOnlyList<string> invalidInputPaths)
-    {
-        ArgumentNullException.ThrowIfNull(invalidInputPaths);
-        return invalidInputPaths.Count > 0
-            ? FfmpegOperationFailureKind.InvalidInput
-            : succeeded
-                ? FfmpegOperationFailureKind.None
-                : FfmpegOperationFailureKind.ProcessFailure;
-    }
-
-    private static FfmpegInputFailure[] CreateCompatibilityInputFailures(
-        IReadOnlyList<string> invalidInputPaths)
-    {
-        ArgumentNullException.ThrowIfNull(invalidInputPaths);
-        return invalidInputPaths.Select(path => new FfmpegInputFailure(
-            path,
-            FfmpegInputFailureKind.DecodeCorruption)).ToArray();
-    }
 
     public static FfmpegOperationResult Failure(string reason)
     {
@@ -143,28 +66,13 @@ public sealed record FfmpegOperationResult
 
     public static FfmpegOperationResult Failure(
         string reason,
-        IReadOnlyList<string> invalidInputPaths)
+        FfmpegOperationFailureKind failureKind)
     {
         return new FfmpegOperationResult(
             false,
             null,
             reason,
-            TimeSpan.Zero,
-            invalidInputPaths);
-    }
-
-    public static FfmpegOperationResult Failure(
-        string reason,
-        FfmpegOperationFailureKind failureKind,
-        IReadOnlyList<FfmpegInputFailure>? inputFailures = null)
-    {
-        return new FfmpegOperationResult(
-            false,
-            null,
-            reason,
-            TimeSpan.Zero,
-            failureKind,
-            inputFailures ?? []);
+            failureKind);
     }
 }
 
@@ -172,18 +80,15 @@ internal sealed class FfmpegConcatRuntime
 {
     private static readonly TimeSpan ConcatTimeout = TimeSpan.FromHours(2);
     private readonly AsyncConcurrencyGate _concurrencyGate;
-    private readonly IFfmpegMediaValidator _mediaValidator;
     private readonly IFfmpegProcessRunner _processRunner;
     private readonly ILogger<FfmpegConcatRuntime> _logger;
 
     public FfmpegConcatRuntime(
         IFfmpegProcessRunner processRunner,
-        IFfmpegMediaValidator mediaValidator,
         AsyncConcurrencyGate concurrencyGate,
         ILogger<FfmpegConcatRuntime> logger)
     {
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
-        _mediaValidator = mediaValidator ?? throw new ArgumentNullException(nameof(mediaValidator));
         _concurrencyGate = concurrencyGate ?? throw new ArgumentNullException(nameof(concurrencyGate));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -208,21 +113,6 @@ internal sealed class FfmpegConcatRuntime
         }
 
         var orderedSegments = segments.OrderBy(segment => segment.Order).ToArray();
-        var preflightFailures = FfmpegInputDiagnostic.ProbeInputs(
-            orderedSegments.Select(segment => segment.FilePath));
-        if (preflightFailures.Count > 0)
-        {
-            return FfmpegOperationResult.Failure(
-                preflightFailures.Any(failure => failure.CanInvalidate)
-                    ? "One or more input segments are missing or empty."
-                    : "One or more input segments could not be accessed.",
-                FfmpegInputDiagnostic.ClassifyOperationFailure(
-                    preflightFailures,
-                    FfmpegOperationFailureKind.InputAccess),
-                preflightFailures);
-        }
-
-        var expectedDuration = TimeSpan.FromTicks(orderedSegments.Sum(segment => segment.ExpectedDuration.Ticks));
         var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputFile))
             ?? throw new InvalidOperationException("The output directory is unavailable.");
         var listFile = Path.Combine(outputDirectory, $".downkyi-concat-{Guid.NewGuid():N}.txt");
@@ -235,7 +125,6 @@ internal sealed class FfmpegConcatRuntime
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            var shouldDiagnoseInputs = false;
             var operationFailureKind = FfmpegOperationFailureKind.ProcessFailure;
             using (await _concurrencyGate.EnterAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -265,18 +154,13 @@ internal sealed class FfmpegConcatRuntime
                                 : processResult.TimedOut
                                     ? FfmpegOperationFailureKind.Timeout
                                     : FfmpegOperationFailureKind.ProcessFailure;
-                            shouldDiagnoseInputs |= processResult.ProcessStarted && !processResult.TimedOut;
                             continue;
                         }
 
-                        var validation = await _mediaValidator
-                            .ValidateAsync(temporaryOutput, expectedDuration, cancellationToken)
-                            .ConfigureAwait(false);
-                        if (!validation.IsValid)
+                        if (!File.Exists(temporaryOutput) || new FileInfo(temporaryOutput).Length == 0)
                         {
-                            _logger.LogInformationMessage($"FFmpeg output rejected. reason={validation.FailureReason}");
+                            _logger.LogInformationMessage("FFmpeg did not produce a non-empty output.");
                             operationFailureKind = FfmpegOperationFailureKind.OutputInvalid;
-                            shouldDiagnoseInputs = true;
                             continue;
                         }
 
@@ -285,9 +169,7 @@ internal sealed class FfmpegConcatRuntime
                             true,
                             outputFile,
                             null,
-                            validation.Duration,
-                            FfmpegOperationFailureKind.None,
-                            []);
+                            FfmpegOperationFailureKind.None);
                     }
                     finally
                     {
@@ -296,24 +178,9 @@ internal sealed class FfmpegConcatRuntime
                 }
             }
 
-            var inputFailures = shouldDiagnoseInputs
-                ? await FfmpegInputDiagnostic.FindInputFailuresAsync(
-                        _processRunner,
-                        _concurrencyGate,
-                        orderedSegments.Select(segment => segment.FilePath),
-                        ConcatTimeout,
-                        cancellationToken)
-                    .ConfigureAwait(false)
-                : [];
-            var failureKind = FfmpegInputDiagnostic.ClassifyOperationFailure(
-                inputFailures,
-                operationFailureKind);
             return FfmpegOperationResult.Failure(
-                failureKind == FfmpegOperationFailureKind.InvalidInput
-                    ? "One or more concat segments could not be decoded."
-                    : "All FFmpeg concat strategies failed validation.",
-                failureKind,
-                inputFailures);
+                "All FFmpeg concat strategies failed or produced an empty output.",
+                operationFailureKind);
         }
         catch (IOException e)
         {

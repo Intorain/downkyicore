@@ -50,6 +50,14 @@ public sealed class DownloadFileIntegrityTests : IDisposable
     }
 
     [Fact]
+    public void IsUsableRejectsOversizedExpectedLength()
+    {
+        var file = CreateFile("long.mp4", new byte[] { 0, 1, 2, 3, 4 });
+
+        Assert.False(DownloadFileIntegrity.IsUsable(file, expectedBytes: 4, receivedBytes: 4));
+    }
+
+    [Fact]
     public void IsUsableAcceptsNonEmptyMediaLikeFile()
     {
         var file = CreateFile("video.mp4", new byte[] { 0, 1, 2, 3 });

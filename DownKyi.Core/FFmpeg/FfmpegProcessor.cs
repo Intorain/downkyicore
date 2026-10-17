@@ -32,28 +32,11 @@ public interface IFfmpegMediaMuxer
         CancellationToken cancellationToken = default);
 }
 
-public interface IFfmpegMediaStreamValidator
-{
-    Task<bool> ValidateRequiredStreamsAsync(
-        string mediaFile,
-        bool requireAudio,
-        bool requireVideo,
-        CancellationToken cancellationToken = default);
-
-    Task<bool> ValidateRequiredStreamsAsync(
-        string mediaFile,
-        bool requireAudio,
-        bool requireVideo,
-        TimeSpan expectedVideoDuration,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValidator
+public sealed class FfmpegProcessor : IFfmpegMediaMuxer
 {
     private static readonly TimeSpan OperationTimeout = TimeSpan.FromHours(2);
     private readonly AsyncConcurrencyGate _operationGate;
     private readonly FfmpegConcatRuntime _concatRuntime;
-    private readonly FfmpegMediaValidator _mediaValidator;
     private readonly IFfmpegProcessRunner _processRunner;
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<FfmpegProcessor> _logger;
@@ -78,41 +61,10 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
             loggerFactory.CreateLogger<FfmpegHardwareEncoderDetector>());
         _operationGate = new AsyncConcurrencyGate(
             () => _settingsStore.Current.Video.FfmpegMaxParallelJobs);
-        _mediaValidator = new FfmpegMediaValidator(_processRunner);
         _concatRuntime = new FfmpegConcatRuntime(
             _processRunner,
-            _mediaValidator,
             _operationGate,
             loggerFactory.CreateLogger<FfmpegConcatRuntime>());
-    }
-
-    public Task<bool> ValidateRequiredStreamsAsync(
-        string mediaFile,
-        bool requireAudio,
-        bool requireVideo,
-        CancellationToken cancellationToken = default) =>
-        ValidateRequiredStreamsAsync(
-            mediaFile,
-            requireAudio,
-            requireVideo,
-            TimeSpan.Zero,
-            cancellationToken);
-
-    public async Task<bool> ValidateRequiredStreamsAsync(
-        string mediaFile,
-        bool requireAudio,
-        bool requireVideo,
-        TimeSpan expectedVideoDuration,
-        CancellationToken cancellationToken = default)
-    {
-        using var slot = await _operationGate.EnterAsync(cancellationToken).ConfigureAwait(false);
-        return await _mediaValidator.ValidateRequiredStreamsAsync(
-                mediaFile,
-                requireAudio,
-                requireVideo,
-                expectedVideoDuration,
-                cancellationToken)
-            .ConfigureAwait(false);
     }
 
     public async Task<FfmpegOperationResult> ConcatDurlVideosAsync(
@@ -151,10 +103,6 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(videoSettings);
-        var requestedInputs = new[] { audio, video }
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Cast<string>()
-            .ToArray();
         var audioPath = !string.IsNullOrWhiteSpace(audio) ? audio : null;
         var videoPath = !string.IsNullOrWhiteSpace(video) ? video : null;
         if (audioPath == null && videoPath == null)
@@ -162,19 +110,6 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
             return FfmpegOperationResult.Failure(
                 "No media inputs were provided.",
                 FfmpegOperationFailureKind.NoInput);
-        }
-
-        var preflightFailures = FfmpegInputDiagnostic.ProbeInputs(requestedInputs);
-        if (preflightFailures.Count > 0)
-        {
-            return FfmpegOperationResult.Failure(
-                preflightFailures.Any(failure => failure.CanInvalidate)
-                    ? "One or more media inputs are missing or empty."
-                    : "One or more media inputs could not be accessed.",
-                FfmpegInputDiagnostic.ClassifyOperationFailure(
-                    preflightFailures,
-                    FfmpegOperationFailureKind.InputAccess),
-                preflightFailures);
         }
 
         var outputResult = await RunToFileAsync(
@@ -194,34 +129,12 @@ public sealed class FfmpegProcessor : IFfmpegMediaMuxer, IFfmpegMediaStreamValid
                 true,
                 destination,
                 null,
-                TimeSpan.Zero,
-                FfmpegOperationFailureKind.None,
-                []);
+                FfmpegOperationFailureKind.None);
         }
 
-        if (outputResult.FailureKind != FfmpegOperationFailureKind.ProcessFailure)
-        {
-            return FfmpegOperationResult.Failure(
-                "FFmpeg output could not be finalized.",
-                outputResult.FailureKind);
-        }
-
-        var inputFailures = await FfmpegInputDiagnostic.FindInputFailuresAsync(
-                _processRunner,
-                _operationGate,
-                requestedInputs,
-                OperationTimeout,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var failureKind = FfmpegInputDiagnostic.ClassifyOperationFailure(
-            inputFailures,
-            outputResult.FailureKind);
         return FfmpegOperationResult.Failure(
-            failureKind == FfmpegOperationFailureKind.InvalidInput
-                ? "One or more media inputs could not be decoded."
-                : "FFmpeg output could not be finalized.",
-            failureKind,
-            inputFailures);
+            "FFmpeg output could not be finalized.",
+            outputResult.FailureKind);
     }
 
     public Task<bool> DelogoAsync(

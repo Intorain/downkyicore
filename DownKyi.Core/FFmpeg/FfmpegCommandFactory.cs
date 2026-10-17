@@ -2,12 +2,6 @@ using System.Globalization;
 
 namespace DownKyi.Core.FFmpeg;
 
-internal enum FfmpegMediaStreamKind
-{
-    Audio,
-    Video
-}
-
 internal static class FfmpegCommandFactory
 {
     public static FfmpegCommand BuildMerge(
@@ -18,6 +12,7 @@ internal static class FfmpegCommandFactory
         FfmpegEmbeddedAudioMode embeddedAudioMode)
     {
         var arguments = CreateBaseArguments();
+        AddRequiredOutputContract(arguments);
         if (audioFile != null)
         {
             arguments.AddRange(["-i", audioFile]);
@@ -128,8 +123,11 @@ internal static class FfmpegCommandFactory
             "-hide_banner",
             "-nostdin",
             "-y",
-            "-fflags",
-            "+genpts",
+            "-xerror",
+        };
+        AddRequiredOutputContract(arguments);
+        arguments.AddRange([
+            "-fflags", "+genpts",
             "-f",
             "concat",
             "-safe",
@@ -138,7 +136,7 @@ internal static class FfmpegCommandFactory
             listFile,
             "-map",
             "0:v:0"
-        };
+        ]);
         if (embeddedAudioMode == FfmpegEmbeddedAudioMode.Required)
         {
             arguments.AddRange(["-map", "0:a:0"]);
@@ -186,88 +184,13 @@ internal static class FfmpegCommandFactory
         return new FfmpegCommand(FfmpegExecutableLocator.Ffmpeg, arguments, $"concat-{strategy}");
     }
 
-    public static FfmpegCommand BuildProbe(string mediaFile)
-    {
-        return new FfmpegCommand(
-            FfmpegExecutableLocator.Ffprobe,
-            [
-                "-v", "error",
-                "-show_entries", "stream=codec_type:format=duration",
-                "-of", "json",
-                mediaFile
-            ],
-            "probe-media");
-    }
-
-    public static FfmpegCommand BuildSeekDecode(string mediaFile, TimeSpan position)
-    {
-        return new FfmpegCommand(
-            FfmpegExecutableLocator.Ffmpeg,
-            [
-                "-hide_banner",
-                "-nostdin",
-                "-v", "error",
-                "-xerror",
-                "-ss", position.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture),
-                "-i", mediaFile,
-                "-map", "0:v:0",
-                "-frames:v", "1",
-                "-progress", "pipe:1",
-                "-nostats",
-                "-f", "null",
-                "-"
-            ],
-            "seek-decode");
-    }
-
-    public static FfmpegCommand BuildRequiredStreamDecode(
-        string mediaFile,
-        FfmpegMediaStreamKind streamKind)
-    {
-        var (streamSpecifier, frameLimit, operation) = streamKind switch
-        {
-            FfmpegMediaStreamKind.Audio => ("0:a:0", "-frames:a", "decode-required-audio"),
-            FfmpegMediaStreamKind.Video => ("0:v:0", "-frames:v", "decode-required-video"),
-            _ => throw new ArgumentOutOfRangeException(nameof(streamKind), streamKind, "Unsupported media stream kind.")
-        };
-        return new FfmpegCommand(
-            FfmpegExecutableLocator.Ffmpeg,
-            [
-                "-hide_banner",
-                "-nostdin",
-                "-v", "error",
-                "-xerror",
-                "-i", mediaFile,
-                "-map", streamSpecifier,
-                frameLimit, "1",
-                "-progress", "pipe:1",
-                "-nostats",
-                "-f", "null",
-                "-"
-            ],
-            operation);
-    }
-
-    public static FfmpegCommand BuildValidateInput(string mediaFile)
-    {
-        return new FfmpegCommand(
-            FfmpegExecutableLocator.Ffmpeg,
-            [
-                "-hide_banner",
-                "-nostdin",
-                "-v", "error",
-                "-xerror",
-                "-i", mediaFile,
-                "-map", "0:a?",
-                "-map", "0:v?",
-                "-f", "null",
-                "-"
-            ],
-            "validate-input");
-    }
-
     private static List<string> CreateBaseArguments()
     {
         return ["-hide_banner", "-nostdin", "-y"];
+    }
+
+    private static void AddRequiredOutputContract(List<string> arguments)
+    {
+        arguments.AddRange(["-abort_on", "empty_output_stream"]);
     }
 }

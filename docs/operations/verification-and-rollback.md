@@ -182,7 +182,7 @@ pwsh ./script/audit-bilibili-authenticated-api.ps1 `
 - Real Host/XAML：`UiSmokeTests`。
 - Navigation history：typed navigation tests，必須驗證 instance reuse、dispose 與 history shrink。
 - Download/retry：loopback fake HTTP tests，不連正式 Bilibili。
-- Media output：ffprobe seek/decode integration tests。
+- Media output：FFmpeg 真實程序整合測試，驗證程序成功、臨時輸出非空與原子提交；FFmpeg 失敗直接回傳，不再進行第二次解碼。
 - Logs：使用測試指定隔離目錄，檢查 redaction、flush、rotation 與 export。
 - System performance：依 `../performance-baseline.md` 記錄 runtime、OS、architecture、dataset、backend 與 SHA。
 

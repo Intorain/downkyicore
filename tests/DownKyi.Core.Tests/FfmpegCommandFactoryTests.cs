@@ -80,6 +80,41 @@ public sealed class FfmpegCommandFactoryTests
     }
 
     [Fact]
+    public void ConcatTreatsProcessingErrorsAsFatal()
+    {
+        var command = FfmpegCommandFactory.BuildConcat(
+            "segments.txt",
+            "output.mp4",
+            FfmpegConcatStrategy.CpuEncoder,
+            hardwareEncoder: null,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Optional);
+
+        Assert.Contains("-xerror", command.Arguments);
+    }
+
+    [Fact]
+    public void MediaMuxCommandsRejectEmptyOutputStreams()
+    {
+        var merge = FfmpegCommandFactory.BuildMerge(
+            audioFile: "audio.m4s",
+            videoFile: "video.m4s",
+            outputFile: "merged.mp4",
+            transcodeAudioToMp3: false,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required);
+        var concat = FfmpegCommandFactory.BuildConcat(
+            "segments.txt",
+            "concatenated.mp4",
+            FfmpegConcatStrategy.CpuEncoder,
+            hardwareEncoder: null,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required);
+
+        Assert.Contains("-abort_on", merge.Arguments);
+        Assert.Contains("empty_output_stream", merge.Arguments);
+        Assert.Contains("-abort_on", concat.Arguments);
+        Assert.Contains("empty_output_stream", concat.Arguments);
+    }
+
+    [Fact]
     public void ConcatAudioVideoContractRequiresAudioFromDurlInputs()
     {
         var command = FfmpegCommandFactory.BuildConcat(
@@ -94,29 +129,4 @@ public sealed class FfmpegCommandFactoryTests
         Assert.DoesNotContain("-an", command.Arguments);
     }
 
-    [Fact]
-    public void RequiredStreamDecodeReadsOneNonOptionalUnit()
-    {
-        var expectations = new[]
-        {
-            (FfmpegMediaStreamKind.Audio, StreamSpecifier: "0:a:0", FrameLimit: "-frames:a", Operation: "decode-required-audio"),
-            (FfmpegMediaStreamKind.Video, StreamSpecifier: "0:v:0", FrameLimit: "-frames:v", Operation: "decode-required-video")
-        };
-
-        foreach (var expectation in expectations)
-        {
-            var command = FfmpegCommandFactory.BuildRequiredStreamDecode(
-                "output.mp4",
-                expectation.Item1);
-
-            Assert.Equal(expectation.Operation, command.Operation);
-            Assert.Contains("-xerror", command.Arguments);
-            Assert.Contains(expectation.StreamSpecifier, command.Arguments);
-            Assert.DoesNotContain($"{expectation.StreamSpecifier}?", command.Arguments);
-            var frameLimitIndex = command.Arguments.ToList().IndexOf(expectation.FrameLimit);
-            Assert.True(frameLimitIndex >= 0);
-            Assert.Equal("1", command.Arguments[frameLimitIndex + 1]);
-            Assert.Contains("pipe:1", command.Arguments);
-        }
-    }
 }
