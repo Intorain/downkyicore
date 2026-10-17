@@ -69,9 +69,6 @@ public sealed class LocalModuleCompositionTests
                 .Single();
             Assert.Same(bootstrap, hostedBootstrap);
 
-            var downloadStore = host.Services.GetRequiredService<SqliteDownloadTaskStore>();
-            Assert.Same(downloadStore, host.Services.GetRequiredService<IDownloadStoreRecovery>());
-
             var taskService = host.Services.GetRequiredService<DownloadTaskApplicationService>();
             Assert.Same(taskService, host.Services.GetRequiredService<IDownloadTaskApplicationService>());
             Assert.Same(taskService, host.Services.GetRequiredService<IDownloadTaskLookup>());

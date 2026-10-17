@@ -76,12 +76,6 @@
                                         <Button Margin="0,0,8,0"
                                                 Content="{DynamicResource ViewFullErrorDetails}"
                                                 Command="{Binding ToggleDetailsCommand}" />
-                                        <Button IsVisible="{Binding CanResetDownloadStore}"
-                                                Content="{DynamicResource ResetDownloadStore}"
-                                                Command="{Binding ResetDownloadStoreCommand}"
-                                                Background="{DynamicResource BrushWarning}"
-                                                BorderBrush="{DynamicResource BrushWarning}"
-                                                Foreground="White" />
                                     </WrapPanel>
                                     <TextBox IsVisible="{Binding IsExpanded}"
                                              MinHeight="120"

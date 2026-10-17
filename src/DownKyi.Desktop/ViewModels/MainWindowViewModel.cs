@@ -33,7 +33,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly VersionCheckerService _versionChecker;
     private readonly ILegacyUpgradeCoordinator _legacyUpgradeCoordinator;
     private readonly IDownloadRuntimeAvailability _downloadRuntimeAvailability;
-    private readonly DownloadStoreRecoveryPresenter _downloadStoreRecoveryPresenter;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly CancellationToken _lifetimeToken;
@@ -138,7 +137,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
         VersionCheckerService versionChecker,
         ILegacyUpgradeCoordinator legacyUpgradeCoordinator,
         IDownloadRuntimeAvailability downloadRuntimeAvailability,
-        DownloadStoreRecoveryPresenter downloadStoreRecoveryPresenter,
         ILogger<MainWindowViewModel> logger)
     {
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
@@ -152,8 +150,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
             ?? throw new ArgumentNullException(nameof(legacyUpgradeCoordinator));
         _downloadRuntimeAvailability = downloadRuntimeAvailability
             ?? throw new ArgumentNullException(nameof(downloadRuntimeAvailability));
-        _downloadStoreRecoveryPresenter = downloadStoreRecoveryPresenter
-            ?? throw new ArgumentNullException(nameof(downloadStoreRecoveryPresenter));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _lifetimeToken = _lifetimeCancellation.Token;
 
@@ -426,7 +422,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         try
         {
-            var result = await _dialogService.ShowAsync(
+            await _dialogService.ShowAsync(
                 new AppDialogRequest(
                     AppDialog.StartupDiagnostics,
                     new Dictionary<string, object?>
@@ -434,16 +430,6 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
                         [StartupDiagnosticsDialogViewModel.DiagnosticsParameter] = diagnostics
                     }),
                 _lifetimeToken).ConfigureAwait(true);
-            if (result.Outcome == AppDialogOutcome.Accepted
-                && result.Parameters.TryGetValue(
-                    StartupDiagnosticsDialogViewModel.RecoveryDiagnosticParameter,
-                    out var value)
-                && value is StartupDiagnostic recoveryDiagnostic)
-            {
-                await _downloadStoreRecoveryPresenter
-                    .ConfirmResetAndRestartAsync(recoveryDiagnostic.Failure, _lifetimeToken)
-                    .ConfigureAwait(true);
-            }
         }
         catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
         {

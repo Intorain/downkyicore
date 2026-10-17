@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using DownKyi.Services.Download;
 
 namespace DownKyi.Services.Startup;
 
@@ -14,7 +13,6 @@ internal enum StartupDiagnosticKind
 {
     LegacyMigrationFailed,
     DownloadRuntimeMissing,
-    DownloadStoreSchemaMismatch,
     DownloadRuntimeFailed
 }
 
@@ -27,14 +25,10 @@ internal sealed record StartupDiagnostic(
     {
         StartupDiagnosticKind.LegacyMigrationFailed => StartupDiagnosticSource.LegacyMigration,
         StartupDiagnosticKind.DownloadRuntimeMissing
-            or StartupDiagnosticKind.DownloadStoreSchemaMismatch
             or StartupDiagnosticKind.DownloadRuntimeFailed =>
             StartupDiagnosticSource.DownloadBootstrap,
         _ => throw new InvalidOperationException($"Unsupported startup diagnostic kind: {Kind}")
     };
-
-    public bool AllowsDownloadStoreReset =>
-        Kind == StartupDiagnosticKind.DownloadStoreSchemaMismatch;
 
     public static StartupDiagnostic ForLegacyMigration(
         Exception failure,
@@ -50,13 +44,6 @@ internal sealed record StartupDiagnostic(
     public static StartupDiagnostic ForDownloadBootstrap(Exception failure)
     {
         ArgumentNullException.ThrowIfNull(failure);
-        if (DownloadStoreRecoveryPresenter.CanReset(failure))
-        {
-            return new StartupDiagnostic(
-                StartupDiagnosticKind.DownloadStoreSchemaMismatch,
-                failure);
-        }
-
         var missingRuntime = Contains<FileNotFoundException>(failure);
         return new StartupDiagnostic(
             missingRuntime

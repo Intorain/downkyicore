@@ -382,9 +382,6 @@
     <system:String x:Key="StartupDownloadMissingDescription">缺少必要的程序文件，或安装内容不完整。</system:String>
     <system:String x:Key="StartupDownloadFailureDescription">下载系统初始化时发生错误。</system:String>
     <system:String x:Key="StartupDownloadFailureImpact">下载功能无法使用，其他功能仍可继续使用。</system:String>
-    <system:String x:Key="StartupDownloadStoreFailureTitle">下载资料库结构不兼容</system:String>
-    <system:String x:Key="StartupDownloadStoreFailureDescription">下载资料库的结构与当前版本不一致，需要先备份并重建。</system:String>
-    <system:String x:Key="StartupDownloadStoreFailureImpact">下载队列、下载历史和续传状态暂时无法使用；已下载文件、登录信息和程序设置不会被删除。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureTitle">旧版数据迁移失败</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureDescription">无法完成部分旧版下载记录的数据转换。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureImpact">部分历史下载数据可能无法正常显示。</system:String>
@@ -394,10 +391,6 @@
     <system:String x:Key="CreateGitHubIssue">在 GitHub 建立议题</system:String>
     <system:String x:Key="OpenGitHubIssueFailed">无法打开 GitHub，请手动前往项目议题页面。</system:String>
     <system:String x:Key="OpenDiagnosticFolderFailed">无法打开诊断包所在文件夹。</system:String>
-    <system:String x:Key="ResetDownloadStore">重建下载资料库…</system:String>
-    <system:String x:Key="DownloadStoreResetConfirmation">将备份并重建下载资料库，然后重新启动应用。下载队列、下载历史及续传状态会被清除；已经下载的媒体文件、登录信息和程序设置不会被删除。是否继续？</system:String>
-    <system:String x:Key="DownloadStoreResetFailed">无法完成下载资料库的备份与重建。已有备份会保留，请复制错误信息并在 GitHub 建立议题。</system:String>
-    <system:String x:Key="DownloadStoreResetRestartFailed">下载资料库已经备份并重建，但无法自动重新启动。请手动关闭并重新打开 DownKyi。</system:String>
     <system:String x:Key="Allow">确定</system:String>
     <system:String x:Key="ActionUpdate">前往下载</system:String>
     <system:String x:Key="SkipCurrentVersion">跳过此版本</system:String>

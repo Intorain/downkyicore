@@ -11,7 +11,6 @@ public sealed class SqliteDownloadTaskStore :
     IDownloadTaskStore,
     IDownloadHistoryStore,
     IDownloadCompletionStore,
-    IDownloadStoreRecovery,
     IDisposable
 {
     private readonly SqliteDownloadStoreDatabase _database;
@@ -21,39 +20,17 @@ public sealed class SqliteDownloadTaskStore :
     private readonly SqliteDownloadStoreQuarantine _quarantine;
 
     public SqliteDownloadTaskStore(SqliteDownloadTaskStoreOptions options, IClock clock)
-        : this(
-            options,
-            clock,
-            new FileSystemPhysicalOutputPathResolver(),
-            NullLogger<SqliteDownloadTaskStore>.Instance)
+        : this(options, clock, NullLogger<SqliteDownloadTaskStore>.Instance)
     {
     }
 
     public SqliteDownloadTaskStore(
         SqliteDownloadTaskStoreOptions options,
         IClock clock,
-        IPhysicalOutputPathResolver physicalOutputPathResolver)
-        : this(options, clock, physicalOutputPathResolver, NullLogger<SqliteDownloadTaskStore>.Instance)
-    {
-    }
-
-    public SqliteDownloadTaskStore(
-        SqliteDownloadTaskStoreOptions options,
-        IClock clock,
-        ILogger<SqliteDownloadTaskStore> logger)
-        : this(options, clock, new FileSystemPhysicalOutputPathResolver(), logger)
-    {
-    }
-
-    public SqliteDownloadTaskStore(
-        SqliteDownloadTaskStoreOptions options,
-        IClock clock,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
         ILogger<SqliteDownloadTaskStore> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
-        ArgumentNullException.ThrowIfNull(physicalOutputPathResolver);
         ArgumentNullException.ThrowIfNull(logger);
         if (options.BusyTimeout <= TimeSpan.Zero || options.BusyTimeout > TimeSpan.FromMinutes(1))
         {
@@ -63,7 +40,6 @@ public sealed class SqliteDownloadTaskStore :
         _database = new SqliteDownloadStoreDatabase(
             options,
             clock,
-            physicalOutputPathResolver,
             logger,
             typeof(SqliteDownloadTaskStore));
         _quarantine = new SqliteDownloadStoreQuarantine(_database);
@@ -74,9 +50,6 @@ public sealed class SqliteDownloadTaskStore :
 
     public Task InitializeAsync(CancellationToken cancellationToken) =>
         _database.InitializeAsync(cancellationToken);
-
-    public Task BackupAndResetAsync(CancellationToken cancellationToken) =>
-        _database.BackupAndResetAsync(cancellationToken);
 
     public async Task<OperationResult> AddAsync(DownloadTask task, CancellationToken cancellationToken) =>
         await _outputReservations.AddAsync(task, cancellationToken).ConfigureAwait(false);

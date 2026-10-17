@@ -22,7 +22,6 @@ namespace DownKyi.ViewModels.Dialogs;
 internal sealed class StartupDiagnosticsDialogViewModel : BaseDialogViewModel
 {
     internal const string DiagnosticsParameter = "diagnostics";
-    internal const string RecoveryDiagnosticParameter = "recoveryDiagnostic";
     private const string IssueTitle = "DownKyi startup diagnostics report";
     private const string IssueTemplate = "app_diagnostic_report.yml";
     private const string TruncatedDiagnosticSuffix =
@@ -161,8 +160,7 @@ internal sealed class StartupDiagnosticsDialogViewModel : BaseDialogViewModel
             FormatResource(
                 "StartupDiagnosticsImpactFormat",
                 DictionaryResource.GetString(impactResourceKey)),
-            CreateItemDiagnosticText(diagnostic),
-            RequestRecovery);
+            CreateItemDiagnosticText(diagnostic));
     }
 
     private static (string Title, string Description, string Impact)
@@ -178,31 +176,12 @@ internal sealed class StartupDiagnosticsDialogViewModel : BaseDialogViewModel
                 "StartupDownloadFailureTitle",
                 "StartupDownloadMissingDescription",
                 "StartupDownloadFailureImpact"),
-            StartupDiagnosticKind.DownloadStoreSchemaMismatch => (
-                "StartupDownloadStoreFailureTitle",
-                "StartupDownloadStoreFailureDescription",
-                "StartupDownloadStoreFailureImpact"),
             StartupDiagnosticKind.DownloadRuntimeFailed => (
                 "StartupDownloadFailureTitle",
                 "StartupDownloadFailureDescription",
                 "StartupDownloadFailureImpact"),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
-    }
-
-    private void RequestRecovery(StartupDiagnostic diagnostic)
-    {
-        if (!diagnostic.AllowsDownloadStoreReset)
-        {
-            return;
-        }
-
-        CloseDialog(
-            AppDialogOutcome.Accepted,
-            new Dictionary<string, object?>(StringComparer.Ordinal)
-            {
-                [RecoveryDiagnosticParameter] = diagnostic
-            });
     }
 
     private string CreateDiagnosticText(IReadOnlyList<StartupDiagnostic> diagnostics)
@@ -292,16 +271,13 @@ internal sealed class StartupDiagnosticItemViewModel : ObservableObject
         string title,
         string description,
         string impact,
-        string diagnosticText,
-        Action<StartupDiagnostic> requestRecovery)
+        string diagnosticText)
     {
         Diagnostic = diagnostic ?? throw new ArgumentNullException(nameof(diagnostic));
         Title = title ?? throw new ArgumentNullException(nameof(title));
         Description = description ?? throw new ArgumentNullException(nameof(description));
         Impact = impact ?? throw new ArgumentNullException(nameof(impact));
         DiagnosticText = diagnosticText ?? throw new ArgumentNullException(nameof(diagnosticText));
-        ArgumentNullException.ThrowIfNull(requestRecovery);
-        ResetDownloadStoreCommand = new RelayCommand(() => requestRecovery(diagnostic));
         ToggleDetailsCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
     }
 
@@ -320,11 +296,6 @@ internal sealed class StartupDiagnosticItemViewModel : ObservableObject
         get => _isExpanded;
         private set => SetProperty(ref _isExpanded, value);
     }
-
-    public bool CanResetDownloadStore =>
-        Diagnostic.AllowsDownloadStoreReset;
-
-    public RelayCommand ResetDownloadStoreCommand { get; }
 
     public RelayCommand ToggleDetailsCommand { get; }
 }

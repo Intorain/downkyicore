@@ -47,7 +47,6 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
     private static readonly Dictionary<string, string> ExpectedFacadeDelegations = new(StringComparer.Ordinal)
     {
         ["InitializeAsync"] = "_database.InitializeAsync(cancellationToken)",
-        ["BackupAndResetAsync"] = "_database.BackupAndResetAsync(cancellationToken)",
         ["AddAsync"] = "await _outputReservations.AddAsync(task, cancellationToken).ConfigureAwait(false)",
         ["AddHistoryAsync"] =
             "await _commands.AddHistoryAsync(history, cancellationToken).ConfigureAwait(false)",
@@ -102,7 +101,7 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
         Assert.Matches(
             "public sealed class SqliteDownloadTaskStore\\s*:\\s*" +
             "IDownloadTaskStore,\\s*IDownloadHistoryStore,\\s*" +
-            "IDownloadCompletionStore,\\s*IDownloadStoreRecovery,\\s*IDisposable",
+            "IDownloadCompletionStore,\\s*IDisposable",
             source);
         Assert.DoesNotContain("partial class SqliteDownloadTaskStore", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CommandText", source, StringComparison.Ordinal);
@@ -136,8 +135,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
         Assert.Contains("WHERE h.cid = @cid", queries, StringComparison.Ordinal);
         Assert.Contains("ix_download_base_cid", schema, StringComparison.Ordinal);
         Assert.Contains("ix_download_history_cid", schema, StringComparison.Ordinal);
-        Assert.Contains("if (format.IsCurrent)", lifecycle, StringComparison.Ordinal);
-        Assert.Contains(".EnsureIndexesAsync(connection, transaction", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (shape.IsCurrent)", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("EnsureIndexesAsync(connection, transaction", schema, StringComparison.Ordinal);
     }
 
     [Fact]

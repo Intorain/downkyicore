@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
-using DownKyi.Infrastructure.Downloads;
 using Microsoft.Data.Sqlite;
 
 namespace DownKyi.Infrastructure.Logging;
@@ -28,18 +27,6 @@ public static class SafeExceptionDiagnosticFormatter
                     .AppendLine(sqliteException.SqliteErrorCode.ToString(CultureInfo.InvariantCulture));
                 builder.Append("SQLite extended error code: ")
                     .AppendLine(sqliteException.SqliteExtendedErrorCode.ToString(CultureInfo.InvariantCulture));
-            }
-
-            if (current is DownloadStoreSchemaMismatchException mismatch
-                && mismatch.SchemaDifferences.Count > 0)
-            {
-                builder.Append("Error message: ").AppendLine(mismatch.Message);
-                builder.Append("Database user_version: ")
-                    .AppendLine(mismatch.UserVersion.ToString(CultureInfo.InvariantCulture));
-                foreach (var difference in mismatch.SchemaDifferences)
-                {
-                    builder.Append("Schema difference: ").AppendLine(difference);
-                }
             }
 
             var frameCount = 0;

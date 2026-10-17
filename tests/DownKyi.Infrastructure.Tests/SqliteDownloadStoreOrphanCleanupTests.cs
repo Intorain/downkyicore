@@ -92,7 +92,6 @@ public sealed class SqliteDownloadStoreOrphanCleanupTests : IDisposable
         using var reopened = _fixture.CreateStore();
         await reopened.InitializeAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.Equal(0, await _fixture.CountDownloadingRecordAsync("orphaned-download"));
     }
 
@@ -105,7 +104,6 @@ public sealed class SqliteDownloadStoreOrphanCleanupTests : IDisposable
 
         await store.InitializeAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.Equal(1, await _fixture.CountDownloadBaseRecordAsync("legacy-resume"));
         Assert.Equal(1, await _fixture.CountDownloadingRecordAsync("legacy-resume"));
         Assert.Equal(0, await _fixture.CountDownloadingRecordAsync("orphaned-download"));

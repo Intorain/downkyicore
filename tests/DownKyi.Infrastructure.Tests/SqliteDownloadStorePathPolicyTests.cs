@@ -14,7 +14,7 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
     public void Dispose() => _fixture.Dispose();
 
     [Fact]
-    public async Task UninterpretableForeignPathBlocksBeforeChangingExistingTask()
+    public async Task ForeignPathIsPreservedWithoutRekeyingExistingTask()
     {
         var original = Path.Combine(_fixture.TempDirectory, "native-path");
         using (var first = _fixture.CreateStore())
@@ -26,35 +26,37 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
         var originalKey = await _fixture.ReadReservationKeyAsync("foreign-path");
         await _fixture.SetPathAndReservationKeyAsync("foreign-path", foreignPath, originalKey);
         using var reopened = _fixture.CreateStore();
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            reopened.InitializeAsync(TestContext.Current.CancellationToken));
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
         Assert.Equal(foreignPath, (await _fixture.ReadStoredStateAsync("foreign-path")).Path);
         Assert.Equal(originalKey, await _fixture.ReadReservationKeyAsync("foreign-path"));
     }
 
     [Fact]
-    public async Task NewUninterpretablePathIsRejectedBeforeItCanPoisonReopen()
+    public async Task ForeignPathCanBeStoredUpdatedAndReopened()
     {
         var foreignPath = OperatingSystem.IsWindows() ? "/foreign/path" : @"C:\foreign\path";
         using var store = _fixture.CreateStore();
         await store.InitializeAsync(TestContext.Current.CancellationToken);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            store.AddAsync(_fixture.CreateQueuedTask("new-foreign-path", foreignPath),
-                TestContext.Current.CancellationToken));
-
-        Assert.Equal(0, await _fixture.CountDownloadBaseRecordAsync("new-foreign-path"));
+        Assert.True((await store.AddAsync(
+            _fixture.CreateQueuedTask("new-foreign-path", foreignPath),
+            TestContext.Current.CancellationToken)).IsSuccess);
         var existing = _fixture.CreateQueuedTask("update-foreign-path",
             Path.Combine(_fixture.TempDirectory, "safe-existing"));
         Assert.True((await store.AddAsync(existing,
             TestContext.Current.CancellationToken)).IsSuccess);
         var changed = existing.UpdateOutput(new DownloadOutput(foreignPath, null),
             _fixture.Clock.UtcNow.AddSeconds(1)).RequireValue();
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            store.UpdateAsync(changed, existing.Version,
-                TestContext.Current.CancellationToken));
-        Assert.Equal(existing.Output.BasePath,
-            (await _fixture.ReadStoredStateAsync(existing.Id.Value)).Path);
+        Assert.True((await store.UpdateAsync(
+            changed,
+            existing.Version,
+            TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.Equal(foreignPath, (await _fixture.ReadStoredStateAsync(existing.Id.Value)).Path);
+
+        using var reopened = _fixture.CreateStore();
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, (await reopened.GetUnfinishedAsync(
+            TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -63,43 +65,18 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
         const string path = "//server/share/downkyi-output";
         using (var first = _fixture.CreateStore())
         {
-            if (OperatingSystem.IsWindows())
-            {
-                Assert.True((await first.AddAsync(_fixture.CreateQueuedTask("slash-unc", path),
-                    TestContext.Current.CancellationToken)).IsSuccess);
-            }
-            else
-            {
-                await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                    first.AddAsync(_fixture.CreateQueuedTask("slash-unc", path),
-                        TestContext.Current.CancellationToken));
-                Assert.True((await first.AddAsync(_fixture.CreatePausedTask("legacy-slash-unc",
-                    Path.Combine(_fixture.TempDirectory, "safe-unc")),
-                    TestContext.Current.CancellationToken)).IsSuccess);
-            }
+            Assert.True((await first.AddAsync(_fixture.CreateQueuedTask("slash-unc", path),
+                TestContext.Current.CancellationToken)).IsSuccess);
         }
 
-        if (OperatingSystem.IsWindows())
-        {
-            using var reopened = _fixture.CreateStore();
-            await reopened.InitializeAsync(TestContext.Current.CancellationToken);
-            Assert.Equal(DownloadOutputPathKey.Create(path,
-                DownloadOutputPathKey.UsesCaseInsensitiveComparison),
-                await _fixture.ReadReservationKeyAsync("slash-unc"));
-            Assert.True(await reopened.IsOutputPathReservedAsync(path,
-                DownloadOutputPathKey.UsesCaseInsensitiveComparison,
-                TestContext.Current.CancellationToken));
-        }
-        else
-        {
-            var originalKey = await _fixture.ReadReservationKeyAsync("legacy-slash-unc");
-            await _fixture.SetPathAndReservationKeyAsync("legacy-slash-unc", path, originalKey);
-            using var reopened = _fixture.CreateStore();
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                reopened.InitializeAsync(TestContext.Current.CancellationToken));
-            Assert.Equal(originalKey, await _fixture.ReadReservationKeyAsync("legacy-slash-unc"));
-            Assert.Equal(0, await _fixture.CountDownloadBaseRecordAsync("slash-unc"));
-        }
+        using var reopened = _fixture.CreateStore();
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(DownloadOutputPathKey.Create(path,
+            DownloadOutputPathKey.UsesCaseInsensitiveComparison),
+            await _fixture.ReadReservationKeyAsync("slash-unc"));
+        Assert.True(await reopened.IsOutputPathReservedAsync(path,
+            DownloadOutputPathKey.UsesCaseInsensitiveComparison,
+            TestContext.Current.CancellationToken));
     }
 
     [Fact]

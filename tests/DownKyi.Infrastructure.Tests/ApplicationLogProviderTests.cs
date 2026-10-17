@@ -2,7 +2,6 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Infrastructure.Downloads;
 using DownKyi.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 using MicrosoftLogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -61,10 +60,10 @@ public sealed class ApplicationLogProviderTests : IDisposable
     }
 
     [Fact]
-    public void SafeDiagnosticNeverCopiesArbitrarySchemaExceptionMessages()
+    public void SafeDiagnosticNeverCopiesArbitraryExceptionMessages()
     {
         var diagnostic = SafeExceptionDiagnosticFormatter.Format(
-            new DownloadStoreSchemaMismatchException("opaque-private-value-73918"));
+            new InvalidOperationException("opaque-private-value-73918"));
 
         Assert.Contains("Exception type:", diagnostic, StringComparison.Ordinal);
         Assert.DoesNotContain("opaque-private-value-73918", diagnostic,
@@ -213,9 +212,6 @@ public sealed class ApplicationLogProviderTests : IDisposable
             UnrecognizedSensitiveWarning(transferLogger, null);
             RequestFailed(logger, new InvalidOperationException(
                 "opaque-private-value-73918 C:\\Users\\alice\\Videos\\private.mp4"));
-            RequestFailed(logger, new DownloadStoreSchemaMismatchException(
-                9,
-                ["missing column: download_base.staging_token"]));
         }
 
         await firstProvider.FlushAsync(cancellationToken).ConfigureAwait(true);
@@ -237,16 +233,12 @@ public sealed class ApplicationLogProviderTests : IDisposable
                 .ConfigureAwait(true);
             using var manifestJson = JsonDocument.Parse(manifest);
             Assert.Equal(2, manifestJson.RootElement.GetProperty("schemaVersion").GetInt32());
-            Assert.Equal(4, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
+            Assert.Equal(3, manifestJson.RootElement.GetProperty("eventCount").GetInt32());
 
             var errors = await ReadArchiveEntryAsync(archive, "errors.jsonl", cancellationToken)
                 .ConfigureAwait(true);
             Assert.Contains("DownKyi.Tests.Feedback", errors, StringComparison.Ordinal);
             Assert.Contains("Exception type: System.InvalidOperationException", errors,
-                StringComparison.Ordinal);
-            Assert.Contains("Schema difference: missing column: download_base.staging_token",
-                errors, StringComparison.Ordinal);
-            Assert.Contains("Error message: Download database schema 9", errors,
                 StringComparison.Ordinal);
             Assert.Contains(
                 "Download transfer attempt failed; backend=built-in; attempt=1/5; failure=TransientNetwork; error=download.transfer.network; next=RetrySameAddress; delayMilliseconds=500",

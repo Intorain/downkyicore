@@ -1,6 +1,5 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Infrastructure.Downloads;
 using DownKyi.Services.Startup;
 using DownKyi.ViewModels.Dialogs;
 using Microsoft.Data.Sqlite;
@@ -40,46 +39,6 @@ public sealed class StartupDiagnosticsDialogViewModelTests
             item => Assert.Equal(
                 StartupDiagnosticKind.LegacyMigrationFailed,
                 item.Diagnostic.Kind));
-    }
-
-    [Fact]
-    public async Task ResetActionIsAvailableOnlyForDownloadSchemaMismatch()
-    {
-        var viewModel = new StartupDiagnosticsDialogViewModel(
-            new RedactingLogService(),
-            new RecordingClipboardService(),
-            new RecordingPlatformLauncher(),
-            new RecordingNotificationService(),
-            NullLogger<StartupDiagnosticsDialogViewModel>.Instance);
-
-        var schemaFailure = new InvalidOperationException(
-            "bootstrap wrapper",
-            new DownloadStoreSchemaMismatchException("unsupported schema"));
-        viewModel.OnDialogOpened(CreateRequest(
-            StartupDiagnostic.ForDownloadBootstrap(schemaFailure)));
-
-        var schemaItem = Assert.Single(viewModel.Items);
-        Assert.True(schemaItem.CanResetDownloadStore);
-        Assert.Equal(StartupDiagnosticKind.DownloadStoreSchemaMismatch, schemaItem.Diagnostic.Kind);
-
-        var closeCompletion = new TaskCompletionSource<AppDialogResult>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        viewModel.CloseRequested += (_, closeResult) =>
-            closeCompletion.TrySetResult(closeResult);
-        schemaItem.ResetDownloadStoreCommand.Execute(null);
-        var result = await closeCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(AppDialogOutcome.Accepted, result.Outcome);
-        Assert.Same(
-            schemaFailure,
-            Assert.IsType<StartupDiagnostic>(
-                result.Parameters[StartupDiagnosticsDialogViewModel.RecoveryDiagnosticParameter])
-                .Failure);
-
-        viewModel.OnDialogOpened(CreateRequest(
-            StartupDiagnostic.ForDownloadBootstrap(
-                new SqliteException("database is locked", 5))));
-
-        Assert.False(Assert.Single(viewModel.Items).CanResetDownloadStore);
     }
 
     [Fact]

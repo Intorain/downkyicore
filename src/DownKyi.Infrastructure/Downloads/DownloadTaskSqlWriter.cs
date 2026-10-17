@@ -1,3 +1,4 @@
+using DownKyi.Application.Downloads;
 using DownKyi.Domain.Downloads;
 using Microsoft.Data.Sqlite;
 
@@ -128,7 +129,9 @@ internal static class DownloadTaskSqlWriter
             "@output_reservation_key",
             task.Phase is DownloadPhase.Completed or DownloadPhase.Deleted
                 ? DBNull.Value
-                : DownloadStoreReservationKeyCompatibility.CreateCurrentKey(task.Output.BasePath));
+                : DownloadOutputPathKey.Create(
+                    task.Output.BasePath,
+                    DownloadOutputPathKey.UsesCaseInsensitiveComparison));
         command.Parameters.AddWithValue("@file_size", task.Output.FileSizeText ?? (object)DBNull.Value);
         command.Parameters.AddWithValue(
             "@published_artifacts",

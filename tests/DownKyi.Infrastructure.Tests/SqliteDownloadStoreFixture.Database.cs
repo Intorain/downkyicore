@@ -53,14 +53,6 @@ internal sealed partial class SqliteDownloadStoreFixture
         await transaction.CommitAsync(TestContext.Current.CancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task<long> ReadSchemaVersionAsync()
-    {
-        using var connection = await OpenReadOnlyConnectionAsync().ConfigureAwait(false);
-        using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA user_version";
-        return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken).ConfigureAwait(false))!;
-    }
-
     internal async Task InsertPreexistingQuarantineAsync(string id)
     {
         using var connection = await OpenConnectionAsync(readOnly: false).ConfigureAwait(false);
@@ -132,20 +124,6 @@ internal sealed partial class SqliteDownloadStoreFixture
         return (reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDouble(3));
     }
 
-    internal async Task CreateQuarantineFailureTriggerAsync()
-    {
-        using var connection = await OpenConnectionAsync(readOnly: false).ConfigureAwait(false);
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TRIGGER reject_version_four_quarantine
-            BEFORE INSERT ON download_quarantine
-            BEGIN
-                SELECT RAISE(ABORT, 'synthetic version four failure');
-            END;
-            """;
-        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken).ConfigureAwait(false);
-    }
-
     internal async Task<StoredDownloadState> ReadStoredStateAsync(string id)
     {
         using var connection = await OpenReadOnlyConnectionAsync().ConfigureAwait(false);
@@ -206,25 +184,6 @@ internal sealed partial class SqliteDownloadStoreFixture
         }
 
         return columns;
-    }
-
-    internal async Task<long> CountSchemaMigrationAsync(int version)
-    {
-        using var connection = await OpenReadOnlyConnectionAsync().ConfigureAwait(false);
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM download_schema_migrations WHERE version = @version";
-        command.Parameters.AddWithValue("@version", version);
-        return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(false))!;
-    }
-
-    internal async Task<long> CountQuarantineRecordsAsync()
-    {
-        using var connection = await OpenReadOnlyConnectionAsync().ConfigureAwait(false);
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM download_quarantine";
-        return (long)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(false))!;
     }
 
     internal async Task CorruptRequestedAssetsAsync(string id, string sensitiveValue)
