@@ -49,15 +49,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         set => SetProperty(ref _folderIcon, value);
     }
 
-    private bool _isDefaultDownloadDirectory;
-
-    public bool IsDefaultDownloadDirectory
-    {
-        get => _isDefaultDownloadDirectory;
-        set => SetProperty(ref _isDefaultDownloadDirectory, value);
-    }
-
-
     public ObservableCollection<string> DirectoryList { get; private set; }
 
     public ObservableCollection<SubtitleTrackItem> SubtitleTracks { get; } = [];
@@ -204,9 +195,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         }
 
         Directory = directory;
-
-        // 是否使用默认下载目录
-        IsDefaultDownloadDirectory = videoSettings.IsUseSaveVideoRootPath == AllowStatus.Yes;
 
         #endregion
     }
@@ -403,7 +391,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         {
             Video = settings.Video with
             {
-                IsUseSaveVideoRootPath = IsDefaultDownloadDirectory ? AllowStatus.Yes : AllowStatus.No,
                 SaveVideoRootPath = Directory,
                 HistoryVideoRootPaths = DirectoryList.ToImmutableArray()
             }

@@ -1112,14 +1112,14 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         IDownloadTaskApplicationService tasks,
         DownloadingItem item)
     {
-        await projections.AddDownloadingAsync(item, TestContext.Current.CancellationToken);
+        await projections.AddDownloadingAsync(item, TestContext.Current.CancellationToken).ConfigureAwait(true);
         var stateWriter = new DownloadTaskStateWriter(tasks);
         var taskId = new DownloadTaskId(item.DownloadBase.Id);
-        await stateWriter.StartAsync(taskId, TestContext.Current.CancellationToken);
+        await stateWriter.StartAsync(taskId, TestContext.Current.CancellationToken).ConfigureAwait(true);
         await stateWriter.CompleteAsync(
             taskId,
             new DownloadCompletion(1, "completed", null),
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
     }
 
     private static DownloadingItem CreateItem(string id, string basePath, long? cid = null)

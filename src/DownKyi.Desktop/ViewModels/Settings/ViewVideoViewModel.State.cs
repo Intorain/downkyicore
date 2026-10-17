@@ -108,14 +108,6 @@ internal partial class ViewVideoViewModel
         set => SetProperty(ref _selectedFfmpegMaxParallelJob, value);
     }
 
-    private bool _isUseDefaultDirectory;
-
-    public bool IsUseDefaultDirectory
-    {
-        get => _isUseDefaultDirectory;
-        set => SetProperty(ref _isUseDefaultDirectory, value);
-    }
-
     private string _saveVideoDirectory = string.Empty;
 
     public string SaveVideoDirectory

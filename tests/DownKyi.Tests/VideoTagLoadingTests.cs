@@ -6,6 +6,7 @@ using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Core.FileName;
+using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Infrastructure.Downloads;
@@ -254,6 +255,28 @@ public sealed class VideoTagLoadingTests : IDisposable
                 Assert.Single(context.Dialogs.Requests)).Status);
     }
 
+    [Fact]
+    public async Task LegacyDefaultDirectoryStillExposesExplicitRedownloadSelection()
+    {
+        using var context = CreateContext(generateMetadata: false);
+        context.UseLegacyDefaultDirectory(_directory);
+        context.Dialogs.Result = new AppDialogResult(
+            AppDialogOutcome.Accepted,
+            DownloadSettingsDialog.EncodeResult(
+                _directory,
+                DownloadContentSelection.All,
+                selectedTrackIds: null,
+                defaultTrackId: null,
+                redownloadCompleted: true));
+
+        var result = await context.Service.SelectDownloadAsync(
+            cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.Equal(DownloadSelectionOutcome.Accepted, result.Outcome);
+        Assert.True(Assert.IsType<DownloadAddSelection>(result.Selection).RedownloadCompleted);
+        Assert.Single(context.Dialogs.Requests);
+    }
+
     [Theory]
     [InlineData("{\"code\":0,\"data\":{\"aid\":1,\"bvid\":\"BV1test\",\"cid\":2,\"subtitle\":null}}")]
     [InlineData("{\"code\":0,\"data\":{\"aid\":1,\"bvid\":\"BV1test\",\"cid\":2,\"subtitle\":{\"subtitles\":null}}}")]
@@ -481,7 +504,7 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task MultiPageAdmissionChecksEachCidBeforePlanningAndCommit()
+    public async Task MultiPageAdmissionChecksEachCidBeforeCommit()
     {
         using var context = CreateContext(generateMetadata: false);
         var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
@@ -498,7 +521,7 @@ public sealed class VideoTagLoadingTests : IDisposable
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, added);
-        Assert.Equal(4, context.Store.UnfinishedByCidRequestCount);
+        Assert.Equal(2, context.Store.UnfinishedByCidRequestCount);
         Assert.Equal(2, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.HistoryPageRequestCount);
     }
@@ -1199,6 +1222,18 @@ public sealed class VideoTagLoadingTests : IDisposable
                         FileNamePart.Slash,
                         FileNamePart.PageTitle
                     ]
+                }
+            });
+        }
+
+        public void UseLegacyDefaultDirectory(string directory)
+        {
+            _settings.Update(settings => settings with
+            {
+                Video = settings.Video with
+                {
+                    IsUseSaveVideoRootPath = AllowStatus.Yes,
+                    SaveVideoRootPath = directory
                 }
             });
         }

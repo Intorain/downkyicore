@@ -2,6 +2,7 @@ using DownKyi.Application.Downloads;
 using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Domain.Downloads;
 using DownKyi.Models;
+using DownKyi.Presentation;
 using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;
 

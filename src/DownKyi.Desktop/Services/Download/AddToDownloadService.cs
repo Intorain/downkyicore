@@ -90,69 +90,50 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var directory = string.Empty;
-        var requestedContent = DownloadContentSelection.All;
-        var redownloadCompleted = false;
-        var videoSettings = _settingsStore.Current.Video;
-        if (videoSettings.IsUseSaveVideoRootPath == AllowStatus.Yes)
+        var subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+            DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NotAttempted,
+            []);
+        if (subtitlePage != null)
         {
-            requestedContent = new DownloadContentSelection(
-                videoSettings.Content.DownloadAudio,
-                videoSettings.Content.DownloadVideo,
-                videoSettings.Content.DownloadDanmaku,
-                videoSettings.Content.DownloadSubtitle,
-                videoSettings.Content.DownloadCover);
-            directory = videoSettings.SaveVideoRootPath;
-        }
-        else
-        {
-            var subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NotAttempted,
-                []);
-            if (subtitlePage != null)
+            try
             {
-                try
-                {
-                    var player = await WbiRequestExecutor.ExecuteAsync(
-                        _wbiKeyProvider,
-                        (keys, unixTimeSeconds) => _client.PlayerV2Async(
-                            keys, unixTimeSeconds, subtitlePage.Avid, subtitlePage.Bvid,
-                            subtitlePage.Cid, cancellationToken),
-                        TimeProvider.System,
-                        cancellationToken).ConfigureAwait(false);
-                    var subtitleTracks = player?.Subtitle?.Subtitles?.Select(track =>
-                        new DownloadSettingsDialog.SubtitleTrack(
-                            track.Id, track.Lan, track.LanDoc, track.Type, track.SubtitleAddress))
-                        .ToArray() ?? [];
-                    subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                        subtitleTracks.Length > 0
-                            ? DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Available
-                            : DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NoResource,
-                        subtitleTracks);
-                }
-                catch (Exception exception) when (exception is HttpRequestException or BilibiliApiResponseException
-                                                  || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogWarningMessage("Subtitle tracks could not be loaded; opening download settings without them.", exception);
-                    subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                        DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Failed,
-                        []);
-                }
+                var player = await WbiRequestExecutor.ExecuteAsync(
+                    _wbiKeyProvider,
+                    (keys, unixTimeSeconds) => _client.PlayerV2Async(
+                        keys, unixTimeSeconds, subtitlePage.Avid, subtitlePage.Bvid,
+                        subtitlePage.Cid, cancellationToken),
+                    TimeProvider.System,
+                    cancellationToken).ConfigureAwait(false);
+                var subtitleTracks = player?.Subtitle?.Subtitles?.Select(track =>
+                    new DownloadSettingsDialog.SubtitleTrack(
+                        track.Id, track.Lan, track.LanDoc, track.Type, track.SubtitleAddress))
+                    .ToArray() ?? [];
+                subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+                    subtitleTracks.Length > 0
+                        ? DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Available
+                        : DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NoResource,
+                    subtitleTracks);
             }
-            var result = await _dialogService.ShowAsync(
-                DownloadSettingsDialog.CreateRequest(subtitleDiscovery),
-                cancellationToken).ConfigureAwait(true);
-            if (DownloadSettingsDialog.DecodeResult(result) is { } dialogSelection)
+            catch (Exception exception) when (exception is HttpRequestException or BilibiliApiResponseException
+                                              || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                directory = dialogSelection.Directory;
-                requestedContent = dialogSelection.RequestedContent;
-                redownloadCompleted = dialogSelection.RedownloadCompleted;
-            }
-            else
-            {
-                return DownloadSelectionResult.Canceled;
+                _logger.LogWarningMessage("Subtitle tracks could not be loaded; opening download settings without them.", exception);
+                subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+                    DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Failed,
+                    []);
             }
         }
+        var result = await _dialogService.ShowAsync(
+            DownloadSettingsDialog.CreateRequest(subtitleDiscovery),
+            cancellationToken).ConfigureAwait(true);
+        if (DownloadSettingsDialog.DecodeResult(result) is not { } dialogSelection)
+        {
+            return DownloadSelectionResult.Canceled;
+        }
+
+        var directory = dialogSelection.Directory;
+        var requestedContent = dialogSelection.RequestedContent;
+        var redownloadCompleted = dialogSelection.RedownloadCompleted;
         if (string.IsNullOrEmpty(directory))
         {
             return DownloadSelectionResult.Unavailable;

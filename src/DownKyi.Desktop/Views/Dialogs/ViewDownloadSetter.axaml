@@ -207,14 +207,6 @@
                 </Grid>
 
                 <Grid Grid.Row="4" Margin="0,30,0,0" ColumnDefinitions="*,100,100,100">
-
-                    <CheckBox
-                        Grid.Column="0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Bottom"
-                        Content="{DynamicResource IsDefaultDownloadDirectory}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding IsDefaultDownloadDirectory, Mode=TwoWay}" />
                     <Button
                         Grid.Column="1"
                         Width="75"
