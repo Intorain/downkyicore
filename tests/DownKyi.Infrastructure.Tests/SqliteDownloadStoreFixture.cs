@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using DownKyi.Domain.Downloads;
 using DownKyi.Infrastructure.Downloads;
@@ -40,15 +39,12 @@ internal sealed partial class SqliteDownloadStoreFixture : IDisposable
         SqliteConnection.ClearPool(connection);
     }
 
-    internal SqliteDownloadTaskStore CreateStore(
-        IClock? clock = null,
-        IPhysicalOutputPathResolver? resolver = null)
+    internal SqliteDownloadTaskStore CreateStore(IClock? clock = null)
     {
         Directory.CreateDirectory(_directory);
         return new SqliteDownloadTaskStore(
             new SqliteDownloadTaskStoreOptions(Path.Combine(_directory, "download.db")),
-            clock ?? _clock,
-            resolver ?? new StubPhysicalOutputPathResolver(static path => path));
+            clock ?? _clock);
     }
 
     internal DownloadTask CreatePausedTask(
@@ -157,12 +153,6 @@ internal sealed partial class SqliteDownloadStoreFixture : IDisposable
         {
             return Task.Delay(delay, cancellationToken);
         }
-    }
-
-    internal sealed class StubPhysicalOutputPathResolver(Func<string, string> resolve)
-        : IPhysicalOutputPathResolver
-    {
-        public string ResolvePhysicalBasePath(string logicalBasePath) => resolve(logicalBasePath);
     }
 
     internal sealed record StoredDownloadState(

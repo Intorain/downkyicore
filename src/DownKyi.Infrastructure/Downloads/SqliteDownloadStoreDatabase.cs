@@ -1,4 +1,3 @@
-using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using DownKyi.Domain.Results;
 using Microsoft.Data.Sqlite;
@@ -14,7 +13,6 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
         "Removed {Count} orphaned downloading records.");
     private readonly SqliteDownloadTaskStoreOptions _options;
     private readonly IClock _clock;
-    private readonly IPhysicalOutputPathResolver _physicalOutputPathResolver;
     private readonly ILogger _logger;
     private readonly Type _disposedObjectType;
     private readonly string _connectionString;
@@ -25,13 +23,11 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
     public SqliteDownloadStoreDatabase(
         SqliteDownloadTaskStoreOptions options,
         IClock clock,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
         ILogger logger,
         Type disposedObjectType)
     {
         _options = options;
         _clock = clock;
-        _physicalOutputPathResolver = physicalOutputPathResolver;
         _logger = logger;
         _disposedObjectType = disposedObjectType;
         _connectionString = new SqliteConnectionStringBuilder
@@ -181,7 +177,6 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
                 _options.DatabasePath,
                 databaseExisted,
                 _clock,
-                _physicalOutputPathResolver,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (databaseExisted

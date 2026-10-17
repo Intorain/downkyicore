@@ -14,7 +14,7 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
     public void Dispose() => _fixture.Dispose();
 
     [Fact]
-    public async Task ForeignPathIsPreservedAndRekeyedForTheCurrentSystem()
+    public async Task ForeignPathIsPreservedWithoutRekeyingExistingTask()
     {
         var original = Path.Combine(_fixture.TempDirectory, "native-path");
         using (var first = _fixture.CreateStore())
@@ -28,16 +28,11 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
         using var reopened = _fixture.CreateStore();
         await reopened.InitializeAsync(TestContext.Current.CancellationToken);
         Assert.Equal(foreignPath, (await _fixture.ReadStoredStateAsync("foreign-path")).Path);
-        Assert.NotEqual(originalKey, await _fixture.ReadReservationKeyAsync("foreign-path"));
-        Assert.Equal(
-            DownloadOutputPathKey.Create(
-                foreignPath,
-                DownloadOutputPathKey.UsesCaseInsensitiveComparison),
-            await _fixture.ReadReservationKeyAsync("foreign-path"));
+        Assert.Equal(originalKey, await _fixture.ReadReservationKeyAsync("foreign-path"));
     }
 
     [Fact]
-    public async Task ReopenRejectsConflictingActivePathsAfterCurrentSystemProjection()
+    public async Task ForeignPathCanBeStoredUpdatedAndReopened()
     {
         var foreignPath = OperatingSystem.IsWindows() ? "/foreign/path" : @"C:\foreign\path";
         using var store = _fixture.CreateStore();
@@ -59,32 +54,9 @@ public sealed class SqliteDownloadStorePathPolicyTests : IDisposable
         Assert.Equal(foreignPath, (await _fixture.ReadStoredStateAsync(existing.Id.Value)).Path);
 
         using var reopened = _fixture.CreateStore();
-        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
-            reopened.InitializeAsync(TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task ReopenRejectsLogicalAliasesThatResolveToOnePhysicalOutput()
-    {
-        var firstPath = Path.Combine(_fixture.TempDirectory, "alias-one", "output");
-        var secondPath = Path.Combine(_fixture.TempDirectory, "alias-two", "output");
-        using (var first = _fixture.CreateStore())
-        {
-            Assert.True((await first.AddAsync(
-                _fixture.CreateQueuedTask("alias-one", firstPath),
-                TestContext.Current.CancellationToken)).IsSuccess);
-            Assert.True((await first.AddAsync(
-                _fixture.CreateQueuedTask("alias-two", secondPath),
-                TestContext.Current.CancellationToken)).IsSuccess);
-        }
-
-        var physicalPath = Path.Combine(_fixture.TempDirectory, "physical", "output");
-        using var reopened = _fixture.CreateStore(
-            resolver: new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
-                _ => physicalPath));
-
-        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
-            reopened.InitializeAsync(TestContext.Current.CancellationToken));
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, (await reopened.GetUnfinishedAsync(
+            TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]

@@ -1,5 +1,3 @@
-using DownKyi.Application.Downloads;
-using DownKyi.Domain.Downloads;
 using Microsoft.Data.Sqlite;
 
 namespace DownKyi.Infrastructure.Downloads;
@@ -85,7 +83,6 @@ internal static class CurrentDownloadStoreWriter
         SqliteConnection connection,
         SqliteTransaction transaction,
         DownloadStoreShape shape,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
         CancellationToken cancellationToken)
     {
         await AlignTablesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
@@ -101,11 +98,6 @@ internal static class CurrentDownloadStoreWriter
             await ProjectHistoryAsync(connection, transaction, cancellationToken)
                 .ConfigureAwait(false);
         }
-        await ProjectOutputReservationKeysAsync(
-            connection,
-            transaction,
-            physicalOutputPathResolver,
-            cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
     }
 
@@ -357,95 +349,6 @@ internal static class CurrentDownloadStoreWriter
         }
     }
 
-    private static async Task ProjectOutputReservationKeysAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
-        CancellationToken cancellationToken)
-    {
-        using var read = connection.CreateCommand();
-        read.Transaction = transaction;
-        read.CommandText = $"""
-            SELECT db.id, db.file_path, db.cid, db.need_download_content,
-                   db.nfo_request IS NOT NULL
-            FROM download_base db
-            INNER JOIN downloading dl ON dl.id = db.id
-            WHERE {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
-            ORDER BY db.id
-            """;
-        var rows = new List<OutputReservationProjection>();
-        using (var reader = await read.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-        {
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                var path = reader.GetString(1);
-                string key;
-                try
-                {
-                    var physicalPath = physicalOutputPathResolver.ResolvePhysicalBasePath(path);
-                    key = DownloadOutputPathKey.Create(
-                        physicalPath,
-                        DownloadOutputPathKey.UsesCaseInsensitiveComparison);
-                }
-                catch (Exception exception) when (exception is ArgumentException
-                    or IOException
-                    or NotSupportedException
-                    or UnauthorizedAccessException
-                    or System.Security.SecurityException)
-                {
-                    throw new DownloadStoreProjectionException(
-                        "An active download output path cannot be used on this system.",
-                        exception);
-                }
-
-                var content = DownloadStoreJson.ReadContentSelection(
-                    reader.GetString(3),
-                    "need_download_content");
-                rows.Add(new OutputReservationProjection(
-                    reader.GetString(0),
-                    key,
-                    new DownloadOutputOwnership(
-                        reader.GetInt64(2),
-                        DownloadActionClaims.From(content, reader.GetInt32(4) != 0))));
-            }
-        }
-
-        var reservations = new Dictionary<string, List<DownloadOutputOwnership>>(
-            StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
-            if (!reservations.TryGetValue(row.Key, out var owners))
-            {
-                owners = [];
-                reservations.Add(row.Key, owners);
-            }
-
-            if (owners.Any(owner => owner.ConflictsWith(row.Ownership)))
-            {
-                throw new DownloadStoreProjectionException(
-                    "Active download records resolve to the same output on this system.");
-            }
-
-            owners.Add(row.Ownership);
-        }
-
-        using var update = connection.CreateCommand();
-        update.Transaction = transaction;
-        update.CommandText = """
-            UPDATE download_base
-            SET output_reservation_key = @key
-            WHERE id = @id
-            """;
-        var keyParameter = update.Parameters.Add("@key", SqliteType.Text);
-        var idParameter = update.Parameters.Add("@id", SqliteType.Text);
-        foreach (var row in rows)
-        {
-            keyParameter.Value = row.Key;
-            idParameter.Value = row.Id;
-            await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
-
     internal static async Task EnsureIndexesAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
@@ -475,9 +378,4 @@ internal static class CurrentDownloadStoreWriter
             """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
-
-    private sealed record OutputReservationProjection(
-        string Id,
-        string Key,
-        DownloadOutputOwnership Ownership);
 }

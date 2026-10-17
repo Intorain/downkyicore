@@ -1,4 +1,3 @@
-using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using Microsoft.Data.Sqlite;
 
@@ -11,7 +10,6 @@ internal static class DownloadStoreSchema
         string databasePath,
         bool databaseExisted,
         IClock clock,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
         CancellationToken cancellationToken)
     {
         var shape = await DownloadStoreShapeReader
@@ -45,7 +43,6 @@ internal static class DownloadStoreSchema
                     connection,
                     transaction,
                     shape,
-                    physicalOutputPathResolver,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
