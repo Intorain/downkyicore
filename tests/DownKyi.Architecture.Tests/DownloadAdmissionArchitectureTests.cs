@@ -54,9 +54,10 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.DoesNotContain("IsOutputPathReservedAsync", reservationService, StringComparison.Ordinal);
         Assert.Contains("IsOutputPathReservedAsync", storeContract, StringComparison.Ordinal);
 
-        Assert.Contains("public async Task AdmitAsync(", admissionService, StringComparison.Ordinal);
+        Assert.Contains("public async Task<bool> AdmitAsync(", admissionService, StringComparison.Ordinal);
         Assert.Contains("_admissionGate.WaitAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_runtimeAvailability.EnsureAcceptingTasks();", admissionService, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadingByCidAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_projections.AddDownloadingAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_database.ExecuteImmediateTransactionAsync", reservations, StringComparison.Ordinal);
         Assert.Contains("HasOutputClaimConflictCoreAsync", reservations, StringComparison.Ordinal);

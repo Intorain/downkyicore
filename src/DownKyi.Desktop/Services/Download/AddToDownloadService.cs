@@ -227,12 +227,18 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                     }
                     try
                     {
-                        await _admission
+                        var admitted = await _admission
                             .AdmitAsync(
                                 downloadingItem,
                                 settings.Basic.RepeatFileAutoAddNumberSuffix,
                                 cancellationToken)
                             .ConfigureAwait(true);
+                        if (!admitted)
+                        {
+                            duplicateCount++;
+                            continue;
+                        }
+
                         addedCount++;
                     }
                     catch (DownloadRuntimeUnavailableException exception)
