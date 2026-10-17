@@ -7,6 +7,7 @@ using System.Xml.Linq;
 
 namespace DownKyi.Architecture.Tests;
 
+[Collection(PowerShellProcessTestGroup.Name)]
 public sealed class ReleaseWorkflowArchitectureTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();

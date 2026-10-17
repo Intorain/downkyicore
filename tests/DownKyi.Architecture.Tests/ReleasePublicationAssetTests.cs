@@ -6,6 +6,7 @@ using DownKyi.CentralTestRunner;
 
 namespace DownKyi.Architecture.Tests;
 
+[Collection(PowerShellProcessTestGroup.Name)]
 public sealed class ReleasePublicationAssetTests
 {
     private const string Version = "9.8.7";
