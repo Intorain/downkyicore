@@ -303,7 +303,7 @@ public sealed class DownloadManagerCoordinatorTests
     }
 
     [Fact]
-    public async Task RemovedCompletedHistoryIsImmediatelyEligibleForDownloadAgain()
+    public async Task RemovedCompletedHistoryIsAbsentFromDurableHistory()
     {
         using var context = new CoordinatorContext();
         await context.CreateCompletedItemAsync(
@@ -311,42 +311,12 @@ public sealed class DownloadManagerCoordinatorTests
         context.CreateFile("redownload-after-delete.mp4", "completed media");
         await context.Coordinator.LoadDownloadedHistoryAsync();
         var completed = Assert.Single(context.State.Downloaded);
-        var desktop = new TestDesktopInteractionContext();
-        var duplicatePolicy = new DownloadDuplicatePolicy(
-            context.Storage,
-            desktop.Dialogs);
-        completed.DownloadBase.FilePath = Path.ChangeExtension(
-            completed.HistoryRecord!.PublishedArtifacts["media"],
-            null);
-        var requested = new DownloadingItem
-        {
-            DownloadBase = completed.DownloadBase,
-            Downloading = new Downloading
-            {
-                DownloadStatus = DownloadStatus.NotStarted,
-                PlayStreamType = DownKyi.Core.BiliApi.VideoStream.PlayStreamType.Video
-            }
-        };
-        requested.DownloadBase.NeedDownloadContent = DownloadContentSelection.None with
-        {
-            Video = true
-        };
-
-        Assert.True(await duplicatePolicy.ShouldSkipAsync(
-            requested,
-            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
-            TestContext.Current.CancellationToken));
-
         await context.Coordinator.RemoveDownloadedAsync(
             completed,
             TestContext.Current.CancellationToken);
 
         Assert.Empty(context.State.Downloaded);
         Assert.Empty(await context.Storage.GetDownloadedAsync(
-            TestContext.Current.CancellationToken));
-        Assert.False(await duplicatePolicy.ShouldSkipAsync(
-            requested,
-            DownKyi.Core.Settings.RepeatDownloadStrategy.JumpOver,
             TestContext.Current.CancellationToken));
     }
 

@@ -12,6 +12,5 @@ public class BasicSettings
     public ParseScope ParseScope { get; set; } = ParseScope.NotSet;
     public AllowStatus IsAutoDownloadAll { get; set; } = AllowStatus.None;
     public DownloadFinishedSort DownloadFinishedSort { get; set; } = DownloadFinishedSort.NotSet;
-    public RepeatDownloadStrategy RepeatDownloadStrategy { get; set; } = RepeatDownloadStrategy.Ask;
     public bool RepeatFileAutoAddNumberSuffix { get; set; }
 }

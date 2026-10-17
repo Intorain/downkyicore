@@ -5,7 +5,6 @@ public enum AppDialog
     Alert = 0,
     DownloadSettings = 1,
     ParsingSelector = 2,
-    AlreadyDownloaded = 3,
     NewVersionAvailable = 4,
     LegacyUpgrade = 5,
     StartupDiagnostics = 6,

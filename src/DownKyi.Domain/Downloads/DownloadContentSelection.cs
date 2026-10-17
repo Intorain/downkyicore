@@ -52,6 +52,16 @@ public sealed record DownloadContentSelection(
 
     public DownloadActionClaims ActionClaims => DownloadActionClaims.From(this);
 
+    public bool HasSameTopLevelSelectionAs(DownloadContentSelection other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Audio == other.Audio
+            && Video == other.Video
+            && Danmaku == other.Danmaku
+            && Subtitle == other.Subtitle
+            && Cover == other.Cover;
+    }
+
     public DownloadSubtitleTrackSelection SubtitleTrackSelection =>
         (Subtitle, SelectedSubtitleTrackIds) switch
         {

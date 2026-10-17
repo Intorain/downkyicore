@@ -1163,13 +1163,9 @@ public sealed class VideoTagLoadingTests : IDisposable
                 new DownloadCommittedTaskDispatcher(queue, stateWriter),
                 runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
                 physicalOutputPathResolver);
-            var duplicatePolicy = new DownloadDuplicatePolicy(
-                _projectionStore,
-                Dialogs);
             Service = new AddToDownloadService(
                 DownKyi.Core.BiliApi.VideoStream.PlayStreamType.Video,
                 _admission,
-                duplicatePolicy,
                 new DownloadMovieMetadataBuilder(Logger),
                 _settings,
                 new VideoTagProvider(client),
@@ -1237,7 +1233,7 @@ public sealed class VideoTagLoadingTests : IDisposable
                     cancellationToken)
                 .ConfigureAwait(true);
             var result = await Service
-                .AddToDownload(selection.Directory, finalizedDownload, cancellationToken)
+                .AddToDownload(selection, finalizedDownload, cancellationToken)
                 .ConfigureAwait(true);
             return result;
         }

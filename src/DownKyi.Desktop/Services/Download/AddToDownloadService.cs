@@ -27,7 +27,6 @@ namespace DownKyi.Services.Download;
 internal sealed class AddToDownloadService : IAddToDownloadSession
 {
     private readonly DownloadTaskAdmissionService _admission;
-    private readonly DownloadDuplicatePolicy _duplicatePolicy;
     private readonly DownloadMovieMetadataBuilder _metadataBuilder;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppDialogService _dialogService;
@@ -38,7 +37,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
     public AddToDownloadService(
         PlayStreamType streamType,
         DownloadTaskAdmissionService admission,
-        DownloadDuplicatePolicy duplicatePolicy,
         DownloadMovieMetadataBuilder metadataBuilder,
         ISettingsStore settingsStore,
         IVideoTagProvider tagProvider,
@@ -48,7 +46,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         ILogger<AddToDownloadService> logger)
     {
         _admission = admission ?? throw new ArgumentNullException(nameof(admission));
-        _duplicatePolicy = duplicatePolicy ?? throw new ArgumentNullException(nameof(duplicatePolicy));
         _metadataBuilder = metadataBuilder ?? throw new ArgumentNullException(nameof(metadataBuilder));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
@@ -95,6 +92,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         cancellationToken.ThrowIfCancellationRequested();
         var directory = string.Empty;
         var requestedContent = DownloadContentSelection.All;
+        var redownloadCompleted = false;
         var videoSettings = _settingsStore.Current.Video;
         if (videoSettings.IsUseSaveVideoRootPath == AllowStatus.Yes)
         {
@@ -148,6 +146,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
             {
                 directory = dialogSelection.Directory;
                 requestedContent = dialogSelection.RequestedContent;
+                redownloadCompleted = dialogSelection.RedownloadCompleted;
             }
             else
             {
@@ -171,14 +170,14 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
             Directory.CreateDirectory(directory);
         }
         return DownloadSelectionResult.Accepted(
-            new DownloadAddSelection(directory, requestedContent));
+            new DownloadAddSelection(directory, requestedContent, redownloadCompleted));
     }
     public async Task<DownloadAddResult> AddToDownload(
-        string directory,
+        DownloadAddSelection selection,
         FinalizedDownload finalizedDownload,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrEmpty(directory);
+        ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(finalizedDownload);
         cancellationToken.ThrowIfCancellationRequested();
         if (finalizedDownload.StopReason != null)
@@ -198,7 +197,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                 {
                     var page = finalizedPage.Page;
                     var downloadingItem = DownloadTaskDraftFactory.Create(
-                        directory,
+                        selection.Directory,
                         finalizedDownload.Video,
                         finalizedSection.Section,
                         finalizedDownload.Sections.Count,
@@ -208,16 +207,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                         finalizedPage.AvailableMedia,
                         settings,
                         finalizedPage.FinalizedContent);
-                    if (await _duplicatePolicy
-                        .ShouldSkipAsync(
-                            downloadingItem,
-                            settings.Basic.RepeatDownloadStrategy,
-                            cancellationToken)
-                        .ConfigureAwait(true))
-                    {
-                        duplicateCount++;
-                        continue;
-                    }
                     if (settings.Video.Content.GenerateMovieMetadata
                         && downloadingItem.DownloadBase.NeedDownloadContent.Video)
                     {
@@ -231,7 +220,8 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                             .AdmitAsync(
                                 downloadingItem,
                                 settings.Basic.RepeatFileAutoAddNumberSuffix,
-                                cancellationToken)
+                                cancellationToken,
+                                selection.RedownloadCompleted)
                             .ConfigureAwait(true);
                         if (!admitted)
                         {

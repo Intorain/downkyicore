@@ -20,9 +20,6 @@ public partial class SettingsManager
     // 下载完成列表排序
     private const DownloadFinishedSort FinishedSort = DownloadFinishedSort.DownloadAsc;
 
-    // 重复下载策略
-    private const RepeatDownloadStrategy RepeatDownloadStrategy = Settings.RepeatDownloadStrategy.Ask;
-
     // 重复文件自动添加数字后缀
     private const bool RepeatFileAutoAddNumberSuffix = false;
 
@@ -218,35 +215,6 @@ public partial class SettingsManager
             _appSettings.Basic.DownloadFinishedSort,
             finishedSort,
             v => _appSettings.Basic.DownloadFinishedSort = v);
-    }
-
-    /// <summary>
-    /// 获取重复下载策略
-    /// </summary>
-    /// <returns></returns>
-    public RepeatDownloadStrategy GetRepeatDownloadStrategy()
-    {
-        if (_appSettings.Basic.RepeatDownloadStrategy == RepeatDownloadStrategy.Ask)
-        {
-            // 第一次获取，先设置默认值
-            SetRepeatDownloadStrategy(RepeatDownloadStrategy);
-            return RepeatDownloadStrategy;
-        }
-
-        return _appSettings.Basic.RepeatDownloadStrategy;
-    }
-
-    /// <summary>
-    /// 设置重复下载策略
-    /// </summary>
-    /// <param name="repeatDownloadStrategy"></param>
-    /// <returns></returns>
-    public bool SetRepeatDownloadStrategy(RepeatDownloadStrategy repeatDownloadStrategy)
-    {
-        return SetProperty(
-            _appSettings.Basic.RepeatDownloadStrategy,
-            repeatDownloadStrategy,
-            v => _appSettings.Basic.RepeatDownloadStrategy = v);
     }
 
     /// <summary>

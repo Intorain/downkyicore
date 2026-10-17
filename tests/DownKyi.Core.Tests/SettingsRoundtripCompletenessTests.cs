@@ -259,7 +259,6 @@ public sealed class SettingsRoundtripCompletenessTests
                 "Basic.AfterDownload" => AfterDownloadOperation.OpenFolder,
                 "Basic.ParseScope" => ParseScope.CurrentSection,
                 "Basic.DownloadFinishedSort" => DownloadFinishedSort.DownloadDesc,
-                "Basic.RepeatDownloadStrategy" => RepeatDownloadStrategy.ReDownload,
                 "Network.NetworkProxy" => NetworkProxy.System,
                 "Video.FfmpegHardwareAcceleration" => FfmpegHardwareAcceleration.Disabled,
                 "Video.OrderFormat" => OrderFormat.LeadingZeros,

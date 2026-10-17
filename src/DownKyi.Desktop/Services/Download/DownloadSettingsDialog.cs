@@ -47,7 +47,8 @@ internal static class DownloadSettingsDialog
         string directory,
         DownloadContentSelection requestedContent,
         IReadOnlyList<long>? selectedTrackIds,
-        long? defaultTrackId)
+        long? defaultTrackId,
+        bool redownloadCompleted)
     {
         if (selectedTrackIds != null)
         {
@@ -62,13 +63,14 @@ internal static class DownloadSettingsDialog
             };
         }
         return new Dictionary<string, object?>(StringComparer.Ordinal)
-        { [ResultParameter] = (directory, requestedContent) };
+        { [ResultParameter] = (directory, requestedContent, redownloadCompleted) };
     }
-    public static (string Directory, DownloadContentSelection RequestedContent)? DecodeResult(AppDialogResult result) =>
+    public static (string Directory, DownloadContentSelection RequestedContent, bool RedownloadCompleted)?
+        DecodeResult(AppDialogResult result) =>
         result.Outcome != AppDialogOutcome.Accepted
             ? null
             : result.Parameters.TryGetValue(ResultParameter, out var value) &&
-              value is ValueTuple<string, DownloadContentSelection> selection
+              value is ValueTuple<string, DownloadContentSelection, bool> selection
             ? selection
             : throw new InvalidOperationException(
                 "Accepted DownloadSettings result is missing its typed result.");

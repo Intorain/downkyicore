@@ -51,7 +51,6 @@ public partial class SettingsManager
                 GetParseScope(),
                 GetIsAutoDownloadAll(),
                 GetDownloadFinishedSort(),
-                GetRepeatDownloadStrategy(),
                 IsRepeatFileAutoAddNumberSuffix()),
             new NetworkApplicationSettings(
                 GetIsLiftingOfRegion(),
@@ -134,7 +133,6 @@ public partial class SettingsManager
                 SetParseScope(validated.Basic.ParseScope);
                 SetIsAutoDownloadAll(validated.Basic.IsAutoDownloadAll);
                 SetDownloadFinishedSort(validated.Basic.DownloadFinishedSort);
-                SetRepeatDownloadStrategy(validated.Basic.RepeatDownloadStrategy);
                 IsRepeatFileAutoAddNumberSuffix(validated.Basic.RepeatFileAutoAddNumberSuffix);
 
                 SetIsLiftingOfRegion(validated.Network.IsLiftingOfRegion);

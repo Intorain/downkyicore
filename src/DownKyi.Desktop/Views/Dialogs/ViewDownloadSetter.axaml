@@ -206,7 +206,7 @@
                     </Grid>
                 </Grid>
 
-                <Grid Grid.Row="4" Margin="0,30,0,0" ColumnDefinitions="*,*,100,100">
+                <Grid Grid.Row="4" Margin="0,30,0,0" ColumnDefinitions="*,100,100,100">
 
                     <CheckBox
                         Grid.Column="0"
@@ -216,12 +216,21 @@
                         Foreground="{DynamicResource BrushTextDark}"
                         IsChecked="{Binding IsDefaultDownloadDirectory, Mode=TwoWay}" />
                     <Button
-                        Grid.Column="2"
+                        Grid.Column="1"
                         Width="75"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         Command="{Binding DownloadCommand}"
                         Content="{DynamicResource Download}"
+                        FontSize="12"
+                        Theme="{StaticResource BtnStyle}" />
+                    <Button
+                        Grid.Column="2"
+                        Width="75"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Command="{Binding RedownloadCommand}"
+                        Content="{DynamicResource RedownloadCompleted}"
                         FontSize="12"
                         Theme="{StaticResource BtnStyle}" />
                     <Button

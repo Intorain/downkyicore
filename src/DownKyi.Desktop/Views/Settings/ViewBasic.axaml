@@ -137,28 +137,6 @@
 
                 </ComboBox>
             </StackPanel>
-            <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
-                <TextBlock
-                    VerticalAlignment="Center"
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    Text="{DynamicResource RepeatDownloadStrategy}" />
-                <ComboBox
-                    Name="NameRepeatDownloadStrategy"
-                    Width="220"
-                    VerticalContentAlignment="Center"
-                    DisplayMemberBinding="{Binding Name}"
-                    ItemsSource="{Binding RepeatDownloadStrategy}"
-                    SelectedItem="{Binding SelectedRepeatDownloadStrategy}">
-                    <Interaction.Behaviors>
-                        <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding RepeatDownloadStrategyCommand}"
-                                                 CommandParameter="{Binding ElementName=NameRepeatDownloadStrategy, Path=SelectedItem}" />
-                        </EventTriggerBehavior>
-                    </Interaction.Behaviors>
-
-                </ComboBox>
-            </StackPanel>
             <CheckBox
                 Margin="0,20,0,0"
                 HorizontalAlignment="Left"

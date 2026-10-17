@@ -30,9 +30,6 @@ internal sealed class DialogContentFactory(IServiceProvider services)
             AppDialog.Alert => (typeof(ViewAlertDialog), typeof(ViewAlertDialogViewModel)),
             AppDialog.DownloadSettings => (typeof(ViewDownloadSetter), typeof(ViewDownloadSetterViewModel)),
             AppDialog.ParsingSelector => (typeof(ViewParsingSelector), typeof(ViewParsingSelectorViewModel)),
-            AppDialog.AlreadyDownloaded => (
-                typeof(ViewAlreadyDownloadedDialog),
-                typeof(ViewAlreadyDownloadedDialogViewModel)),
             AppDialog.NewVersionAvailable => (
                 typeof(NewVersionAvailableDialog),
                 typeof(NewVersionAvailableDialogViewModel)),

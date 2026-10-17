@@ -178,13 +178,13 @@ public sealed class VideoDetailDownloadCoordinatorTests
             throw new NotSupportedException();
 
         public Task<DownloadAddResult> AddToDownload(
-            string directory,
+            DownloadAddSelection selection,
             FinalizedDownload finalizedDownload,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             AddCount++;
-            ReceivedDirectory = directory;
+            ReceivedDirectory = selection.Directory;
             ReceivedFinalizedDownload = finalizedDownload;
             return Task.FromResult(DownloadAddResult.FromCounts(
                 addedCount: 1,

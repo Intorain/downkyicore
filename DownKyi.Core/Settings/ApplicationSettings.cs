@@ -42,7 +42,6 @@ public sealed record BasicApplicationSettings(
     ParseScope ParseScope,
     AllowStatus IsAutoDownloadAll,
     DownloadFinishedSort DownloadFinishedSort,
-    RepeatDownloadStrategy RepeatDownloadStrategy,
     bool RepeatFileAutoAddNumberSuffix);
 
 public sealed record NetworkApplicationSettings(
@@ -140,8 +139,7 @@ internal static class ApplicationSettingsValidator
             IsAutoParseVideo = AllowValue(settings.Basic.IsAutoParseVideo, AllowStatus.No, "Basic.IsAutoParseVideo", corrections),
             ParseScope = EnumValue(settings.Basic.ParseScope, ParseScope.None, "Basic.ParseScope", corrections),
             IsAutoDownloadAll = AllowValue(settings.Basic.IsAutoDownloadAll, AllowStatus.No, "Basic.IsAutoDownloadAll", corrections),
-            DownloadFinishedSort = EnumValue(settings.Basic.DownloadFinishedSort, DownloadFinishedSort.DownloadAsc, "Basic.DownloadFinishedSort", corrections),
-            RepeatDownloadStrategy = EnumValue(settings.Basic.RepeatDownloadStrategy, RepeatDownloadStrategy.Ask, "Basic.RepeatDownloadStrategy", corrections)
+            DownloadFinishedSort = EnumValue(settings.Basic.DownloadFinishedSort, DownloadFinishedSort.DownloadAsc, "Basic.DownloadFinishedSort", corrections)
         };
         var networkProxy = EnumValue(settings.Network.NetworkProxy, NetworkProxy.None, "Network.NetworkProxy", corrections);
         var customProxy = settings.Network.CustomNetworkProxy;

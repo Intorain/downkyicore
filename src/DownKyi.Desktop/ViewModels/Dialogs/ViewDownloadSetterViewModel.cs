@@ -366,10 +366,25 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
     public RelayCommand DownloadCommand => _downloadCommand ??= new RelayCommand(ExecuteDownloadCommand);
 
+    private RelayCommand? _redownloadCommand;
+
+    public RelayCommand RedownloadCommand =>
+        _redownloadCommand ??= new RelayCommand(ExecuteRedownloadCommand);
+
     /// <summary>
     /// 确认下载事件
     /// </summary>
     private void ExecuteDownloadCommand()
+    {
+        CompleteDownload(redownloadCompleted: false);
+    }
+
+    private void ExecuteRedownloadCommand()
+    {
+        CompleteDownload(redownloadCompleted: true);
+    }
+
+    private void CompleteDownload(bool redownloadCompleted)
     {
         if (string.IsNullOrEmpty(Directory))
         {
@@ -406,7 +421,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             : null;
         var defaultTrackId = SubtitleTracks.FirstOrDefault(track => track.IsDefault)?.TrackId;
         CloseDialog(AppDialogOutcome.Accepted, DownloadSettingsDialog.EncodeResult(
-            Directory, requestedContent, selectedIds, defaultTrackId));
+            Directory, requestedContent, selectedIds, defaultTrackId, redownloadCompleted));
     }
 
     #endregion

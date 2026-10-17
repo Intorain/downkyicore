@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Downloads;
@@ -41,21 +42,38 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
     public async Task<bool> AdmitAsync(
         DownloadingItem item,
         bool autoAddNumberSuffix,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool redownloadCompleted = false)
     {
         ArgumentNullException.ThrowIfNull(item);
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _admissionGate.WaitAsync(cancellationToken).ConfigureAwait(true);
         try
         {
-            _runtimeAvailability.EnsureAcceptingTasks();
+            var cid = item.DownloadBase.Cid;
+            var requestedContent = item.DownloadBase.NeedDownloadContent;
             var active = await _projections
-                .GetDownloadingByCidAsync(item.DownloadBase.Cid, cancellationToken)
+                .GetDownloadingByCidAsync(cid, cancellationToken)
                 .ConfigureAwait(true);
-            if (active.Count > 0)
+            if (active.Any(existing => existing.DownloadBase.NeedDownloadContent
+                    .HasSameTopLevelSelectionAs(requestedContent)))
             {
                 return false;
             }
+
+            if (!redownloadCompleted)
+            {
+                var completed = await _projections
+                    .GetDownloadedByCidAsync(cid, cancellationToken)
+                    .ConfigureAwait(true);
+                if (completed.Any(existing => existing.DownloadBase.NeedDownloadContent
+                        .HasSameTopLevelSelectionAs(requestedContent)))
+                {
+                    return false;
+                }
+            }
+
+            _runtimeAvailability.EnsureAcceptingTasks();
 
             var physicalBasePath = _physicalOutputPathResolver.ResolvePhysicalBasePath(
                 item.DownloadBase.FilePath);

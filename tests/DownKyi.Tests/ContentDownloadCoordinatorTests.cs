@@ -298,7 +298,10 @@ public sealed class ContentDownloadCoordinatorTests
             return Task.FromResult(directory == null
                 ? DownloadSelectionResult.Canceled
                 : DownloadSelectionResult.Accepted(
-                    new DownloadAddSelection(directory, Selection.RequestedContent)));
+                    new DownloadAddSelection(
+                        directory,
+                        Selection.RequestedContent,
+                        Selection.RedownloadCompleted)));
         }
 
         public Task<PreparedDownload> PrepareAsync(
@@ -329,12 +332,12 @@ public sealed class ContentDownloadCoordinatorTests
         }
 
         public Task<DownloadAddResult> AddToDownload(
-            string selectedDirectory,
+            DownloadAddSelection selection,
             FinalizedDownload finalizedDownload,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Assert.Equal(directory, selectedDirectory);
+            Assert.Equal(directory, selection.Directory);
             Assert.NotNull(finalizedDownload);
             PrepareCountWhenFirstAdded ??= PrepareCount;
             AddCount++;

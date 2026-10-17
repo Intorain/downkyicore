@@ -199,7 +199,7 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var addResult = await addToDownloadSession
-                    .AddToDownload(selection.Directory, finalizedDownload, cancellationToken)
+                    .AddToDownload(selection, finalizedDownload, cancellationToken)
                     .ConfigureAwait(false);
                 addedCount += addResult.AddedCount;
                 duplicateCount += addResult.DuplicateCount;

@@ -31,7 +31,6 @@ public sealed class DialogWindowChromeTests
         var cases = new DialogCase[]
         {
             new(new ViewAlertDialog(), HasCloseButton: true, UsesTwoColumns: true),
-            new(new ViewAlreadyDownloadedDialog(), HasCloseButton: true, UsesTwoColumns: false),
             new(new ViewDownloadSetter(), HasCloseButton: true, UsesTwoColumns: false),
             new(new ViewParsingSelector(), HasCloseButton: true, UsesTwoColumns: true),
             new(new ViewUpgradingDialog(), HasCloseButton: true, UsesTwoColumns: true),
@@ -99,7 +98,6 @@ public sealed class DialogWindowChromeTests
         var cases = new (Control View, string PrimaryName, string SecondaryName)[]
         {
             (new ViewAlertDialog(), "ConfirmAlertButton", "CancelAlertButton"),
-            (new ViewAlreadyDownloadedDialog(), "ConfirmRedownloadButton", "CancelRedownloadButton"),
             (new DownloadContentConflictDialog(), "UseAvailableContentButton", "SkipDownloadPageButton")
         };
 

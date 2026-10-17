@@ -66,6 +66,18 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(listState, tasks, projections, queue);
         var first = CreateItem("first", Path.Combine(_directory, "first"), cid: 1001);
         var second = CreateItem("second", Path.Combine(_directory, "second"), cid: 1001);
+        first.DownloadBase.Resolution = new DownKyi.Core.BiliApi.BiliUtils.Quality
+        {
+            Id = 80,
+            Name = "1080P"
+        };
+        first.DownloadBase.VideoCodecName = "H.264/AVC";
+        second.DownloadBase.Resolution = new DownKyi.Core.BiliApi.BiliUtils.Quality
+        {
+            Id = 64,
+            Name = "720P"
+        };
+        second.DownloadBase.VideoCodecName = "AV1";
 
         var admitted = await Task.WhenAll(
             admission.AdmitAsync(first, true, TestContext.Current.CancellationToken),
@@ -75,6 +87,74 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
         Assert.Single(listState.Downloading);
         Assert.Single(queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task AdmissionUsesOnlyCidAndTopLevelContentForCompletedHistory()
+    {
+        Directory.CreateDirectory(_directory);
+        using var store = CreateStore();
+        var clock = new SystemClock();
+        var historyService = DownloadHistoryService.CreateForSharedStore(store);
+        using var tasks = new DownloadTaskApplicationService(store, historyService, clock);
+        using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
+        var list = new DownloadListState();
+        var queue = new RecordingDownloadTaskQueue();
+        using var admission = CreateAdmission(list, tasks, projections, queue);
+        const long cid = 1001;
+        var completed = CreateItem("completed", Path.Combine(_directory, "completed"), cid);
+        completed.DownloadBase.NeedDownloadContent = DownloadContentSelection.None with
+        {
+            Video = true,
+            Audio = true,
+            Subtitle = true,
+            SelectedSubtitleTrackIds = [11]
+        };
+        completed.DownloadBase.Resolution = new DownKyi.Core.BiliApi.BiliUtils.Quality
+        {
+            Id = 80,
+            Name = "1080P"
+        };
+        completed.DownloadBase.VideoCodecName = "H.264/AVC";
+        await CompleteItemAsync(projections, tasks, completed);
+
+        var sameIdentity = CreateItem("same", Path.Combine(_directory, "same"), cid);
+        sameIdentity.DownloadBase.NeedDownloadContent = completed.DownloadBase.NeedDownloadContent with
+        {
+            SelectedSubtitleTrackIds = [22]
+        };
+        sameIdentity.DownloadBase.Resolution = new DownKyi.Core.BiliApi.BiliUtils.Quality
+        {
+            Id = 64,
+            Name = "720P"
+        };
+        sameIdentity.DownloadBase.VideoCodecName = "AV1";
+        Assert.False(await admission.AdmitAsync(
+            sameIdentity,
+            autoAddNumberSuffix: true,
+            TestContext.Current.CancellationToken));
+
+        var audioOnly = CreateItem("audio", Path.Combine(_directory, "audio"), cid);
+        audioOnly.DownloadBase.NeedDownloadContent =
+            DownloadContentSelection.None with { Audio = true };
+        Assert.True(await admission.AdmitAsync(
+            audioOnly,
+            autoAddNumberSuffix: true,
+            TestContext.Current.CancellationToken));
+
+        var redownload = CreateItem("redownload", Path.Combine(_directory, "redownload"), cid);
+        redownload.DownloadBase.NeedDownloadContent = sameIdentity.DownloadBase.NeedDownloadContent;
+        Assert.True(await admission.AdmitAsync(
+            redownload,
+            autoAddNumberSuffix: true,
+            TestContext.Current.CancellationToken,
+            redownloadCompleted: true));
+
+        Assert.Equal(2, list.Downloading.Count);
+        Assert.Equal(2, queue.Enqueued.Count);
+        Assert.Single(await projections.GetDownloadedByCidAsync(
+            cid,
+            TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -363,7 +443,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SameCidDisjointActionIsRejectedBeforeCollisionResolution()
+    public async Task SameCidDifferentSelectedContentIsAdmitted()
     {
         Directory.CreateDirectory(_directory);
         using var store = CreateStore();
@@ -398,10 +478,10 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             autoAddNumberSuffix: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.False(admitted);
-        Assert.Equal(basePath, subtitle.DownloadBase.FilePath);
-        Assert.Single(list.Downloading);
-        Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+        Assert.True(admitted);
+        Assert.Equal(2, list.Downloading.Count);
+        Assert.Equal(2, (await tasks.GetUnfinishedAsync(
+            TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -1025,6 +1105,21 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             new DownloadCommittedTaskDispatcher(queue, stateWriter),
             runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
             resolver ?? new RecordingPhysicalOutputPathResolver(static path => path));
+    }
+
+    private static async Task CompleteItemAsync(
+        DownloadTaskProjectionStore projections,
+        IDownloadTaskApplicationService tasks,
+        DownloadingItem item)
+    {
+        await projections.AddDownloadingAsync(item, TestContext.Current.CancellationToken);
+        var stateWriter = new DownloadTaskStateWriter(tasks);
+        var taskId = new DownloadTaskId(item.DownloadBase.Id);
+        await stateWriter.StartAsync(taskId, TestContext.Current.CancellationToken);
+        await stateWriter.CompleteAsync(
+            taskId,
+            new DownloadCompletion(1, "completed", null),
+            TestContext.Current.CancellationToken);
     }
 
     private static DownloadingItem CreateItem(string id, string basePath, long? cid = null)

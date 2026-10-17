@@ -58,7 +58,6 @@ internal static class DownloadComposition
         services.AddSingleton<DownloadTaskFileService>();
         services.AddSingleton<DownloadTaskStaging>();
         services.AddSingleton<IDownloadManagerCoordinator, DownloadManagerCoordinator>();
-        services.AddSingleton<DownloadDuplicatePolicy>();
         services.AddSingleton<DownloadMovieMetadataBuilder>();
         services.AddSingleton<DownloadContentConflictResolver>();
         services.AddSingleton<DownloadActionPlanner>();

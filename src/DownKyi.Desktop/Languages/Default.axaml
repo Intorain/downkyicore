@@ -217,10 +217,6 @@
     <system:String x:Key="VideoAutoParse">载入视频后自动解析画质与编码</system:String>
     <system:String x:Key="VideoAutoParseDescription">读取视频信息后，按照下方范围自动取得音质、画质与编码；不会自动开始下载。</system:String>
     <system:String x:Key="VideoParseScope">视频解析范围：</system:String>
-    <system:String x:Key="RepeatDownloadStrategy">重复下载策略：</system:String>
-    <system:String x:Key="RepeatDownloadAsk">每次询问</system:String>
-    <system:String x:Key="RepeatDownloadReDownload">重新下载</system:String>
-    <system:String x:Key="RepeatDownloadReJumpOver">跳过重复项</system:String>
     <system:String x:Key="RepeatFileAutoAddNumberSuffix">重复文件自动添加数字序号后缀</system:String>
     <system:String x:Key="Network">网络</system:String>
     <system:String x:Key="DownloadTlsUntrusted">下载失败：服务器证书不受信任</system:String>
@@ -416,6 +412,7 @@
     <system:String x:Key="HardDiskFreeSpace">剩余空间：</system:String>
     <system:String x:Key="DownloadContent">下载内容：</system:String>
     <system:String x:Key="DownloadContent2">下载内容</system:String>
+    <system:String x:Key="RedownloadCompleted">重新下载</system:String>
     <system:String x:Key="DownloadAll">所有</system:String>
     <system:String x:Key="DownloadAudio">音频</system:String>
     <system:String x:Key="DownloadVideo">视频</system:String>
@@ -436,10 +433,6 @@
     <system:String x:Key="ParseAll">解析所有视频</system:String>
     <system:String x:Key="SetParseDefault">设为默认，下次不再弹出</system:String>
     
-    <!--  ViewAlreadyDownloaded  -->
-    <system:String x:Key="Yes">是</system:String>
-    <system:String x:Key="No">否</system:String>
-    <system:String x:Key="ApplyToAll">全部应用</system:String>
     <system:String x:Key="DownloadContentConflictTitle">下载选择需要确认</system:String>
     <system:String x:Key="DownloadContentConflictMessage">“{0}”无法完全符合原下载设置。请接受实际可取得的内容和品质，或跳过这一页。</system:String>
     <system:String x:Key="UseAvailableDownloadContent">使用{0}继续下载</system:String>
