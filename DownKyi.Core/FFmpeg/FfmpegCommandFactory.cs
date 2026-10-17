@@ -122,6 +122,7 @@ internal static class FfmpegCommandFactory
             "-hide_banner",
             "-nostdin",
             "-y",
+            "-xerror",
             "-fflags",
             "+genpts",
             "-f",

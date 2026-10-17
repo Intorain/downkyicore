@@ -80,6 +80,19 @@ public sealed class FfmpegCommandFactoryTests
     }
 
     [Fact]
+    public void ConcatTreatsProcessingErrorsAsFatal()
+    {
+        var command = FfmpegCommandFactory.BuildConcat(
+            "segments.txt",
+            "output.mp4",
+            FfmpegConcatStrategy.CpuEncoder,
+            hardwareEncoder: null,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Optional);
+
+        Assert.Contains("-xerror", command.Arguments);
+    }
+
+    [Fact]
     public void ConcatAudioVideoContractRequiresAudioFromDurlInputs()
     {
         var command = FfmpegCommandFactory.BuildConcat(
