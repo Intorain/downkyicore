@@ -122,7 +122,7 @@ public sealed class DownloadAdmissionArchitectureTests
     }
 
     [Fact]
-    public void OutputAdmissionAndRecoveryUseTheSharedActionClaimsContract()
+    public void OutputAdmissionUsesTheSharedActionClaimsContract()
     {
         var contract = ReadSource(
             "src", "DownKyi.Domain", "Downloads", "DownloadContentSelection.cs");
@@ -132,8 +132,6 @@ public sealed class DownloadAdmissionArchitectureTests
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadOutputLayout.cs");
         var reservations = ReadSource(
             "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreOutputReservations.cs");
-        var recovery = ReadSource(
-            "src", "DownKyi.Infrastructure", "Downloads", "DownloadStoreReservationKeyCompatibility.cs");
         var store = ReadSource(
             "src", "DownKyi.Application", "Downloads", "IDownloadTaskStore.cs");
 
@@ -150,17 +148,8 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.DoesNotContain("reader.GetInt64(2) != requestedCid", reservations, StringComparison.Ordinal);
         Assert.DoesNotContain("existingClaims.Overlaps(requestedClaims)", reservations, StringComparison.Ordinal);
         Assert.Contains("db.nfo_request IS NOT NULL", reservations, StringComparison.Ordinal);
-        Assert.Contains("DownloadTaskSqlReader.SelectColumns", recovery, StringComparison.Ordinal);
-        Assert.Contains("DownloadTaskRecordMapper.Read", recovery, StringComparison.Ordinal);
-        Assert.Contains("SqliteDownloadStoreQuarantine.RecordAsync", recovery, StringComparison.Ordinal);
-        Assert.Contains("task.Plan.ActionClaims", recovery, StringComparison.Ordinal);
-        Assert.DoesNotContain("DownloadStoreJson.ReadContentSelection", recovery, StringComparison.Ordinal);
-        Assert.Contains("ConflictsWith(currentOwnership)", recovery, StringComparison.Ordinal);
-        Assert.DoesNotContain("reservation.Cid != row.Cid", recovery, StringComparison.Ordinal);
-        Assert.DoesNotContain("reservation.Claims.Overlaps(row.Claims)", recovery, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadOutputClaims", store, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadOutputClaims", reservations, StringComparison.Ordinal);
-        Assert.DoesNotContain("DownloadOutputClaims", recovery, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -193,8 +182,6 @@ public sealed class DownloadAdmissionArchitectureTests
             "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreQueries.cs");
         var reservations = ReadSource(
             "src", "DownKyi.Infrastructure", "Downloads", "SqliteDownloadStoreOutputReservations.cs");
-        var recovery = ReadSource(
-            "src", "DownKyi.Infrastructure", "Downloads", "DownloadStoreReservationKeyCompatibility.cs");
         Assert.True(violations.Length == 0, string.Join(Environment.NewLine, violations));
         Assert.Contains("ExcludeDownloadingRecordSql", owner, StringComparison.Ordinal);
         Assert.Contains("ExcludeDownloadHistoryRecordSql", owner, StringComparison.Ordinal);
@@ -211,12 +198,6 @@ public sealed class DownloadAdmissionArchitectureTests
             "SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql",
             reservations,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql",
-            recovery,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("LEFT JOIN download_quarantine q", recovery, StringComparison.Ordinal);
-        Assert.Contains("SqliteDownloadStoreQuarantine.RecordAsync", recovery, StringComparison.Ordinal);
     }
 
     private static string ReadSource(params string[] segments)

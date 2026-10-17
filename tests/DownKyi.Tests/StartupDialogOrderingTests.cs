@@ -1,7 +1,6 @@
 using System.Net;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
-using DownKyi.Application.Lifetime;
 using DownKyi.Core.Settings;
 using DownKyi.Platform;
 using DownKyi.Services;
@@ -42,7 +41,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(required: false),
             new RuntimeAvailabilityStub(),
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         viewModel.Activate(
@@ -91,7 +89,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(),
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         var startup = viewModel.RunStartupDialogsAsync();
@@ -142,7 +139,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(),
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         var startup = viewModel.RunStartupDialogsAsync();
@@ -189,7 +185,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(),
             new RuntimeAvailabilityStub(DownloadRuntimeStartupOutcome.Faulted(failure)),
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         var startup = viewModel.RunStartupDialogsAsync();
@@ -247,7 +242,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(),
             availability,
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         var startup = viewModel.RunStartupDialogsAsync();
@@ -307,7 +301,6 @@ public sealed class StartupDialogOrderingTests
             new VersionCheckerService(httpClient, "owner", "repo"),
             new LegacyUpgradeCoordinatorStub(required: false),
             new RuntimeAvailabilityStub(),
-            CreateRecoveryPresenter(dialogs),
             NullLogger<MainWindowViewModel>.Instance);
 
         await viewModel.RunStartupDialogsAsync().ConfigureAwait(true);
@@ -315,14 +308,6 @@ public sealed class StartupDialogOrderingTests
         Assert.Empty(dialogs.Requests);
         Assert.Equal(0, handler.RequestCount);
     }
-
-    private static DownloadStoreRecoveryPresenter CreateRecoveryPresenter(
-        IAppDialogService dialogs) =>
-        new(
-            dialogs,
-            new DownloadStoreRecoveryStub(),
-            new ApplicationLifecycleStub(),
-            NullLogger<DownloadStoreRecoveryPresenter>.Instance);
 
     private sealed class OrderedDialogService : IAppDialogService
     {
@@ -466,27 +451,6 @@ public sealed class StartupDialogOrderingTests
             IProgress<LegacyUpgradeProgress> progress,
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
-    }
-
-    private sealed class DownloadStoreRecoveryStub : IDownloadStoreRecovery
-    {
-        public Task BackupAndResetAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class ApplicationLifecycleStub : IApplicationLifecycle
-    {
-        public Task RequestShutdownAsync(CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
-
-        public Task ExitAsync(CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
-
-        public Task<bool> RestartAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
     }
 
     private sealed class NavigationStub : IAppNavigationService

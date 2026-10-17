@@ -43,7 +43,7 @@ public sealed class StartupDiagnosticsDialogViewModelTests
     }
 
     [Fact]
-    public async Task ResetActionIsAvailableOnlyForDownloadSchemaMismatch()
+    public async Task ResetActionIsAvailableOnlyForDownloadProjectionFailure()
     {
         var viewModel = new StartupDiagnosticsDialogViewModel(
             new RedactingLogService(),
@@ -51,26 +51,27 @@ public sealed class StartupDiagnosticsDialogViewModelTests
             new RecordingPlatformLauncher(),
             new RecordingNotificationService(),
             NullLogger<StartupDiagnosticsDialogViewModel>.Instance);
-
-        var schemaFailure = new InvalidOperationException(
+        var projectionFailure = new InvalidOperationException(
             "bootstrap wrapper",
-            new DownloadStoreSchemaMismatchException("unsupported schema"));
+            new DownloadStoreProjectionException("projection failed"));
         viewModel.OnDialogOpened(CreateRequest(
-            StartupDiagnostic.ForDownloadBootstrap(schemaFailure)));
+            StartupDiagnostic.ForDownloadBootstrap(projectionFailure)));
 
-        var schemaItem = Assert.Single(viewModel.Items);
-        Assert.True(schemaItem.CanResetDownloadStore);
-        Assert.Equal(StartupDiagnosticKind.DownloadStoreSchemaMismatch, schemaItem.Diagnostic.Kind);
-
+        var projectionItem = Assert.Single(viewModel.Items);
+        Assert.True(projectionItem.CanResetDownloadStore);
+        Assert.Equal(
+            StartupDiagnosticKind.DownloadStoreProjectionFailed,
+            projectionItem.Diagnostic.Kind);
         var closeCompletion = new TaskCompletionSource<AppDialogResult>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         viewModel.CloseRequested += (_, closeResult) =>
             closeCompletion.TrySetResult(closeResult);
-        schemaItem.ResetDownloadStoreCommand.Execute(null);
+        projectionItem.ResetDownloadStoreCommand.Execute(null);
+
         var result = await closeCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.Equal(AppDialogOutcome.Accepted, result.Outcome);
         Assert.Same(
-            schemaFailure,
+            projectionFailure,
             Assert.IsType<StartupDiagnostic>(
                 result.Parameters[StartupDiagnosticsDialogViewModel.RecoveryDiagnosticParameter])
                 .Failure);
@@ -78,7 +79,6 @@ public sealed class StartupDiagnosticsDialogViewModelTests
         viewModel.OnDialogOpened(CreateRequest(
             StartupDiagnostic.ForDownloadBootstrap(
                 new SqliteException("database is locked", 5))));
-
         Assert.False(Assert.Single(viewModel.Items).CanResetDownloadStore);
     }
 

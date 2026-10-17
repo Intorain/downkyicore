@@ -7,39 +7,38 @@ public sealed class DownloadStoreSchemaArchitectureTests
     private static readonly string RepositoryRoot = FindRepositoryRoot();
 
     [Fact]
-    public void CoordinatorOwnsAtomicFlowWithoutOwningFormatOrSqlRules()
+    public void CoordinatorOwnsAtomicShapeProjectionWithoutVersionBranchesOrSqlRules()
     {
         var source = ReadDownloadSource("DownloadStoreSchema.cs");
 
-        Assert.Contains(
-            "public const int CurrentVersion = LegacyTransferMarkerVersion",
-            source,
-            StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreFormatDetector", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreReader", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreNormalizer", source, StringComparison.Ordinal);
+        Assert.Contains("DownloadStoreShapeReader", source, StringComparison.Ordinal);
         Assert.Contains("CurrentDownloadStoreWriter", source, StringComparison.Ordinal);
         Assert.Contains("BeginTransactionAsync", source, StringComparison.Ordinal);
         Assert.Contains("CommitAsync", source, StringComparison.Ordinal);
-        Assert.Contains("RollbackAsync", source, StringComparison.Ordinal);
-        Assert.Contains("BackupAsync", source, StringComparison.Ordinal);
+        Assert.Contains("DownloadStoreBackup", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("catch", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CommandText", source, StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE TABLE", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ALTER TABLE", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Legacy", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentVersion", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("user_version", source, StringComparison.Ordinal);
+        Assert.Contains("HasRequiredProjectionInputs", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void DetectorOnlyInspectsSchemaFingerprint()
+    public void ShapeReaderOnlyComparesTablesAndColumns()
     {
-        var source = ReadDownloadSource("LegacyDownloadStoreFormatDetector.cs");
+        var source = ReadDownloadSource("DownloadStoreShapeReader.cs");
 
         Assert.Contains("sqlite_master", source, StringComparison.Ordinal);
-        Assert.Contains("PRAGMA table_info", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreKind.Relational", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreKind.Stateful", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreKind.Reserved", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreKind.AdmissionSafe", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("CurrentVersion -", source, StringComparison.Ordinal);
+        Assert.Contains("pragma_table_info", source, StringComparison.Ordinal);
+        Assert.Contains("HasColumns", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SchemaDifferences", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CurrentVersion", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadUserVersionAsync", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("LegacyDownloadStoreKind", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ALTER TABLE", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CREATE TABLE", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("UPDATE download", source, StringComparison.OrdinalIgnoreCase);
@@ -48,72 +47,29 @@ public sealed class DownloadStoreSchemaArchitectureTests
     }
 
     [Fact]
-    public void ReaderOnlyExtractsLegacyFacts()
-    {
-        var source = ReadDownloadSource("LegacyDownloadStoreReader.cs");
-
-        Assert.Contains("SELECT db.id", source, StringComparison.Ordinal);
-        Assert.Contains("LegacyDownloadStoreSnapshot", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("ALTER TABLE", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("CREATE TABLE", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("UPDATE download", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("DownloadOutputPathKey", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void NormalizerOwnsLegacyMeaningWithoutOwningSql()
-    {
-        var source = ReadDownloadSource("LegacyDownloadStoreNormalizer.cs");
-
-        Assert.Contains("MapLegacyStatus", source, StringComparison.Ordinal);
-        Assert.Contains("DownloadOutputPathKey.Create", source, StringComparison.Ordinal);
-        Assert.Contains("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
-        Assert.Contains("Guid.NewGuid", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("Microsoft.Data.Sqlite", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("CommandText", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("CREATE TABLE", source, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ALTER TABLE", source, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void CurrentWriterOwnsLatestSchemaWithoutVersionBranches()
+    public void CurrentWriterProjectsMissingColumnsWithoutInterpretingLegacyRows()
     {
         var source = ReadDownloadSource("CurrentDownloadStoreWriter.cs");
 
         Assert.Contains("CREATE TABLE download_base", source, StringComparison.Ordinal);
         Assert.Contains("CREATE TABLE download_history", source, StringComparison.Ordinal);
-        Assert.Contains("ProjectLegacyHistoryAsync", source, StringComparison.Ordinal);
-        Assert.Contains("RecoverCurrentWithLegacyHistoryAsync", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyPhaseUpdatesAsync", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyReservationUpdatesAsync", source, StringComparison.Ordinal);
-        Assert.Contains("ApplyQuarantineAsync", source, StringComparison.Ordinal);
-        Assert.Contains("SetCurrentVersionAsync", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("format.UserVersion", source, StringComparison.Ordinal);
+        Assert.Contains("ALTER TABLE download_base ADD COLUMN", source, StringComparison.Ordinal);
+        Assert.Contains("ALTER TABLE downloading ADD COLUMN", source, StringComparison.Ordinal);
+        Assert.Contains("shape.HasColumn", source, StringComparison.Ordinal);
+        Assert.Contains("ProjectHistoryAsync", source, StringComparison.Ordinal);
+        Assert.Contains("AlignTablesAsync", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "SET staging_token = lower(hex(randomblob(16)))",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("SuppressMessage", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserVersion", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("user_version", source, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadStoreSchemaV", source, StringComparison.Ordinal);
         Assert.DoesNotContain("IPhysicalOutputPathResolver", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MapLegacyStatus", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("DownloadOutputPathKey", source, StringComparison.Ordinal);
         Assert.DoesNotContain("SET source_table = 'downloading'", source, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void SchemaLifecycleFailsClosedWhenTheCurrentVersionHasNoMatchingPragmaWriter()
-    {
-        var source = ReadDownloadSource("DownloadStoreSchemaLifecycle.cs");
-
-        Assert.Contains(
-            "private const string SetCurrentVersionStatement = \"PRAGMA user_version = 12\"",
-            source,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "$\" = {DownloadStoreSchema.CurrentVersion}\"",
-            source,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "SetCurrentVersionStatement.EndsWith(expectedSuffix",
-            source,
-            StringComparison.Ordinal);
-        Assert.Contains("throw new InvalidOperationException", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("#pragma warning disable", source, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,4 +1,3 @@
-using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using DownKyi.Domain.Results;
 using Microsoft.Data.Sqlite;
@@ -14,7 +13,6 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
         "Removed {Count} orphaned downloading records.");
     private readonly SqliteDownloadTaskStoreOptions _options;
     private readonly IClock _clock;
-    private readonly IPhysicalOutputPathResolver _physicalOutputPathResolver;
     private readonly ILogger _logger;
     private readonly Type _disposedObjectType;
     private readonly string _connectionString;
@@ -25,13 +23,11 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
     public SqliteDownloadStoreDatabase(
         SqliteDownloadTaskStoreOptions options,
         IClock clock,
-        IPhysicalOutputPathResolver physicalOutputPathResolver,
         ILogger logger,
         Type disposedObjectType)
     {
         _options = options;
         _clock = clock;
-        _physicalOutputPathResolver = physicalOutputPathResolver;
         _logger = logger;
         _disposedObjectType = disposedObjectType;
         _connectionString = new SqliteConnectionStringBuilder
@@ -67,23 +63,13 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
             using (var connection = await OpenConnectionCoreAsync(cancellationToken)
                        .ConfigureAwait(false))
             {
-                var sourceVersion = await DownloadStoreSchemaLifecycle
-                    .ReadUserVersionAsync(connection, cancellationToken)
-                    .ConfigureAwait(false);
-                await DownloadStoreSchemaLifecycle
-                    .BackupForUserResetAsync(
-                        connection,
-                        _options.DatabasePath,
-                        sourceVersion,
-                        _clock,
-                        cancellationToken)
+                await DownloadStoreBackup
+                    .CreateAsync(connection, _options.DatabasePath, _clock, cancellationToken)
                     .ConfigureAwait(false);
                 await connection.CloseAsync().ConfigureAwait(false);
                 SqliteConnection.ClearPool(connection);
             }
 
-            // A completed backup is the reset commit boundary. From here onward cancellation
-            // must not leave a partially removed database set at the application path.
             DeleteDatabaseFileSet();
             await InitializeCoreAsync(CancellationToken.None).ConfigureAwait(false);
             _initialized = true;
@@ -184,18 +170,22 @@ internal sealed class SqliteDownloadStoreDatabase : IDisposable
             && new FileInfo(_options.DatabasePath).Length > 0;
         Directory.CreateDirectory(Path.GetDirectoryName(_options.DatabasePath) ?? ".");
         using var connection = await OpenConnectionCoreAsync(cancellationToken).ConfigureAwait(false);
-        await DownloadStoreSchema.InitializeAsync(
-            connection,
-            _options.DatabasePath,
-            databaseExisted,
-            _clock,
-            _physicalOutputPathResolver,
-            cancellationToken).ConfigureAwait(false);
-        await DownloadStoreReservationKeyCompatibility.EnsureAsync(
-            connection,
-            _options.DatabasePath,
-            _clock,
-            cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await DownloadStoreSchema.InitializeAsync(
+                connection,
+                _options.DatabasePath,
+                databaseExisted,
+                _clock,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (databaseExisted
+            && exception is not (OperationCanceledException or DownloadStoreProjectionException))
+        {
+            throw new DownloadStoreProjectionException(
+                "The existing download database could not be projected to the current shape.",
+                exception);
+        }
         await RemoveOrphanedDownloadingRecordsAsync(connection, cancellationToken).ConfigureAwait(false);
     }
 

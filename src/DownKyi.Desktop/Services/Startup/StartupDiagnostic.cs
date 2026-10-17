@@ -14,7 +14,7 @@ internal enum StartupDiagnosticKind
 {
     LegacyMigrationFailed,
     DownloadRuntimeMissing,
-    DownloadStoreSchemaMismatch,
+    DownloadStoreProjectionFailed,
     DownloadRuntimeFailed
 }
 
@@ -27,14 +27,14 @@ internal sealed record StartupDiagnostic(
     {
         StartupDiagnosticKind.LegacyMigrationFailed => StartupDiagnosticSource.LegacyMigration,
         StartupDiagnosticKind.DownloadRuntimeMissing
-            or StartupDiagnosticKind.DownloadStoreSchemaMismatch
+            or StartupDiagnosticKind.DownloadStoreProjectionFailed
             or StartupDiagnosticKind.DownloadRuntimeFailed =>
             StartupDiagnosticSource.DownloadBootstrap,
         _ => throw new InvalidOperationException($"Unsupported startup diagnostic kind: {Kind}")
     };
 
     public bool AllowsDownloadStoreReset =>
-        Kind == StartupDiagnosticKind.DownloadStoreSchemaMismatch;
+        Kind == StartupDiagnosticKind.DownloadStoreProjectionFailed;
 
     public static StartupDiagnostic ForLegacyMigration(
         Exception failure,
@@ -53,7 +53,7 @@ internal sealed record StartupDiagnostic(
         if (DownloadStoreRecoveryPresenter.CanReset(failure))
         {
             return new StartupDiagnostic(
-                StartupDiagnosticKind.DownloadStoreSchemaMismatch,
+                StartupDiagnosticKind.DownloadStoreProjectionFailed,
                 failure);
         }
 

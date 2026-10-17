@@ -81,14 +81,13 @@ public sealed class SqliteDownloadStoreFailureTests : IDisposable
     }
 
     [Fact]
-    public async Task UnsupportedLegacySchemaLeavesDatabaseUnchangedAndKeepsBackup()
+    public async Task ProjectionSqlFailureRollsBackAndKeepsBackup()
     {
         await _fixture.CreateIncompatibleLegacyDatabaseAsync();
         using var store = _fixture.CreateStore();
 
-        var failure = await Assert.ThrowsAsync<DownloadStoreSchemaMismatchException>(() =>
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
             store.InitializeAsync(TestContext.Current.CancellationToken));
-        Assert.Contains("missing table: downloaded", failure.SchemaDifferences);
 
         using var connection = await _fixture.OpenReadOnlyConnectionAsync().ConfigureAwait(true);
         using var columns = connection.CreateCommand();
@@ -96,68 +95,48 @@ public sealed class SqliteDownloadStoreFailureTests : IDisposable
         Assert.Equal(0L, await columns.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v0-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
-    public async Task UserResetBacksUpFailedDatabaseBeforeCreatingFreshSchema()
+    public async Task ProjectionFailureCanBackupAndResetToAnEmptyStore()
     {
         await _fixture.CreateIncompatibleLegacyDatabaseAsync();
-        var unrelatedMedia = Path.Combine(_fixture.TempDirectory, "already-downloaded.mp4");
-        await File.WriteAllTextAsync(
-            unrelatedMedia,
-            "media",
-            TestContext.Current.CancellationToken);
         using var store = _fixture.CreateStore();
-
-        await Assert.ThrowsAsync<DownloadStoreSchemaMismatchException>(() =>
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
             store.InitializeAsync(TestContext.Current.CancellationToken));
 
         await store.BackupAndResetAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-        Assert.True(File.Exists(unrelatedMedia));
-        var backupPath = Assert.Single(Directory.GetFiles(
+        Assert.Empty((await store.GetHistoryPageAsync(
+            null,
+            10,
+            TestContext.Current.CancellationToken)).Items);
+        Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.user-reset-v0-*.bak"));
-        var backupConnectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = backupPath,
-            Mode = SqliteOpenMode.ReadOnly,
-            Pooling = false
-        }.ToString();
-        using var backup = new SqliteConnection(backupConnectionString);
-        await backup.OpenAsync(TestContext.Current.CancellationToken);
-        using var legacyShape = backup.CreateCommand();
-        legacyShape.CommandText =
-            "SELECT COUNT(*) FROM pragma_table_info('downloading') WHERE name = 'phase'";
-        Assert.Equal(0L, await legacyShape.ExecuteScalarAsync(TestContext.Current.CancellationToken));
-
-        using var current = await _fixture.OpenReadOnlyConnectionAsync().ConfigureAwait(true);
-        using var currentShape = current.CreateCommand();
-        currentShape.CommandText =
-            "SELECT COUNT(*) FROM pragma_table_info('downloading') WHERE name = 'phase'";
-        Assert.Equal(1L, await currentShape.ExecuteScalarAsync(TestContext.Current.CancellationToken));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
-    public async Task UserResetRefusesAnInitializedDatabase()
+    public async Task MissingRequiredSourceColumnIsRejectedBeforeProjectionCommit()
     {
-        using var store = _fixture.CreateStore();
-        await store.InitializeAsync(TestContext.Current.CancellationToken);
-        Assert.True((await store.AddAsync(
-            _fixture.CreatePausedTask("preserved"),
-            TestContext.Current.CancellationToken)).IsSuccess);
+        using (var current = _fixture.CreateStore())
+        {
+            await current.InitializeAsync(TestContext.Current.CancellationToken);
+        }
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "ALTER TABLE download_base DROP COLUMN bvid";
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            store.BackupAndResetAsync(TestContext.Current.CancellationToken));
+        using var reopened = _fixture.CreateStore();
+        await Assert.ThrowsAsync<DownloadStoreProjectionException>(() =>
+            reopened.InitializeAsync(TestContext.Current.CancellationToken));
 
-        Assert.Equal(
-            "preserved",
-            Assert.Single(await store.GetUnfinishedAsync(TestContext.Current.CancellationToken)).Id.Value);
-        var backupDirectory = Path.Combine(_fixture.TempDirectory, "Backup");
-        Assert.False(Directory.Exists(backupDirectory)
-            && Directory.EnumerateFiles(backupDirectory, "download.db.user-reset-*.bak").Any());
+        Assert.DoesNotContain("bvid", await _fixture.ReadTableColumnsAsync("download_base"));
     }
 
     [Fact]

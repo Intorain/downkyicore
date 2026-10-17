@@ -4,12 +4,9 @@ namespace DownKyi.Infrastructure.Downloads;
 
 internal static class CurrentDownloadStoreWriter
 {
-    private const string LegacyPathQuarantineReason = "legacy-output-path-unverified";
-
     public static async Task CreateAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
-        DateTimeOffset appliedAtUtc,
         CancellationToken cancellationToken)
     {
         using (var command = connection.CreateCommand())
@@ -78,103 +75,30 @@ internal static class CurrentDownloadStoreWriter
         }
 
         await CreateHistoryTableAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await EnsureSupportTablesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await AlignTablesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task UpgradeAsync(
+    public static async Task ProjectAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
-        LegacyDownloadStoreFormat format,
-        LegacyDownloadNormalizationPlan plan,
-        DateTimeOffset appliedAtUtc,
+        DownloadStoreShape shape,
         CancellationToken cancellationToken)
     {
-        await EnsureSupportTablesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await AddMissingColumnsAsync(connection, transaction, format, cancellationToken)
+        await AlignTablesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await AddMissingColumnsAsync(connection, transaction, shape, cancellationToken)
             .ConfigureAwait(false);
-        await CreateHistoryTableAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await ProjectLegacyHistoryAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await ApplyPhaseUpdatesAsync(connection, transaction, plan.PhaseUpdates, cancellationToken)
-            .ConfigureAwait(false);
-        await ApplyReservationUpdatesAsync(connection, transaction, plan.ReservationUpdates, cancellationToken)
-            .ConfigureAwait(false);
-        await ApplyStagingTokenUpdatesAsync(connection, transaction, plan.StagingTokenUpdates, cancellationToken)
-            .ConfigureAwait(false);
-        await ApplyQuarantineAsync(
-            connection,
-            transaction,
-            plan.QuarantineRecordIds,
-            appliedAtUtc,
-            cancellationToken).ConfigureAwait(false);
-        await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken).ConfigureAwait(false);
-    }
-
-    public static async Task RecoverCurrentWithLegacyHistoryAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        LegacyDownloadStoreFormat format,
-        LegacyDownloadNormalizationPlan plan,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        if (!format.HasLegacyTransferMarker)
+        if (!shape.HasTable("download_history"))
         {
-            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
+            await CreateHistoryTableAsync(connection, transaction, cancellationToken)
                 .ConfigureAwait(false);
         }
-        await ProjectLegacyHistoryAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await ApplyStagingTokenUpdatesAsync(
-            connection,
-            transaction,
-            plan.StagingTokenUpdates,
-            cancellationToken).ConfigureAwait(false);
-        await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken).ConfigureAwait(false);
-    }
-
-    public static async Task UpgradeCurrentShapeAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        LegacyDownloadStoreFormat format,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        if (!format.CanUpgradeCurrentShapeInPlace)
+        if (shape.HasTable("downloaded"))
         {
-            throw new ArgumentException(
-                "The detected schema cannot be upgraded in place.",
-                nameof(format));
-        }
-
-        if (!format.HasHistoryContent)
-        {
-            await AddHistoryContentColumnAsync(connection, transaction, cancellationToken)
+            await ProjectHistoryAsync(connection, transaction, cancellationToken)
                 .ConfigureAwait(false);
         }
-
-        if (!format.HasLegacyTransferMarker)
-        {
-            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
         await EnsureIndexesAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        await CompleteAsync(connection, transaction, appliedAtUtc, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public static async Task AddHistoryContentColumnAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "ALTER TABLE download_history ADD COLUMN requested_content TEXT";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task CreateHistoryTableAsync(
@@ -207,7 +131,7 @@ internal static class CurrentDownloadStoreWriter
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task ProjectLegacyHistoryAsync(
+    private static async Task ProjectHistoryAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         CancellationToken cancellationToken)
@@ -248,7 +172,7 @@ internal static class CurrentDownloadStoreWriter
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task EnsureSupportTablesAsync(
+    private static async Task AlignTablesAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         CancellationToken cancellationToken)
@@ -256,11 +180,6 @@ internal static class CurrentDownloadStoreWriter
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            CREATE TABLE IF NOT EXISTS download_schema_migrations (
-                version        INTEGER PRIMARY KEY,
-                applied_at_utc INTEGER NOT NULL
-            );
-
             CREATE TABLE IF NOT EXISTS download_quarantine (
                 quarantine_id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 source_table       TEXT NOT NULL,
@@ -271,11 +190,8 @@ internal static class CurrentDownloadStoreWriter
                 UNIQUE(source_table, record_id)
             );
 
-            CREATE TABLE IF NOT EXISTS download_upgrade_admission_gate (
-                singleton_id INTEGER PRIMARY KEY CHECK(singleton_id = 1),
-                remote_stopped_confirmed INTEGER NOT NULL DEFAULT 0
-                    CHECK(remote_stopped_confirmed IN (0, 1))
-            );
+            DROP TABLE IF EXISTS download_schema_migrations;
+            DROP TABLE IF EXISTS download_upgrade_admission_gate;
             """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -283,211 +199,154 @@ internal static class CurrentDownloadStoreWriter
     private static async Task AddMissingColumnsAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
-        LegacyDownloadStoreFormat format,
+        DownloadStoreShape shape,
         CancellationToken cancellationToken)
     {
-        if (!format.HasStateColumns)
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        if (!shape.HasColumn("download_base", "version"))
         {
-            await AddStateColumnsAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN version INTEGER NOT NULL DEFAULT 0";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (!format.HasReservationKey)
+        if (!shape.HasColumn("download_base", "created_at_utc"))
         {
-            using var reservation = connection.CreateCommand();
-            reservation.Transaction = transaction;
-            reservation.CommandText = "ALTER TABLE download_base ADD COLUMN output_reservation_key TEXT";
-            await reservation.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN created_at_utc INTEGER NOT NULL DEFAULT 0";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (!format.HasNfoRequest)
+        if (!shape.HasColumn("download_base", "updated_at_utc"))
         {
-            using var nfo = connection.CreateCommand();
-            nfo.Transaction = transaction;
-            nfo.CommandText = "ALTER TABLE download_base ADD COLUMN nfo_request TEXT";
-            await nfo.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN updated_at_utc INTEGER NOT NULL DEFAULT 0";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (!format.HasPublishedArtifacts)
+        if (!shape.HasColumn("download_base", "output_reservation_key"))
         {
-            using var published = connection.CreateCommand();
-            published.Transaction = transaction;
-            published.CommandText =
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN output_reservation_key TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("download_base", "nfo_request"))
+        {
+            command.CommandText = "ALTER TABLE download_base ADD COLUMN nfo_request TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("download_base", "published_artifacts"))
+        {
+            command.CommandText =
                 "ALTER TABLE download_base ADD COLUMN published_artifacts TEXT NOT NULL DEFAULT '{}'";
-            await published.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (!format.HasStagingToken)
+        if (!shape.HasColumn("download_base", "staging_token"))
         {
-            using var staging = connection.CreateCommand();
-            staging.Transaction = transaction;
-            staging.CommandText = "ALTER TABLE download_base ADD COLUMN staging_token TEXT NOT NULL DEFAULT ''";
-            await staging.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN staging_token TEXT NOT NULL DEFAULT ''";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (!format.HasPublishingArtifact)
-        {
-            using var publishing = connection.CreateCommand();
-            publishing.Transaction = transaction;
-            publishing.CommandText = """
-                ALTER TABLE download_base ADD COLUMN publishing_key TEXT;
-                ALTER TABLE download_base ADD COLUMN publishing_file_name TEXT;
-                ALTER TABLE download_base ADD COLUMN publishing_length INTEGER;
-                ALTER TABLE download_base ADD COLUMN publishing_sha256 TEXT;
-                """;
-            await publishing.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        if (!format.HasLegacyTransferMarker)
-        {
-            await AddLegacyTransferMarkerAsync(connection, transaction, cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
-
-    private static async Task AddLegacyTransferMarkerAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
         command.CommandText = """
-            ALTER TABLE downloading
-            ADD COLUMN is_legacy_transfer INTEGER NOT NULL DEFAULT 1
-                CHECK(is_legacy_transfer IN (0, 1))
+            UPDATE download_base
+            SET staging_token = lower(hex(randomblob(16)))
+            WHERE staging_token IS NULL
+               OR length(staging_token) <> 32
+               OR staging_token GLOB '*[^0-9A-Fa-f]*'
             """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
 
-    private static async Task AddStateColumnsAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "ALTER TABLE download_base ADD COLUMN version INTEGER NOT NULL DEFAULT 0";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE download_base ADD COLUMN created_at_utc INTEGER NOT NULL DEFAULT 0";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE download_base ADD COLUMN updated_at_utc INTEGER NOT NULL DEFAULT 0";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN phase INTEGER";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_code TEXT";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_message TEXT";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_transient INTEGER";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN downloaded_bytes INTEGER";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText = "ALTER TABLE downloading ADD COLUMN total_bytes INTEGER";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        command.CommandText =
-            "ALTER TABLE downloading ADD COLUMN bytes_per_second INTEGER NOT NULL DEFAULT 0";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task ApplyPhaseUpdatesAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        IEnumerable<LegacyPhaseUpdate> updates,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "UPDATE downloading SET phase = @phase WHERE id = @id AND phase IS NULL";
-        var phase = command.Parameters.Add("@phase", SqliteType.Integer);
-        var id = command.Parameters.Add("@id", SqliteType.Text);
-        foreach (var update in updates)
+        if (!shape.HasColumn("download_base", "publishing_key"))
         {
-            phase.Value = update.Phase;
-            id.Value = update.Id;
+            command.CommandText = "ALTER TABLE download_base ADD COLUMN publishing_key TEXT";
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
-    }
 
-    private static async Task ApplyReservationUpdatesAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        IEnumerable<LegacyReservationUpdate> updates,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "UPDATE download_base SET output_reservation_key = @key WHERE id = @id";
-        var key = command.Parameters.Add("@key", SqliteType.Text);
-        var id = command.Parameters.Add("@id", SqliteType.Text);
-        foreach (var update in updates)
+        if (!shape.HasColumn("download_base", "publishing_file_name"))
         {
-            key.Value = update.ReservationKey;
-            id.Value = update.Id;
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN publishing_file_name TEXT";
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
-    }
 
-    private static async Task ApplyStagingTokenUpdatesAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        IEnumerable<LegacyStagingTokenUpdate> updates,
-        CancellationToken cancellationToken)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "UPDATE download_base SET staging_token = @token WHERE id = @id";
-        var token = command.Parameters.Add("@token", SqliteType.Text);
-        var id = command.Parameters.Add("@id", SqliteType.Text);
-        foreach (var update in updates)
+        if (!shape.HasColumn("download_base", "publishing_length"))
         {
-            token.Value = update.StagingToken;
-            id.Value = update.Id;
+            command.CommandText =
+                "ALTER TABLE download_base ADD COLUMN publishing_length INTEGER";
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
-    }
 
-    private static async Task ApplyQuarantineAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        IReadOnlyList<string> recordIds,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        if (recordIds.Count == 0)
+        if (!shape.HasColumn("download_base", "publishing_sha256"))
         {
-            return;
+            command.CommandText = "ALTER TABLE download_base ADD COLUMN publishing_sha256 TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        using (var quarantine = connection.CreateCommand())
+        if (!shape.HasColumn("downloading", "phase"))
         {
-            quarantine.Transaction = transaction;
-            quarantine.CommandText = """
-                INSERT INTO download_quarantine
-                    (source_table, record_id, field_name, reason, quarantined_at_utc)
-                VALUES ('downloading', @record_id, 'file_path', @reason, @quarantined_at_utc)
-                ON CONFLICT(source_table, record_id) DO NOTHING
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN phase INTEGER";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "failure_code"))
+        {
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_code TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "failure_message"))
+        {
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_message TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "failure_transient"))
+        {
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN failure_transient INTEGER";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "downloaded_bytes"))
+        {
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN downloaded_bytes INTEGER";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "total_bytes"))
+        {
+            command.CommandText = "ALTER TABLE downloading ADD COLUMN total_bytes INTEGER";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "bytes_per_second"))
+        {
+            command.CommandText =
+                "ALTER TABLE downloading ADD COLUMN bytes_per_second INTEGER NOT NULL DEFAULT 0";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!shape.HasColumn("downloading", "is_legacy_transfer"))
+        {
+            command.CommandText = """
+                ALTER TABLE downloading
+                ADD COLUMN is_legacy_transfer INTEGER NOT NULL DEFAULT 1
+                    CHECK(is_legacy_transfer IN (0, 1))
                 """;
-            var recordId = quarantine.Parameters.Add("@record_id", SqliteType.Text);
-            quarantine.Parameters.AddWithValue("@reason", LegacyPathQuarantineReason);
-            quarantine.Parameters.AddWithValue(
-                "@quarantined_at_utc",
-                appliedAtUtc.ToUnixTimeMilliseconds());
-            foreach (var id in recordIds)
-            {
-                recordId.Value = id;
-                await quarantine.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        using var gate = connection.CreateCommand();
-        gate.Transaction = transaction;
-        gate.CommandText = """
-            INSERT INTO download_upgrade_admission_gate
-                (singleton_id, remote_stopped_confirmed)
-            VALUES (1, 0)
-            ON CONFLICT(singleton_id) DO NOTHING
-            """;
-        await gate.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        if (shape.HasTable("download_history")
+            && !shape.HasColumn("download_history", "requested_content"))
+        {
+            command.CommandText =
+                "ALTER TABLE download_history ADD COLUMN requested_content TEXT";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     internal static async Task EnsureIndexesAsync(
@@ -518,27 +377,5 @@ internal static class CurrentDownloadStoreWriter
                 WHERE output_reservation_key IS NOT NULL;
             """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task CompleteAsync(
-        SqliteConnection connection,
-        SqliteTransaction transaction,
-        DateTimeOffset appliedAtUtc,
-        CancellationToken cancellationToken)
-    {
-        await DownloadStoreSchemaLifecycle
-            .RecordMigrationAsync(
-                connection,
-                transaction,
-                DownloadStoreSchema.CurrentVersion,
-                appliedAtUtc,
-                cancellationToken)
-            .ConfigureAwait(false);
-        await DownloadStoreSchemaLifecycle
-            .SetCurrentVersionAsync(
-                connection,
-                transaction,
-                cancellationToken)
-            .ConfigureAwait(false);
     }
 }

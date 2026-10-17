@@ -20,10 +20,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         await store.InitializeAsync(TestContext.Current.CancellationToken);
 
-        using var connection = await _fixture.OpenReadOnlyConnectionAsync().ConfigureAwait(true);
-        using var version = connection.CreateCommand();
-        version.CommandText = "PRAGMA user_version";
-        Assert.Equal((long)DownloadStoreSchema.CurrentVersion, await version.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         Assert.True(await _fixture.TableExistsAsync("download_history"));
         Assert.False(await _fixture.TableExistsAsync("downloaded"));
         Assert.Equal(
@@ -33,14 +29,11 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 "published_artifacts", "finished_timestamp", "finished_time", "max_speed_display", "requested_content"
             ],
             await _fixture.ReadTableColumnsAsync("download_history"));
-        Assert.True(await _fixture.TableExistsAsync("download_upgrade_admission_gate"));
+        Assert.False(await _fixture.TableExistsAsync("download_schema_migrations"));
+        Assert.False(await _fixture.TableExistsAsync("download_upgrade_admission_gate"));
         Assert.Contains(
             "is_legacy_transfer",
             await _fixture.ReadTableColumnsAsync("downloading"));
-        Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(4));
-        Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(5));
-        Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(8));
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
     }
 
     [Fact]
@@ -114,11 +107,10 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         {
             Assert.Contains(history, item => item.Id.Value == "legacy-history");
         }
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.Contains("requested_content", await _fixture.ReadTableColumnsAsync("download_history"));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v9-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
@@ -163,10 +155,9 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         Assert.DoesNotContain("ux_download_base_output_reservation", names);
         Assert.Contains("ix_download_base_output_reservation", names);
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v10-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
@@ -199,14 +190,13 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         Assert.Null(restored.Transfer.BackendIdentity);
         Assert.True(restored.Transfer.IsLegacyTransfer);
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v11-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
-    public async Task InitializeTreatsExistingEmptyDatabaseAsNewWithoutLosingBackup()
+    public async Task InitializeTreatsExistingEmptyDatabaseAsNew()
     {
         Directory.CreateDirectory(_fixture.TempDirectory);
         using (var connection = new SqliteConnection(
@@ -226,11 +216,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         using var store = _fixture.CreateStore();
         await store.InitializeAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
-        Assert.Single(Directory.GetFiles(
-            Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v0-*.bak"));
+        Assert.False(Directory.Exists(Path.Combine(_fixture.TempDirectory, "Backup")));
     }
 
     [Fact]
@@ -255,7 +241,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Null(restored.Plan.NfoRequest);
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v0-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
@@ -291,12 +277,10 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
             Assert.Null(history.RequestedContent);
         }
 
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.False(await _fixture.TableExistsAsync("downloaded"));
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v0-*.bak"));
+            "download.db.schema-*.bak"));
 
         using var reopened = _fixture.CreateStore();
         await reopened.InitializeAsync(TestContext.Current.CancellationToken);
@@ -312,7 +296,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 TestContext.Current.CancellationToken)).Items).Id.Value);
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v0-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Fact]
@@ -356,12 +340,11 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
                 history.Items.Select(item => item.Id.Value).Order(StringComparer.Ordinal));
         }
 
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
         Assert.False(await _fixture.TableExistsAsync("downloaded"));
         Assert.Equal(0, await _fixture.CountDownloadBaseRecordAsync("legacy-history"));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v12-*.bak"));
+            "download.db.schema-*.bak"));
 
         using (var reopened = _fixture.CreateStore())
         {
@@ -370,7 +353,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
 
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v12-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Theory]
@@ -382,7 +365,7 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
     [InlineData(6)]
     [InlineData(7)]
     [InlineData(8)]
-    public async Task InitializeUpgradesEveryRecognizedLegacyFormatDirectlyToCurrent(int version)
+    public async Task InitializeProjectsEveryHistoricalShapeDirectlyToCurrent(int version)
     {
         await _fixture.CreateLegacyVersionDatabaseAsync(version);
         using var store = _fixture.CreateStore();
@@ -394,11 +377,9 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal($"legacy-v{version}", restored.Id.Value);
         Assert.Equal(DownloadPhase.Paused, restored.Phase);
         Assert.Equal("aria-gid", restored.Transfer.BackendIdentity);
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
         Assert.Single(Directory.GetFiles(
             Path.Combine(_fixture.TempDirectory, "Backup"),
-            $"download.db.schema-v{version}-*.bak"));
+            "download.db.schema-*.bak"));
     }
 
     [Theory]
@@ -466,8 +447,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Equal(1, await _fixture.CountDownloadBaseRecordAsync(active.Id.Value));
         Assert.Equal(1, await _fixture.CountDownloadingRecordAsync(active.Id.Value));
         Assert.False(await _fixture.TableExistsAsync("downloaded"));
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
-
         using var reopened = _fixture.CreateStore();
         await reopened.InitializeAsync(TestContext.Current.CancellationToken);
         var reopenedUnfinished = await reopened.GetUnfinishedAsync(
@@ -514,60 +493,6 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
     }
 
     [Fact]
-    public async Task VersionFourMigrationAndRestartAreIdempotentAcrossMultipleLegacyTasks()
-    {
-        var safePath = Path.Combine(_fixture.TempDirectory, "safe", "video");
-        await _fixture.CreateVersionThreeDatabaseAsync(
-            _fixture.CreatePausedTask("unsafe-a", Path.Combine(_fixture.TempDirectory, "logical-a", "video")),
-            _fixture.CreatePausedTask("safe", safePath),
-            _fixture.CreatePausedTask("unsafe-b", Path.Combine(_fixture.TempDirectory, "logical-b", "video")));
-        using (var first = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(path =>
-               path == safePath ? path : path + "-physical")))
-        {
-            await first.InitializeAsync(TestContext.Current.CancellationToken);
-            await first.InitializeAsync(TestContext.Current.CancellationToken);
-            Assert.Equal(
-                ["unsafe-a", "unsafe-b"],
-                (await first.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken))
-                    .Select(record => record.RecordId));
-        }
-
-        using var reopened = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(
-            _ => throw new InvalidOperationException("Version four must not rescan.")));
-        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(
-            ["unsafe-a", "unsafe-b"],
-            (await reopened.GetQuarantinedRecordsAsync(TestContext.Current.CancellationToken))
-                .Select(record => record.RecordId));
-        Assert.Equal(
-            "safe",
-            Assert.Single(await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken)).Id.Value);
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
-    }
-    [Fact]
-    public async Task VersionFourFailureRollsBackQuarantineGateLedgerAndUserVersion()
-    {
-        var originalPath = Path.Combine(_fixture.TempDirectory, "rollback-logical", "video");
-        await _fixture.CreateVersionThreeDatabaseAsync(_fixture.CreatePausedTask("rollback", originalPath));
-        await _fixture.CreateQuarantineFailureTriggerAsync();
-        var before = await _fixture.ReadStoredStateAsync("rollback");
-        using var store = _fixture.CreateStore(new SqliteDownloadStoreFixture.StubPhysicalOutputPathResolver(path => path + "-physical"));
-
-        await Assert.ThrowsAsync<SqliteException>(() =>
-            store.InitializeAsync(TestContext.Current.CancellationToken));
-
-        Assert.Equal(3, await _fixture.ReadSchemaVersionAsync());
-        Assert.False(await _fixture.TableExistsAsync("download_upgrade_admission_gate"));
-        Assert.Equal(0, await _fixture.CountSchemaMigrationAsync(4));
-        Assert.Equal(0, await _fixture.CountQuarantineRecordsAsync());
-        Assert.Equal(before, await _fixture.ReadStoredStateAsync("rollback"));
-        Assert.Single(Directory.GetFiles(
-            Path.Combine(_fixture.TempDirectory, "Backup"),
-            "download.db.schema-v3-*.bak"));
-    }
-
-    [Fact]
     public async Task VersionSevenDatabaseUpgradesWithNoInventedPendingPublication()
     {
         var expected = _fixture.CreatePausedTask("v7-publishing-upgrade");
@@ -587,10 +512,35 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         await reopened.InitializeAsync(TestContext.Current.CancellationToken);
         var restored = Assert.Single(
             await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
         Assert.Equal(expected.Output.StagingToken, restored.Output.StagingToken);
         Assert.Null(restored.Output.PublishingArtifact);
+    }
+
+    [Fact]
+    public async Task ProjectionReplacesANonEmptyInvalidStagingToken()
+    {
+        var expected = _fixture.CreatePausedTask("v7-invalid-staging-token");
+        _fixture.CopyHistoricalDatabase(7);
+        await _fixture.InsertHistoricalTaskAsync(expected, 7);
+        using (var connection = await _fixture.OpenConnectionAsync(readOnly: false))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE download_base
+                SET staging_token = 'not-a-guid'
+                WHERE id = @id
+                """;
+            command.Parameters.AddWithValue("@id", expected.Id.Value);
+            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var reopened = _fixture.CreateStore();
+        await reopened.InitializeAsync(TestContext.Current.CancellationToken);
+        var restored = Assert.Single(
+            await reopened.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+
+        Assert.True(Guid.TryParseExact(restored.Output.StagingToken, "N", out _));
+        Assert.NotEqual("not-a-guid", restored.Output.StagingToken);
     }
 
     [Fact]
@@ -606,7 +556,5 @@ public sealed class SqliteDownloadStoreUpgradeTests : IDisposable
         Assert.Null(restored.Plan.NfoRequest);
         Assert.Equal(DownloadContentSelection.None, restored.Plan.RequestedContent);
         Assert.Null(restored.Plan.RequestedContent.MediaKind);
-        Assert.Equal(DownloadStoreSchema.CurrentVersion, await _fixture.ReadSchemaVersionAsync());
-        Assert.Equal(1, await _fixture.CountSchemaMigrationAsync(DownloadStoreSchema.CurrentVersion));
     }
 }

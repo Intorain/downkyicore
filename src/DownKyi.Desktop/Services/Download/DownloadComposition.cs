@@ -50,6 +50,7 @@ internal static class DownloadComposition
         services.AddSingleton<IDownloadRuntimeAvailability>(provider =>
             provider.GetRequiredService<DownloadTaskQueueGateway>());
         services.AddSingleton<DownloadCommittedTaskDispatcher>();
+        services.AddSingleton<DownloadStoreRecoveryPresenter>();
         services.AddSingleton<DownloadTaskAdmissionService>();
         services.AddSingleton<DownloadListState>();
         services.AddSingleton<IDownloadedListProjection>(provider =>
@@ -67,7 +68,6 @@ internal static class DownloadComposition
         services.AddSingleton<DownloadDiagnosticLogger>();
         services.AddSingleton<IDownloadRuntimeFactory, DownloadRuntimeFactory>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
-        services.AddSingleton<DownloadStoreRecoveryPresenter>();
         services.AddSingleton<DownloadBootstrapHostedService>();
         services.AddSingleton<IHostedService>(provider =>
             provider.GetRequiredService<DownloadBootstrapHostedService>());

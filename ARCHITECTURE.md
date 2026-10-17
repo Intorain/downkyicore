@@ -82,7 +82,7 @@ flowchart LR
 - `PreparedDownload` 以允許的輸出組合描述 media capability，而不是把 audio／video presence 當成可獨立選擇。DURL 只支援 video-only 與 audio+video，不支援 audio-only；`DownloadActionPlanner` 是 page selection 與 finalized action 的唯一 owner，空 selection 不得建立 task。`DownloadContentConflictResolver` 只處理 media capability／quality 衝突；media 不可用時保留獨立動作，並由明確的 continue／skip 決策收斂。同一下載操作中的純 lower-quality substitutions 必須在 task 入列前由 planner 收集，顯示一次含每頁實際替代品質的 batch decision；接受或略過只能作用於該畫面列出的頁面，其他類型的 content conflict 不得被這個批次決策吞掉。後續 refresh 不得改變已確定的 transport、quality、codec 或 audio／video intent。
 - `DownloadActionClaims` 只描述實體輸出占用、SQLite admission 與 reservation-key 恢復共用的 action-level 契約；固定粒度為 media、subtitle、danmaku ASS、danmaku XML、cover、NFO。SQLite 必須由 persisted `DownloadContentSelection` 與 `nfo_request` 重建同一組 claims。
 - `DownloadDuplicatePolicy` 只以 persistence-backed CID candidates 判斷重複；任何同 CID active task 都略過，completed history 則只套用設定的 repeat strategy。`DownloadListState` 與 UI collections 都只是 projection，不能作為重複證據。active CID 必須在 serialized admission boundary 內再次檢查，讓判斷與持久化不可被兩個並行 add flow 穿透。
-- output admission 必須使用 `IPhysicalOutputPathResolver`，以同一實際路徑識別 symlink／alias。不同 CID 的重疊 claim 由前置路徑分配與 admission transaction 拒絕；重新解析出的 resolution、codec 或 transport 差異不是新的 media action，需要不同媒體規格時使用明確的重新下載策略。
+- output admission 必須使用 `IPhysicalOutputPathResolver`，以同一實際路徑識別 symlink／alias。資料庫啟動投影只比較表與欄位，不重新解讀舊記錄的輸出路徑或 reservation key。不同 CID 的重疊 claim 由前置路徑分配與 admission transaction 拒絕；重新解析出的 resolution、codec 或 transport 差異不是新的 media action，需要不同媒體規格時使用明確的重新下載策略。投影無法保留既有資料時必須保留原庫備份，並只在使用者明確確認後建立空白資料庫。
 - 通知只由發起操作的 ViewModel 依 counts 與 planning stop reason 發布一次，policy 不擁有通知。
 - 啟動恢復、新增與續傳只傳 `DownloadTaskId`，不得輪詢 UI collection。啟動查詢同時提供 Domain snapshots 與 projections；runtime decision 只用前者。
 

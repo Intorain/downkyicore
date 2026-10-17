@@ -136,8 +136,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
         Assert.Contains("WHERE h.cid = @cid", queries, StringComparison.Ordinal);
         Assert.Contains("ix_download_base_cid", schema, StringComparison.Ordinal);
         Assert.Contains("ix_download_history_cid", schema, StringComparison.Ordinal);
-        Assert.Contains("if (format.IsCurrent)", lifecycle, StringComparison.Ordinal);
-        Assert.Contains(".EnsureIndexesAsync(connection, transaction", lifecycle, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (shape.IsCurrent)", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("EnsureIndexesAsync(connection, transaction", schema, StringComparison.Ordinal);
     }
 
     [Fact]

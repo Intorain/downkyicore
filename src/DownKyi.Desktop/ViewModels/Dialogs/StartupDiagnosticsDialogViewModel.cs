@@ -178,7 +178,7 @@ internal sealed class StartupDiagnosticsDialogViewModel : BaseDialogViewModel
                 "StartupDownloadFailureTitle",
                 "StartupDownloadMissingDescription",
                 "StartupDownloadFailureImpact"),
-            StartupDiagnosticKind.DownloadStoreSchemaMismatch => (
+            StartupDiagnosticKind.DownloadStoreProjectionFailed => (
                 "StartupDownloadStoreFailureTitle",
                 "StartupDownloadStoreFailureDescription",
                 "StartupDownloadStoreFailureImpact"),

@@ -36,7 +36,7 @@ internal sealed class DownloadStoreRecoveryPresenter
     public static bool CanReset(Exception failure)
     {
         ArgumentNullException.ThrowIfNull(failure);
-        if (failure is DownloadStoreSchemaMismatchException)
+        if (failure is DownloadStoreProjectionException)
         {
             return true;
         }
