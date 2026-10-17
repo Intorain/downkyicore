@@ -136,36 +136,9 @@ public enum DownloadActionClaim
 
 public readonly record struct DownloadActionClaims(DownloadActionClaim Value)
 {
-    public static DownloadActionClaims None { get; } = new(DownloadActionClaim.None);
-
-    public static DownloadActionClaims Media { get; } = new(DownloadActionClaim.Media);
-
-    public static DownloadActionClaims Subtitle { get; } = new(DownloadActionClaim.Subtitle);
-
-    public static DownloadActionClaims Cover { get; } = new(DownloadActionClaim.Cover);
-
     public static DownloadActionClaims Nfo { get; } = new(DownloadActionClaim.Nfo);
 
     public bool HasAny => Value != DownloadActionClaim.None;
-
-    public DownloadDanmakuOutputFormat DanmakuFormats
-    {
-        get
-        {
-            var formats = DownloadDanmakuOutputFormat.None;
-            if (Contains(DownloadActionClaim.DanmakuAss))
-            {
-                formats |= DownloadDanmakuOutputFormat.Ass;
-            }
-
-            if (Contains(DownloadActionClaim.DanmakuXml))
-            {
-                formats |= DownloadDanmakuOutputFormat.Xml;
-            }
-
-            return formats;
-        }
-    }
 
     public bool Contains(DownloadActionClaim claim) => (Value & claim) == claim;
 
@@ -174,54 +147,6 @@ public readonly record struct DownloadActionClaims(DownloadActionClaim Value)
 
     public DownloadActionClaims Union(DownloadActionClaims other) =>
         new(Value | other.Value);
-
-    public DownloadContentSelection SubtractFrom(DownloadContentSelection requestedContent)
-    {
-        ArgumentNullException.ThrowIfNull(requestedContent);
-        var remaining = requestedContent;
-        if (Contains(DownloadActionClaim.Media) && requestedContent.HasMedia)
-        {
-            remaining = remaining with
-            {
-                Audio = false,
-                Video = false,
-                MediaKind = DownloadMediaKind.None
-            };
-        }
-
-        if (Contains(DownloadActionClaim.Subtitle) && requestedContent.HasSubtitleAction)
-        {
-            remaining = remaining with
-            {
-                Subtitle = false,
-                SelectedSubtitleTrackIds = null,
-                DefaultSubtitleTrackId = null
-            };
-        }
-
-        if (requestedContent.Danmaku)
-        {
-            var requestedFormats = requestedContent.DanmakuOutputFormat ?? AllDanmakuFormats;
-            var remainingFormats = requestedFormats & ~DanmakuFormats;
-            if (remainingFormats != requestedFormats)
-            {
-                remaining = remaining with
-                {
-                    Danmaku = remainingFormats != DownloadDanmakuOutputFormat.None,
-                    DanmakuOutputFormat = remainingFormats == DownloadDanmakuOutputFormat.None
-                        ? null
-                        : remainingFormats
-                };
-            }
-        }
-
-        if (Contains(DownloadActionClaim.Cover) && requestedContent.Cover)
-        {
-            remaining = remaining with { Cover = false };
-        }
-
-        return remaining;
-    }
 
     public static DownloadActionClaims From(DownloadContentSelection content)
     {

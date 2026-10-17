@@ -17,7 +17,6 @@ internal static class DownloadOutputPathResolver
         Func<string, CancellationToken, Task<bool>> hasOutputClaimConflictAsync,
         Func<CancellationToken, Task<IReadOnlyList<string>>> getReservationKeysAsync,
         CancellationToken cancellationToken,
-        bool allowExistingBasePath = false,
         Func<string, bool>? hasExistingOutputClaimConflict = null,
         StringComparer? comparer = null)
     {
@@ -36,7 +35,7 @@ internal static class DownloadOutputPathResolver
         {
             occupiedPaths.Add(baseKey);
         }
-        if ((!occupiedPaths.Contains(baseKey) || allowExistingBasePath)
+        if (!occupiedPaths.Contains(baseKey)
             && !baseHasOutputClaimConflict &&
             !await hasOutputClaimConflictAsync(basePath, cancellationToken).ConfigureAwait(false))
         {

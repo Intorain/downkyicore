@@ -41,8 +41,7 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
     public async Task AdmitAsync(
         DownloadingItem item,
         bool autoAddNumberSuffix,
-        CancellationToken cancellationToken,
-        bool allowExistingBasePath = false)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(item);
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -68,7 +67,6 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
                     DownloadOutputPathKey.UsesCaseInsensitiveComparison,
                     token),
                 cancellationToken,
-                allowExistingBasePath,
                 path => DownloadOutputPathResolver.HasExistingOutputClaimConflict(
                     path,
                     requestedClaims)).ConfigureAwait(true);

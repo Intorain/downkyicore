@@ -313,9 +313,7 @@ public sealed class DownloadManagerCoordinatorTests
         var completed = Assert.Single(context.State.Downloaded);
         var desktop = new TestDesktopInteractionContext();
         var duplicatePolicy = new DownloadDuplicatePolicy(
-            context.State,
             context.Storage,
-            new FileSystemPhysicalOutputPathResolver(),
             desktop.Dialogs);
         completed.DownloadBase.FilePath = Path.ChangeExtension(
             completed.HistoryRecord!.PublishedArtifacts["media"],

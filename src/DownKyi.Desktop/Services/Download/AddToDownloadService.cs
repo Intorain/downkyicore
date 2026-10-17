@@ -208,21 +208,18 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                         finalizedPage.AvailableMedia,
                         settings,
                         finalizedPage.FinalizedContent);
-                    var duplicateResolution = await _duplicatePolicy
-                        .ResolveAsync(
+                    if (await _duplicatePolicy
+                        .ShouldSkipAsync(
                             downloadingItem,
                             settings.Basic.RepeatDownloadStrategy,
                             cancellationToken)
-                        .ConfigureAwait(true);
-                    if (duplicateResolution.IsFullyCovered)
+                        .ConfigureAwait(true))
                     {
                         duplicateCount++;
                         continue;
                     }
-                    downloadingItem.DownloadBase.NeedDownloadContent =
-                        duplicateResolution.RemainingContent;
                     if (settings.Video.Content.GenerateMovieMetadata
-                        && duplicateResolution.RemainingContent.Video)
+                        && downloadingItem.DownloadBase.NeedDownloadContent.Video)
                     {
                         downloadingItem.Metadata = await _metadataBuilder
                             .BuildAsync(finalizedDownload.Video, page, cancellationToken)
@@ -234,8 +231,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                             .AdmitAsync(
                                 downloadingItem,
                                 settings.Basic.RepeatFileAutoAddNumberSuffix,
-                                cancellationToken,
-                                duplicateResolution.AllowExistingBasePath)
+                                cancellationToken)
                             .ConfigureAwait(true);
                         addedCount++;
                     }

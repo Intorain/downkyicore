@@ -84,8 +84,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath, media.DownloadBase.FilePath);
         Assert.Equal(basePath + "(1)", subtitle.DownloadBase.FilePath);
@@ -123,8 +122,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: false,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true));
+            cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal(basePath, subtitle.DownloadBase.FilePath);
         Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
@@ -337,7 +335,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DisjointResidualActionSharesTheOwnedBasePath()
+    public async Task DisjointActionUsesTheSameCollisionRule()
     {
         Directory.CreateDirectory(_directory);
         using var store = CreateStore();
@@ -370,10 +368,9 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(basePath, subtitle.DownloadBase.FilePath);
+        Assert.Equal(basePath + "(1)", subtitle.DownloadBase.FilePath);
         Assert.Equal(2, list.Downloading.Count);
         Assert.Equal(2, (await tasks.GetUnfinishedAsync(
             TestContext.Current.CancellationToken)).Count);
@@ -408,8 +405,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath + "(1)", subtitle.DownloadBase.FilePath);
     }
@@ -439,8 +435,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(
             item,
             autoAddNumberSuffix: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            allowExistingBasePath: true);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(basePath + "(1)", item.DownloadBase.FilePath);
     }

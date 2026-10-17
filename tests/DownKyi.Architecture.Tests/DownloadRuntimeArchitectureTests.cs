@@ -787,7 +787,6 @@ public sealed class DownloadRuntimeArchitectureTests
         var artifactStage = File.ReadAllText(Path.Combine(directory, "DownloadArtifactsStage.cs"));
         var artifactWriter = File.ReadAllText(Path.Combine(directory, "DownloadArtifactWriter.cs"));
         var muxStage = File.ReadAllText(Path.Combine(directory, "MuxStage.cs"));
-        var actionCoverage = File.ReadAllText(Path.Combine(directory, "DownloadActionCoverage.cs"));
         var actionSummary = File.ReadAllText(Path.Combine(directory, "DownloadActionExecutionSummary.cs"));
         var validateStage = File.ReadAllText(Path.Combine(directory, "ValidateStage.cs"));
 
@@ -798,7 +797,6 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.Contains("GetSubtitleTrackPath", layout, StringComparison.Ordinal);
         Assert.Contains("GetPageCoverPath", layout, StringComparison.Ordinal);
         Assert.Contains("HasOutputClaimConflict", layout, StringComparison.Ordinal);
-        Assert.Contains("IsHistoricalArtifactPathFamily", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("File.", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("Directory.", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("ISettingsStore", layout, StringComparison.Ordinal);
@@ -823,9 +821,6 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.Contains("DownloadOutputLayout.GetDashMediaPath", muxStage, StringComparison.Ordinal);
         Assert.Contains("DownloadOutputLayout.GetDurlMediaPath", muxStage, StringComparison.Ordinal);
         Assert.DoesNotContain("GetDashOutputPath", muxStage, StringComparison.Ordinal);
-        Assert.Contains("DownloadOutputLayout.IsAudioMediaPath", actionCoverage, StringComparison.Ordinal);
-        Assert.Contains("DownloadOutputLayout.IsHistoricalArtifactPathFamily", actionCoverage, StringComparison.Ordinal);
-        Assert.DoesNotContain("Path.GetExtension(mediaPath)", actionCoverage, StringComparison.Ordinal);
         Assert.Contains("DownloadOutputLayout.GetDanmakuOutputPaths", actionSummary, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadArtifactsStage.GetDanmakuOutputs", actionSummary, StringComparison.Ordinal);
         Assert.Contains("DownloadOutputLayout.GetDanmakuOutputPaths", validateStage, StringComparison.Ordinal);
