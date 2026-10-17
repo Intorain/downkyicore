@@ -481,7 +481,7 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task MultiPageAdmissionQueriesOnlyEachDurableCidCandidateSet()
+    public async Task MultiPageAdmissionChecksEachCidBeforePlanningAndCommit()
     {
         using var context = CreateContext(generateMetadata: false);
         var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
@@ -498,7 +498,7 @@ public sealed class VideoTagLoadingTests : IDisposable
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, added);
-        Assert.Equal(2, context.Store.UnfinishedByCidRequestCount);
+        Assert.Equal(4, context.Store.UnfinishedByCidRequestCount);
         Assert.Equal(2, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.HistoryPageRequestCount);
     }
