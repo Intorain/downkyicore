@@ -76,6 +76,15 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
         return _store.GetUnfinishedByCidAsync(cid, cancellationToken);
     }
 
+    public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return _store.GetUnfinishedByCidsAsync(cids, cancellationToken);
+    }
+
     public Task<OperationResult<DownloadTask>> StartAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken) =>

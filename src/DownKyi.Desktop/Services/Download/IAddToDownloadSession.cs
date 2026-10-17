@@ -26,8 +26,8 @@ internal interface IAddToDownloadSession
         DownloadContentSelection requestedContent,
         CancellationToken cancellationToken = default);
 
-    Task<DownloadAddResult> AddToDownload(
+    Task<DownloadAddResult> AddToDownloadBatch(
         DownloadAddSelection selection,
-        FinalizedDownload finalizedDownload,
+        IReadOnlyList<FinalizedDownload> finalizedDownloads,
         CancellationToken cancellationToken = default);
 }

@@ -13,4 +13,8 @@ public interface IDownloadTaskLookup
     Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidAsync(
         long cid,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken);
 }

@@ -80,7 +80,7 @@ internal sealed class VideoDetailDownloadCoordinator : IVideoDetailDownloadCoord
                         cancellationToken)
                     .ConfigureAwait(true);
                 return await addService
-                    .AddToDownload(selection, finalizedDownload, cancellationToken)
+                    .AddToDownloadBatch(selection, [finalizedDownload], cancellationToken)
                     .ConfigureAwait(false);
             },
             cancellationToken).ConfigureAwait(true);

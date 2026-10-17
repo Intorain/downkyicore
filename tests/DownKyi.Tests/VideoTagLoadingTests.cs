@@ -256,7 +256,7 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task LegacyDefaultDirectoryStillExposesExplicitRedownloadSelection()
+    public async Task LegacyDefaultDirectoryStillOpensDownloadSelection()
     {
         using var context = CreateContext(generateMetadata: false);
         context.UseLegacyDefaultDirectory(_directory);
@@ -266,14 +266,13 @@ public sealed class VideoTagLoadingTests : IDisposable
                 _directory,
                 DownloadContentSelection.All,
                 selectedTrackIds: null,
-                defaultTrackId: null,
-                redownloadCompleted: true));
+                defaultTrackId: null));
 
         var result = await context.Service.SelectDownloadAsync(
             cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Assert.Equal(DownloadSelectionOutcome.Accepted, result.Outcome);
-        Assert.True(Assert.IsType<DownloadAddSelection>(result.Selection).RedownloadCompleted);
+        Assert.NotNull(Assert.IsType<DownloadAddSelection>(result.Selection));
         Assert.Single(context.Dialogs.Requests);
     }
 
@@ -430,6 +429,90 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
+    public async Task CompletedDuplicatesAreConfirmedOnceBeforeMetadataIsLoaded()
+    {
+        using var context = CreateContext(generateMetadata: true);
+        var requestedContent = DownloadContentSelection.None with { Video = true };
+        var firstLoadCount = 0;
+        var first = CreatePage(_ =>
+        {
+            firstLoadCount++;
+            return Task.FromResult<IReadOnlyList<string>>(["unused"]);
+        });
+        first.Cid = 1;
+        first.Name = "first";
+        var secondLoadCount = 0;
+        var second = CreatePage(_ =>
+        {
+            secondLoadCount++;
+            return Task.FromResult<IReadOnlyList<string>>(["unused"]);
+        });
+        second.Cid = 2;
+        second.Name = "second";
+        second.Order = 2;
+        await context.Store.AddHistoryAsync(
+            CreateHistory(first, requestedContent),
+            TestContext.Current.CancellationToken);
+        await context.Store.AddHistoryAsync(
+            CreateHistory(second, requestedContent),
+            TestContext.Current.CancellationToken);
+        context.Dialogs.Result = new AppDialogResult(
+            AppDialogOutcome.Accepted,
+            DownloadDuplicateBatchDialogContract.Encode(
+                DownloadDuplicateBatchAction.SkipCompleted));
+        var preparedDownload = await context.PrepareAsync(requestedContent, first, second);
+
+        var result = await context.AddToDownloadResultAsync(
+            CreateSelection(_directory, requestedContent),
+            preparedDownload,
+            isAll: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, result.AddedCount);
+        Assert.Equal(2, result.DuplicateCount);
+        Assert.Equal(0, firstLoadCount);
+        Assert.Equal(0, secondLoadCount);
+        Assert.Equal(0, context.Store.AddCount);
+        var request = Assert.Single(context.Dialogs.Requests);
+        Assert.Equal(AppDialog.DownloadDuplicateBatch, request.Dialog);
+        var prompt = Assert.IsType<DownloadDuplicateBatchPrompt>(
+            request.Parameters![DownloadDuplicateBatchDialogContract.PromptParameter]);
+        Assert.Equal(2, prompt.CompletedItemNames.Count);
+    }
+
+    [Fact]
+    public async Task RedownloadDecisionLoadsMetadataAndAdmitsTheCompletedDuplicate()
+    {
+        using var context = CreateContext(generateMetadata: true);
+        var requestedContent = DownloadContentSelection.None with { Video = true };
+        var loadCount = 0;
+        var page = CreatePage(_ =>
+        {
+            loadCount++;
+            return Task.FromResult<IReadOnlyList<string>>(["kept"]);
+        });
+        await context.Store.AddHistoryAsync(
+            CreateHistory(page, requestedContent),
+            TestContext.Current.CancellationToken);
+        context.Dialogs.Result = new AppDialogResult(
+            AppDialogOutcome.Accepted,
+            DownloadDuplicateBatchDialogContract.Encode(
+                DownloadDuplicateBatchAction.RedownloadCompleted));
+        var preparedDownload = await context.PrepareAsync(requestedContent, page);
+
+        var result = await context.AddToDownloadResultAsync(
+            CreateSelection(_directory, requestedContent),
+            preparedDownload,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.AddedCount);
+        Assert.Equal(0, result.DuplicateCount);
+        Assert.Equal(1, loadCount);
+        Assert.Equal(["kept"], Assert.Single(context.ListState.Downloading).Metadata!.Tags);
+        Assert.Single(context.Dialogs.Requests);
+    }
+
+    [Fact]
     public async Task ResolverFailureIsReportedAndDoesNotBlockNextAdmission()
     {
         var resolver = new FailFirstPhysicalOutputPathResolver();
@@ -504,7 +587,7 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task MultiPageAdmissionChecksEachCidBeforeCommit()
+    public async Task MultiPageAdmissionReviewsAllCidsInOneBatchBeforeCommit()
     {
         using var context = CreateContext(generateMetadata: false);
         var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
@@ -521,13 +604,15 @@ public sealed class VideoTagLoadingTests : IDisposable
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, added);
+        Assert.Equal(1, context.Store.UnfinishedByCidsRequestCount);
+        Assert.Equal(1, context.Store.HistoryByCidsRequestCount);
         Assert.Equal(2, context.Store.UnfinishedByCidRequestCount);
         Assert.Equal(2, context.Store.HistoryByCidRequestCount);
         Assert.Equal(0, context.Store.HistoryPageRequestCount);
     }
 
     [Fact]
-    public async Task SameBatchDuplicateSeesTheTaskPersistedByThePreviousDecision()
+    public async Task SameBatchDuplicateIsSkippedWithoutOpeningAConfirmation()
     {
         using var context = CreateContext(generateMetadata: false);
         var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
@@ -544,6 +629,30 @@ public sealed class VideoTagLoadingTests : IDisposable
         Assert.Equal(1, result.DuplicateCount);
         Assert.Equal(1, context.Store.AddCount);
         Assert.Single(context.ListState.Downloading);
+        Assert.Empty(context.Dialogs.Requests);
+    }
+
+    [Fact]
+    public async Task ActiveDuplicateIsSkippedWithoutOpeningAConfirmation()
+    {
+        using var context = CreateContext(generateMetadata: false);
+        var requestedContent = DownloadContentSelection.None with { Video = true };
+        var page = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        var preparedDownload = await context.PrepareAsync(requestedContent, page);
+        var selection = CreateSelection(_directory, requestedContent);
+        Assert.Equal(1, await context.AddToDownloadAsync(
+            selection,
+            preparedDownload,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var result = await context.AddToDownloadResultAsync(
+            selection,
+            preparedDownload,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, result.AddedCount);
+        Assert.Equal(1, result.DuplicateCount);
+        Assert.Empty(context.Dialogs.Requests);
     }
 
     [Fact]
@@ -1071,6 +1180,28 @@ public sealed class VideoTagLoadingTests : IDisposable
             requestedContent ?? DownloadContentSelection.All);
     }
 
+    private static DownloadHistoryRecord CreateHistory(
+        VideoPage page,
+        DownloadContentSelection requestedContent) =>
+        new(
+            new DownloadTaskId(Guid.NewGuid().ToString("N")),
+            page.Cid,
+            zoneId: 0,
+            page.Order,
+            mainTitle: "video",
+            page.Name,
+            durationText: string.Empty,
+            videoCodecName: "H.264/AVC",
+            resolutionId: 80,
+            resolutionName: "1080P",
+            audioCodecName: string.Empty,
+            fileSizeText: null,
+            publishedArtifacts: [],
+            finishedTimestamp: 1,
+            finishedTimeText: string.Empty,
+            maximumSpeedText: null,
+            requestedContent);
+
     private static VideoPage CreatePage(
         Func<CancellationToken, Task<IReadOnlyList<string>>> loadTagsAsync)
     {
@@ -1268,7 +1399,7 @@ public sealed class VideoTagLoadingTests : IDisposable
                     cancellationToken)
                 .ConfigureAwait(true);
             var result = await Service
-                .AddToDownload(selection, finalizedDownload, cancellationToken)
+                .AddToDownloadBatch(selection, [finalizedDownload], cancellationToken)
                 .ConfigureAwait(true);
             return result;
         }
@@ -1481,6 +1612,7 @@ public sealed class VideoTagLoadingTests : IDisposable
         IDownloadCompletionStore
     {
         private readonly List<DownloadTask> _tasks = [];
+        private readonly List<DownloadHistoryRecord> _history = [];
 
         public int AddCount { get; private set; }
 
@@ -1488,7 +1620,11 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public int HistoryByCidRequestCount { get; private set; }
 
+        public int HistoryByCidsRequestCount { get; private set; }
+
         public int UnfinishedByCidRequestCount { get; private set; }
+
+        public int UnfinishedByCidsRequestCount { get; private set; }
 
         public Func<Task>? AfterAddAsync { get; set; }
 
@@ -1516,11 +1652,19 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public Task<OperationResult> AddHistoryAsync(
             DownloadHistoryRecord history,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(OperationResult.Success());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _history.Add(history);
+            return Task.FromResult(OperationResult.Success());
+        }
 
-        public Task<OperationResult> ClearHistoryAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(OperationResult.Success());
+        public Task<OperationResult> ClearHistoryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _history.Clear();
+            return Task.FromResult(OperationResult.Success());
+        }
 
         public Task<OperationResult> DeleteAsync(
             DownloadTaskId taskId,
@@ -1533,7 +1677,12 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public Task<OperationResult> DeleteHistoryAsync(
             DownloadTaskId taskId,
-            CancellationToken cancellationToken) => Task.FromResult(OperationResult.Success());
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _history.RemoveAll(record => record.Id == taskId);
+            return Task.FromResult(OperationResult.Success());
+        }
 
         public Task<DownloadTask?> FindAsync(
             DownloadTaskId taskId,
@@ -1554,7 +1703,7 @@ public sealed class VideoTagLoadingTests : IDisposable
             CancellationToken cancellationToken)
         {
             HistoryPageRequestCount++;
-            return Task.FromResult(new DownloadHistoryPage([], null));
+            return Task.FromResult(new DownloadHistoryPage(_history.ToArray(), null));
         }
 
         public Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidAsync(
@@ -1563,7 +1712,19 @@ public sealed class VideoTagLoadingTests : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             HistoryByCidRequestCount++;
-            return Task.FromResult<IReadOnlyList<DownloadHistoryRecord>>([]);
+            return Task.FromResult<IReadOnlyList<DownloadHistoryRecord>>(
+                _history.Where(record => record.Cid == cid).ToArray());
+        }
+
+        public Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidsAsync(
+            IReadOnlyCollection<long> cids,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            HistoryByCidsRequestCount++;
+            var requestedCids = cids.ToHashSet();
+            return Task.FromResult<IReadOnlyList<DownloadHistoryRecord>>(
+                _history.Where(record => requestedCids.Contains(record.Cid)).ToArray());
         }
 
         public Task<IReadOnlyList<QuarantinedDownloadRecord>> GetQuarantinedRecordsAsync(
@@ -1585,6 +1746,17 @@ public sealed class VideoTagLoadingTests : IDisposable
             UnfinishedByCidRequestCount++;
             return Task.FromResult<IReadOnlyList<DownloadTask>>(
                 _tasks.Where(task => task.Metadata.Media.Cid == cid).ToArray());
+        }
+
+        public Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidsAsync(
+            IReadOnlyCollection<long> cids,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            UnfinishedByCidsRequestCount++;
+            var requestedCids = cids.ToHashSet();
+            return Task.FromResult<IReadOnlyList<DownloadTask>>(
+                _tasks.Where(task => requestedCids.Contains(task.Metadata.Media.Cid)).ToArray());
         }
 
         public Task<bool> IsOutputPathReservedAsync(
@@ -1617,6 +1789,7 @@ public sealed class VideoTagLoadingTests : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             _tasks.RemoveAll(candidate => candidate.Id == task.Id);
+            _history.Add(history);
             return Task.FromResult(OperationResult.Success());
         }
 

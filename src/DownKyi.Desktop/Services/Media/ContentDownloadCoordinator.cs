@@ -195,17 +195,14 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
                     new DownloadContentConflictChoices(),
                     cancellationToken)
                 .ConfigureAwait(true);
-            foreach (var finalizedDownload in finalizedDownloads)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var addResult = await addToDownloadSession
-                    .AddToDownload(selection, finalizedDownload, cancellationToken)
-                    .ConfigureAwait(false);
-                addedCount += addResult.AddedCount;
-                duplicateCount += addResult.DuplicateCount;
-                failedCount += addResult.FailedCount;
-                skippedCount += addResult.SkippedCount;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            var addResult = await addToDownloadSession
+                .AddToDownloadBatch(selection, finalizedDownloads, cancellationToken)
+                .ConfigureAwait(false);
+            addedCount += addResult.AddedCount;
+            duplicateCount += addResult.DuplicateCount;
+            failedCount += addResult.FailedCount;
+            skippedCount += addResult.SkippedCount;
 
             return new ContentDownloadBatchResult(
                 addedCount,

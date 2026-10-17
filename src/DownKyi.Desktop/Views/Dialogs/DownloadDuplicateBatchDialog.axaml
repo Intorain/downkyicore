@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmd="clr-namespace:DownKyi.ViewModels.Dialogs"
+             x:Class="DownKyi.Views.Dialogs.DownloadDuplicateBatchDialog"
+             x:DataType="vmd:DownloadDuplicateBatchDialogViewModel">
+    <Border BorderBrush="{DynamicResource BrushWindowBorder}" BorderThickness="1,1,1,0.6">
+        <Grid RowDefinitions="40,*">
+            <Grid Grid.Row="0"
+                  Background="{DynamicResource BrushBackgroundGreyTranslucent3}"
+                  WindowDecorationProperties.ElementRole="TitleBar">
+                <TextBlock Margin="10,0"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Foreground="{DynamicResource BrushCaptionForeground}"
+                           Text="{Binding Title}" />
+            </Grid>
+
+            <StackPanel Grid.Row="1"
+                        MinWidth="520"
+                        MaxWidth="720"
+                        Margin="24,20"
+                        Spacing="16">
+                <TextBlock Foreground="{DynamicResource BrushTextDark}"
+                           FontSize="14"
+                           Text="{Binding Message}"
+                           TextWrapping="Wrap" />
+                <TextBlock Foreground="{DynamicResource BrushTextGrey}"
+                           FontSize="12"
+                           IsVisible="{Binding HasActiveDuplicates}"
+                           Text="{Binding ActiveDuplicateMessage}"
+                           TextWrapping="Wrap" />
+                <Expander x:Name="CompletedDuplicateItemsExpander"
+                          Header="{Binding AffectedItemsHeader}"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch">
+                    <Border Margin="0,8,0,0"
+                            BorderBrush="{DynamicResource BrushWindowBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <ScrollViewer MaxHeight="280"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="CompletedDuplicateItemsList"
+                                          ItemsSource="{Binding CompletedItemNames}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Padding="12,10"
+                                                   Foreground="{DynamicResource BrushTextDark}"
+                                                   Text="{Binding}"
+                                                   TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Expander>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                    <Button x:Name="RedownloadDuplicateBatchButton"
+                            Grid.Column="0"
+                            Command="{Binding RedownloadCommand}"
+                            MinHeight="40"
+                            Theme="{StaticResource BtnPrimaryStyle}">
+                        <TextBlock Text="{Binding RedownloadText}"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Button>
+                    <Button x:Name="SkipDuplicateBatchButton"
+                            Grid.Column="1"
+                            Command="{Binding SkipCommand}"
+                            MinHeight="40"
+                            Theme="{StaticResource BtnBorderStyle}">
+                        <TextBlock Text="{Binding SkipText}"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

@@ -8,7 +8,8 @@ public enum AppDialog
     NewVersionAvailable = 3,
     LegacyUpgrade = 4,
     StartupDiagnostics = 5,
-    DownloadContentConflict = 6
+    DownloadContentConflict = 6,
+    DownloadDuplicateBatch = 7
 }
 
 public enum AppDialogOutcome

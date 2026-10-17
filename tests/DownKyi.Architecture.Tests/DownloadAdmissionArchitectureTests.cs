@@ -59,7 +59,7 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("_runtimeAvailability.EnsureAcceptingTasks();", admissionService, StringComparison.Ordinal);
         Assert.Contains("GetDownloadingByCidAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("GetDownloadedByCidAsync", admissionService, StringComparison.Ordinal);
-        Assert.Contains("HasSameTopLevelSelectionAs", admissionService, StringComparison.Ordinal);
+        Assert.Contains("DuplicateKey.From", admissionService, StringComparison.Ordinal);
         Assert.Contains("_projections.AddDownloadingAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_database.ExecuteImmediateTransactionAsync", reservations, StringComparison.Ordinal);
         Assert.Contains("HasOutputClaimConflictCoreAsync", reservations, StringComparison.Ordinal);
@@ -87,7 +87,7 @@ public sealed class DownloadAdmissionArchitectureTests
 
         Assert.Contains("Task<DownloadSelectionResult> SelectDownloadAsync", contract, StringComparison.Ordinal);
         Assert.Contains("Task<PreparedDownload> PrepareAsync", contract, StringComparison.Ordinal);
-        Assert.Contains("FinalizedDownload finalizedDownload", contract, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<FinalizedDownload> finalizedDownloads", contract, StringComparison.Ordinal);
         Assert.Contains("DownloadContentSelection RequestedContent", selection, StringComparison.Ordinal);
         Assert.Contains("DownloadMediaCapabilities AvailableMedia", prepared, StringComparison.Ordinal);
         Assert.Contains("DownloadMediaOutputModes SupportedModes", prepared, StringComparison.Ordinal);

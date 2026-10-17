@@ -83,6 +83,17 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
         return tasks.Select(CreateDownloadingProjection).ToArray();
     }
 
+    public async Task<IReadOnlyList<DownloadingItem>> GetDownloadingByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        var tasks = await _tasks
+            .GetUnfinishedByCidsAsync(cids, cancellationToken)
+            .ConfigureAwait(true);
+        return tasks.Select(CreateDownloadingProjection).ToArray();
+    }
+
     public async Task AddMigratedHistoryAsync(
         DownloadHistoryRecord history,
         CancellationToken cancellationToken = default)
@@ -146,6 +157,17 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
     {
         var records = await _history
             .GetByCidAsync(cid, cancellationToken)
+            .ConfigureAwait(false);
+        return records.Select(DownloadTaskProjectionMapper.ToDownloadedItem).ToArray();
+    }
+
+    public async Task<IReadOnlyList<DownloadedItem>> GetDownloadedByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        var records = await _history
+            .GetByCidsAsync(cids, cancellationToken)
             .ConfigureAwait(false);
         return records.Select(DownloadTaskProjectionMapper.ToDownloadedItem).ToArray();
     }

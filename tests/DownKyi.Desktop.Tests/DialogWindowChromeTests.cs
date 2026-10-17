@@ -98,7 +98,8 @@ public sealed class DialogWindowChromeTests
         var cases = new (Control View, string PrimaryName, string SecondaryName)[]
         {
             (new ViewAlertDialog(), "ConfirmAlertButton", "CancelAlertButton"),
-            (new DownloadContentConflictDialog(), "UseAvailableContentButton", "SkipDownloadPageButton")
+            (new DownloadContentConflictDialog(), "UseAvailableContentButton", "SkipDownloadPageButton"),
+            (new DownloadDuplicateBatchDialog(), "RedownloadDuplicateBatchButton", "SkipDuplicateBatchButton")
         };
 
         try

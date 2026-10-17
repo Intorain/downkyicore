@@ -45,31 +45,6 @@ public sealed class ViewDownloadSetterSelectionTests
         Assert.Equal("English", viewModel.SubtitleTracks[1].DisplayLanguage);
         Assert.Equal(1, viewModel.SubtitleTracks[1].Type);
         Assert.Equal("//en", viewModel.SubtitleTracks[1].Url);
-        Assert.False(selection.Value.RedownloadCompleted);
-    }
-
-    [Fact]
-    public void RedownloadCommandReturnsAnExplicitOneOperationOverride()
-    {
-        using var settings = new TestSettingsStore();
-        var interaction = new TestDesktopInteractionContext();
-        var viewModel = new ViewDownloadSetterViewModel(
-            interaction.Notifications,
-            new StubFilePickerService(),
-            settings.Store,
-            NullLogger<ViewDownloadSetterViewModel>.Instance)
-        {
-            Directory = Path.GetTempPath()
-        };
-        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
-        AppDialogResult? result = null;
-        viewModel.CloseRequested += (_, value) => result = value;
-
-        viewModel.RedownloadCommand.Execute(null);
-
-        var selection = DownloadSettingsDialog.DecodeResult(Assert.IsType<AppDialogResult>(result));
-        Assert.True(selection.HasValue);
-        Assert.True(selection.Value.RedownloadCompleted);
     }
 
     [Fact]
