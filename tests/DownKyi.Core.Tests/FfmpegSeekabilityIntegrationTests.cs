@@ -1,4 +1,5 @@
 using DownKyi.Core.FFmpeg;
+using DownKyi.Core.Settings;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DownKyi.Core.Tests;
@@ -98,6 +99,64 @@ public sealed class FfmpegSeekabilityIntegrationTests : IDisposable
         Assert.False(File.Exists(output));
     }
 
+    [Fact]
+    [Trait("Category", "FfmpegIntegration")]
+    public async Task EmptyRequiredStreamDoesNotCommitMediaOutput()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var processRunner = new FfmpegProcessRunner();
+        if (!await IsToolAvailableAsync(
+                processRunner,
+                FfmpegExecutableLocator.Ffmpeg,
+                cancellationToken).ConfigureAwait(true))
+        {
+            Assert.Skip("ffmpeg is required for the media output integration test.");
+        }
+
+        var emptyVideo = Path.Combine(_testDirectory, "empty-video.mkv");
+        await CreateEmptyVideoStreamSegmentAsync(
+                processRunner,
+                emptyVideo,
+                cancellationToken)
+            .ConfigureAwait(true);
+
+        using var settings = new SettingsStore(Path.Combine(_testDirectory, "settings.json"));
+        var processor = new FfmpegProcessor(
+            settings,
+            NullLoggerFactory.Instance,
+            processRunner);
+        var mergeOutput = Path.Combine(_testDirectory, "merge-must-not-exist.mp4");
+        var mergeResult = await processor.MergeMediaAsync(
+            settings.Current.Video,
+            audio: null,
+            video: emptyVideo,
+            destination: mergeOutput,
+            overwriteDestination: true,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required,
+            cancellationToken).ConfigureAwait(true);
+
+        var concatRuntime = new FfmpegConcatRuntime(
+            processRunner,
+            new AsyncConcurrencyGate(() => 1),
+            NullLogger<FfmpegConcatRuntime>.Instance);
+        var concatOutput = Path.Combine(_testDirectory, "concat-must-not-exist.mp4");
+        var concatResult = await concatRuntime.ConcatAsync(
+            [new FfmpegConcatSegment(1, emptyVideo)],
+            concatOutput,
+            hardwareEncoder: null,
+            allowStreamCopy: false,
+            overwriteDestination: true,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required,
+            cancellationToken: cancellationToken).ConfigureAwait(true);
+
+        Assert.False(mergeResult.Succeeded);
+        Assert.Equal(FfmpegOperationFailureKind.ProcessFailure, mergeResult.FailureKind);
+        Assert.False(File.Exists(mergeOutput));
+        Assert.False(concatResult.Succeeded);
+        Assert.Equal(FfmpegOperationFailureKind.ProcessFailure, concatResult.FailureKind);
+        Assert.False(File.Exists(concatOutput));
+    }
+
     public void Dispose()
     {
         Directory.Delete(_testDirectory, recursive: true);
@@ -190,6 +249,36 @@ public sealed class FfmpegSeekabilityIntegrationTests : IDisposable
                     output
                 ],
                 "create-corrupt-test-segment"),
+            ProcessTimeout,
+            cancellationToken).ConfigureAwait(false);
+
+        Assert.True(result.Succeeded, result.StandardError);
+    }
+
+    private static async Task CreateEmptyVideoStreamSegmentAsync(
+        FfmpegProcessRunner processRunner,
+        string output,
+        CancellationToken cancellationToken)
+    {
+        var result = await processRunner.RunAsync(
+            new FfmpegCommand(
+                FfmpegExecutableLocator.Ffmpeg,
+                [
+                    "-hide_banner",
+                    "-nostdin",
+                    "-y",
+                    "-f", "lavfi",
+                    "-i", "anullsrc=r=48000:cl=stereo:d=1",
+                    "-f", "lavfi",
+                    "-i", "color=c=black:s=320x240:r=30:d=1",
+                    "-map", "0:a:0",
+                    "-map", "1:v:0",
+                    "-vf", "select=0",
+                    "-c:a", "aac",
+                    "-c:v", "libx264",
+                    output
+                ],
+                "create-empty-video-stream-segment"),
             ProcessTimeout,
             cancellationToken).ConfigureAwait(false);
 

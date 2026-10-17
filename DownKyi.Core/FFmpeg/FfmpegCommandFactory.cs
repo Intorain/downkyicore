@@ -12,6 +12,7 @@ internal static class FfmpegCommandFactory
         FfmpegEmbeddedAudioMode embeddedAudioMode)
     {
         var arguments = CreateBaseArguments();
+        AddRequiredOutputContract(arguments);
         if (audioFile != null)
         {
             arguments.AddRange(["-i", audioFile]);
@@ -123,8 +124,10 @@ internal static class FfmpegCommandFactory
             "-nostdin",
             "-y",
             "-xerror",
-            "-fflags",
-            "+genpts",
+        };
+        AddRequiredOutputContract(arguments);
+        arguments.AddRange([
+            "-fflags", "+genpts",
             "-f",
             "concat",
             "-safe",
@@ -133,7 +136,7 @@ internal static class FfmpegCommandFactory
             listFile,
             "-map",
             "0:v:0"
-        };
+        ]);
         if (embeddedAudioMode == FfmpegEmbeddedAudioMode.Required)
         {
             arguments.AddRange(["-map", "0:a:0"]);
@@ -184,5 +187,10 @@ internal static class FfmpegCommandFactory
     private static List<string> CreateBaseArguments()
     {
         return ["-hide_banner", "-nostdin", "-y"];
+    }
+
+    private static void AddRequiredOutputContract(List<string> arguments)
+    {
+        arguments.AddRange(["-abort_on", "empty_output_stream"]);
     }
 }

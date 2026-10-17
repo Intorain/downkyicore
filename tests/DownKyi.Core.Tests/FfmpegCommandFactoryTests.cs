@@ -93,6 +93,28 @@ public sealed class FfmpegCommandFactoryTests
     }
 
     [Fact]
+    public void MediaMuxCommandsRejectEmptyOutputStreams()
+    {
+        var merge = FfmpegCommandFactory.BuildMerge(
+            audioFile: "audio.m4s",
+            videoFile: "video.m4s",
+            outputFile: "merged.mp4",
+            transcodeAudioToMp3: false,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required);
+        var concat = FfmpegCommandFactory.BuildConcat(
+            "segments.txt",
+            "concatenated.mp4",
+            FfmpegConcatStrategy.CpuEncoder,
+            hardwareEncoder: null,
+            embeddedAudioMode: FfmpegEmbeddedAudioMode.Required);
+
+        Assert.Contains("-abort_on", merge.Arguments);
+        Assert.Contains("empty_output_stream", merge.Arguments);
+        Assert.Contains("-abort_on", concat.Arguments);
+        Assert.Contains("empty_output_stream", concat.Arguments);
+    }
+
+    [Fact]
     public void ConcatAudioVideoContractRequiresAudioFromDurlInputs()
     {
         var command = FfmpegCommandFactory.BuildConcat(
