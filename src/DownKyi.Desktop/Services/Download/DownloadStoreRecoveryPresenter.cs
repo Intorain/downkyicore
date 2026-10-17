@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Desktop;
+using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Downloads;
 using DownKyi.Application.Lifetime;
 using DownKyi.Infrastructure.Downloads;
