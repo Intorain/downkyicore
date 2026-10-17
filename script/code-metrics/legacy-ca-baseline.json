@@ -135,18 +135,6 @@
       "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
     },
     {
-      "identity": "CA1501|src/DownKyi.Desktop/Views/Dialogs/ViewAlreadyDownloadedDialog.axaml.cs|ViewAlreadyDownloadedDialog",
-      "rule": "CA1501",
-      "path": "src/DownKyi.Desktop/Views/Dialogs/ViewAlreadyDownloadedDialog.axaml.cs",
-      "symbol": "ViewAlreadyDownloadedDialog",
-      "observedMetric": 11,
-      "groupId": "ca1501-framework-9be27076938f8461",
-      "groupTitle": "Avalonia framework inheritance rooted at UserControl",
-      "classification": "framework-inheritance",
-      "reviewStatus": "reviewed-reasonable",
-      "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
-    },
-    {
       "identity": "CA1501|src/DownKyi.Desktop/Views/Dialogs/ViewDownloadSetter.axaml.cs|ViewDownloadSetter",
       "rule": "CA1501",
       "path": "src/DownKyi.Desktop/Views/Dialogs/ViewDownloadSetter.axaml.cs",

@@ -42,7 +42,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
     }
 
     [Fact]
-    public void AddToDownloadSessionDelegatesDuplicateDraftAndMetadataOwnership()
+    public void AddToDownloadSessionDelegatesAdmissionDraftAndMetadataOwnership()
     {
         var downloadDirectory = Path.Combine(
             RepositoryRoot,
@@ -51,9 +51,9 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
             "Download");
         var sessionPath = Path.Combine(downloadDirectory, "AddToDownloadService.cs");
         var sessionSource = File.ReadAllText(sessionPath);
-        var duplicateSource = File.ReadAllText(Path.Combine(
+        var admissionSource = File.ReadAllText(Path.Combine(
             downloadDirectory,
-            "DownloadDuplicatePolicy.cs"));
+            "DownloadTaskAdmissionService.cs"));
         var draftSource = File.ReadAllText(Path.Combine(
             downloadDirectory,
             "DownloadTaskDraftFactory.cs"));
@@ -64,7 +64,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
         Assert.True(
             File.ReadLines(sessionPath).Count() <= 350,
             "Add-to-download session exceeded its orchestration budget.");
-        Assert.Contains("DownloadDuplicatePolicy", sessionSource, StringComparison.Ordinal);
+        Assert.Contains("DownloadTaskAdmissionService", sessionSource, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskDraftFactory.Create", sessionSource, StringComparison.Ordinal);
         Assert.Contains("DownloadMovieMetadataBuilder", sessionSource, StringComparison.Ordinal);
         Assert.Contains("_admission", sessionSource, StringComparison.Ordinal);
@@ -80,17 +80,14 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
         Assert.DoesNotContain("LoadCompletedCandidatesAsync", sessionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("LoadActiveCandidatesAsync", sessionSource, StringComparison.Ordinal);
 
-        Assert.DoesNotContain("DownloadListState", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains("DownloadTaskProjectionStore", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadingByCidAsync", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadedByCidAsync", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("NeedDownloadContent", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("RemoveDownloadedAsync", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("IPhysicalOutputPathResolver", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("IUserNotificationService", duplicateSource, StringComparison.Ordinal);
-        Assert.Contains("IAppDialogService", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("ISettingsStore", duplicateSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("AdmitAsync", duplicateSource, StringComparison.Ordinal);
+        Assert.Contains("DownloadListState", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("DownloadTaskProjectionStore", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadingByCidAsync", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadedByCidAsync", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("DuplicateKey.From", admissionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IUserNotificationService", admissionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IAppDialogService", admissionSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ISettingsStore", admissionSource, StringComparison.Ordinal);
 
         Assert.Contains("ApplicationSettings settings", draftSource, StringComparison.Ordinal);
         Assert.Contains("FileNameBuilder", draftSource, StringComparison.Ordinal);

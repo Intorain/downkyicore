@@ -64,6 +64,27 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
     }
 
     [Fact]
+    public async Task UnfinishedBatchQueryReturnsAllRequestedCidsOnly()
+    {
+        using var store = _fixture.CreateStore();
+        foreach (var cid in new long[] { 101, 202, 303 })
+        {
+            Assert.True((await store.AddAsync(
+                _fixture.CreateQueuedTask(
+                    $"cid-{cid}",
+                    Path.Combine(_fixture.TempDirectory, $"cid-{cid}"),
+                    cid: cid),
+                TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        var candidates = await store.GetUnfinishedByCidsAsync(
+            [101, 303],
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([101L, 303L], candidates.Select(task => task.Metadata.Media.Cid).Order().ToArray());
+    }
+
+    [Fact]
     public async Task UnfinishedCandidateQueryQuarantinesCorruptMatchingRecords()
     {
         using var store = _fixture.CreateStore();

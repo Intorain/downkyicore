@@ -18,7 +18,6 @@ internal interface IAddToDownloadServiceFactory
 internal sealed class AddToDownloadServiceFactory : IAddToDownloadServiceFactory
 {
     private readonly DownloadTaskAdmissionService _admission;
-    private readonly DownloadDuplicatePolicy _duplicatePolicy;
     private readonly DownloadMovieMetadataBuilder _metadataBuilder;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppDialogService _dialogService;
@@ -29,7 +28,6 @@ internal sealed class AddToDownloadServiceFactory : IAddToDownloadServiceFactory
 
     public AddToDownloadServiceFactory(
         DownloadTaskAdmissionService admission,
-        DownloadDuplicatePolicy duplicatePolicy,
         DownloadMovieMetadataBuilder metadataBuilder,
         ISettingsStore settingsStore,
         IVideoTagProvider tagProvider,
@@ -39,7 +37,6 @@ internal sealed class AddToDownloadServiceFactory : IAddToDownloadServiceFactory
         ILogger<AddToDownloadService> logger)
     {
         _admission = admission ?? throw new ArgumentNullException(nameof(admission));
-        _duplicatePolicy = duplicatePolicy ?? throw new ArgumentNullException(nameof(duplicatePolicy));
         _metadataBuilder = metadataBuilder ?? throw new ArgumentNullException(nameof(metadataBuilder));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _tagProvider = tagProvider ?? throw new ArgumentNullException(nameof(tagProvider));
@@ -54,7 +51,6 @@ internal sealed class AddToDownloadServiceFactory : IAddToDownloadServiceFactory
         return new AddToDownloadService(
             streamType,
             _admission,
-            _duplicatePolicy,
             _metadataBuilder,
             _settingsStore,
             _tagProvider,

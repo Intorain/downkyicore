@@ -112,7 +112,7 @@ public sealed class DesktopInteractionArchitectureTests
             {
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "IAddToDownloadSession.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Download", "AddToDownloadService.cs"),
-                ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadDuplicatePolicy.cs"),
+                ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadTaskAdmissionService.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Media", "ContentDownloadCoordinator.cs"),
                 ReadSource("src", "DownKyi.Desktop", "Services", "Video", "VideoDetailDownloadCoordinator.cs")
             });

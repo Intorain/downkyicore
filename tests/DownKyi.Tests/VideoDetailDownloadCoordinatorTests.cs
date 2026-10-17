@@ -177,15 +177,15 @@ public sealed class VideoDetailDownloadCoordinatorTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<DownloadAddResult> AddToDownload(
-            string directory,
-            FinalizedDownload finalizedDownload,
+        public Task<DownloadAddResult> AddToDownloadBatch(
+            DownloadAddSelection selection,
+            IReadOnlyList<FinalizedDownload> finalizedDownloads,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             AddCount++;
-            ReceivedDirectory = directory;
-            ReceivedFinalizedDownload = finalizedDownload;
+            ReceivedDirectory = selection.Directory;
+            ReceivedFinalizedDownload = Assert.Single(finalizedDownloads);
             return Task.FromResult(DownloadAddResult.FromCounts(
                 addedCount: 1,
                 duplicateCount: 0,

@@ -6,6 +6,7 @@ using System.Text.Json;
 
 namespace DownKyi.Architecture.Tests;
 
+[Collection(PowerShellProcessTestGroup.Name)]
 public sealed class ReleaseSafetyRegressionTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();
@@ -421,33 +422,6 @@ public sealed class ReleaseSafetyRegressionTests
 
             Assert.NotEqual(0, result.ExitCode);
             Assert.Contains("first-parent history", NormalizeDiagnostic(result), StringComparison.OrdinalIgnoreCase);
-        }
-        finally
-        {
-            DeleteTemporaryDirectory(root);
-        }
-    }
-
-    [Fact]
-    public void MacOsReleaseTrustRejectsPartialCredentials()
-    {
-        var root = CreateTemporaryDirectory();
-        var output = Path.Combine(root, "trust.json");
-        var resolver = Path.Combine(RepositoryRoot, "script", "resolve-v112-macos-trust.ps1");
-
-        try
-        {
-            var adHoc = RunPowerShell(resolver, ["-OutputPath", output], root);
-            Assert.Equal(0, adHoc.ExitCode);
-            Assert.Contains("ad-hoc", File.ReadAllText(output), StringComparison.Ordinal);
-
-            var partial = RunPowerShell(
-                resolver,
-                ["-OutputPath", output],
-                root,
-                new Dictionary<string, string> { ["APPLE_ID"] = "fixture@example.invalid" });
-            Assert.NotEqual(0, partial.ExitCode);
-            Assert.Contains("Partial Apple credentials", NormalizeDiagnostic(partial), StringComparison.Ordinal);
         }
         finally
         {

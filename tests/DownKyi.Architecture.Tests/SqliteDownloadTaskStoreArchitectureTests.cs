@@ -63,6 +63,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
             "await _queries.GetUnfinishedAsync(cancellationToken).ConfigureAwait(false)",
         ["GetUnfinishedByCidAsync"] =
             "await _queries.GetUnfinishedByCidAsync(cid, cancellationToken).ConfigureAwait(false)",
+        ["GetUnfinishedByCidsAsync"] =
+            "await _queries.GetUnfinishedByCidsAsync(cids, cancellationToken).ConfigureAwait(false)",
         ["IsOutputPathReservedAsync"] =
             "await _outputReservations.IsOutputPathReservedAsync(basePath, ignoreCase, cancellationToken)" +
             ".ConfigureAwait(false)",
@@ -77,6 +79,8 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
             "await _queries.GetHistoryPageAsync(cursor, pageSize, cancellationToken).ConfigureAwait(false)",
         ["GetHistoryByCidAsync"] =
             "await _queries.GetHistoryByCidAsync(cid, cancellationToken).ConfigureAwait(false)",
+        ["GetHistoryByCidsAsync"] =
+            "await _queries.GetHistoryByCidsAsync(cids, cancellationToken).ConfigureAwait(false)",
         ["DeleteAsync"] = "await _commands.DeleteAsync(taskId, cancellationToken).ConfigureAwait(false)",
         ["DeleteHistoryAsync"] =
             "await _commands.DeleteHistoryAsync(taskId, cancellationToken).ConfigureAwait(false)",
@@ -134,6 +138,7 @@ public sealed class SqliteDownloadTaskStoreArchitectureTests
 
         Assert.Contains("WHERE db.cid = @cid", queries, StringComparison.Ordinal);
         Assert.Contains("WHERE h.cid = @cid", queries, StringComparison.Ordinal);
+        Assert.Contains("FROM json_each(@cids)", queries, StringComparison.Ordinal);
         Assert.Contains("ix_download_base_cid", schema, StringComparison.Ordinal);
         Assert.Contains("ix_download_history_cid", schema, StringComparison.Ordinal);
         Assert.DoesNotContain("if (shape.IsCurrent)", lifecycle, StringComparison.Ordinal);

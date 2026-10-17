@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace DownKyi.Architecture.Tests;
 
+[Collection(PowerShellProcessTestGroup.Name)]
 public sealed class LegacyCaReportTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();

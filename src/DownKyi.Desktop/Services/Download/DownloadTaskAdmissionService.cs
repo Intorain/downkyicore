@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Downloads;
@@ -6,6 +8,10 @@ using DownKyi.Domain.Downloads;
 using DownKyi.ViewModels.DownloadManager;
 
 namespace DownKyi.Services.Download;
+
+internal sealed record DownloadDuplicateReview(
+    IReadOnlySet<string> ActiveDuplicateIds,
+    IReadOnlySet<string> CompletedDuplicateIds);
 
 internal sealed class DownloadTaskAdmissionService : IDisposable
 {
@@ -41,21 +47,36 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
     public async Task<bool> AdmitAsync(
         DownloadingItem item,
         bool autoAddNumberSuffix,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool redownloadCompleted = false)
     {
         ArgumentNullException.ThrowIfNull(item);
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _admissionGate.WaitAsync(cancellationToken).ConfigureAwait(true);
         try
         {
-            _runtimeAvailability.EnsureAcceptingTasks();
+            var cid = item.DownloadBase.Cid;
+            var duplicateKey = DuplicateKey.From(item);
             var active = await _projections
-                .GetDownloadingByCidAsync(item.DownloadBase.Cid, cancellationToken)
+                .GetDownloadingByCidAsync(cid, cancellationToken)
                 .ConfigureAwait(true);
-            if (active.Count > 0)
+            if (active.Any(existing => DuplicateKey.From(existing) == duplicateKey))
             {
                 return false;
             }
+
+            if (!redownloadCompleted)
+            {
+                var completed = await _projections
+                    .GetDownloadedByCidAsync(cid, cancellationToken)
+                    .ConfigureAwait(true);
+                if (completed.Any(existing => DuplicateKey.From(existing) == duplicateKey))
+                {
+                    return false;
+                }
+            }
+
+            _runtimeAvailability.EnsureAcceptingTasks();
 
             var physicalBasePath = _physicalOutputPathResolver.ResolvePhysicalBasePath(
                 item.DownloadBase.FilePath);
@@ -94,6 +115,46 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         }
     }
 
+    public async Task<DownloadDuplicateReview> ReviewDuplicatesAsync(
+        IReadOnlyList<DownloadingItem> items,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (items.Count == 0)
+        {
+            return new DownloadDuplicateReview(new HashSet<string>(), new HashSet<string>());
+        }
+
+        var cids = items.Select(item => item.DownloadBase.Cid).Distinct().ToArray();
+        var active = await _projections
+            .GetDownloadingByCidsAsync(cids, cancellationToken)
+            .ConfigureAwait(true);
+        var completed = await _projections
+            .GetDownloadedByCidsAsync(cids, cancellationToken)
+            .ConfigureAwait(true);
+        var activeKeys = active.Select(DuplicateKey.From).ToHashSet();
+        var completedKeys = completed.Select(DuplicateKey.From).ToHashSet();
+        var incomingKeys = new HashSet<DuplicateKey>();
+        var activeDuplicateIds = new HashSet<string>(StringComparer.Ordinal);
+        var completedDuplicateIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            var key = DuplicateKey.From(item);
+            if (activeKeys.Contains(key) || !incomingKeys.Add(key))
+            {
+                activeDuplicateIds.Add(item.DownloadBase.Id);
+            }
+            else if (completedKeys.Contains(key))
+            {
+                completedDuplicateIds.Add(item.DownloadBase.Id);
+            }
+        }
+
+        return new DownloadDuplicateReview(activeDuplicateIds, completedDuplicateIds);
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -104,5 +165,27 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         _admissionGate.Dispose();
         _disposed = true;
         GC.SuppressFinalize(this);
+    }
+
+    private readonly record struct DuplicateKey(
+        long Cid,
+        bool Audio,
+        bool Video,
+        bool Danmaku,
+        bool Subtitle,
+        bool Cover)
+    {
+        public static DuplicateKey From(DownloadBaseItem item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+            var content = item.DownloadBase.NeedDownloadContent;
+            return new DuplicateKey(
+                item.DownloadBase.Cid,
+                content.Audio,
+                content.Video,
+                content.Danmaku,
+                content.Subtitle,
+                content.Cover);
+        }
     }
 }

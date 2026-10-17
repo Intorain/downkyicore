@@ -29,6 +29,22 @@ public interface IDownloadTaskStore
         .Where(task => task.Metadata.Media.Cid == cid)
         .ToArray();
 
+    async Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        if (cids.Count == 0)
+        {
+            return [];
+        }
+
+        var requestedCids = cids.ToHashSet();
+        return (await GetUnfinishedAsync(cancellationToken).ConfigureAwait(false))
+            .Where(task => requestedCids.Contains(task.Metadata.Media.Cid))
+            .ToArray();
+    }
+
     Task<bool> IsOutputPathReservedAsync(
         string basePath,
         bool ignoreCase,

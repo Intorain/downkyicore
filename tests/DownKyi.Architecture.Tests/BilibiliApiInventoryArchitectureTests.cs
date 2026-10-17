@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace DownKyi.Architecture.Tests;
 
+[Collection(PowerShellProcessTestGroup.Name)]
 public sealed partial class BilibiliApiInventoryArchitectureTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();

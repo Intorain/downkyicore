@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DownKyi.Application.Downloads;
 using DownKyi.Application.Time;
 using DownKyi.Domain.Downloads;
@@ -88,6 +89,33 @@ internal sealed class SqliteDownloadStoreQueries(
             cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<DownloadTask>> GetUnfinishedByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        var distinctCids = cids.Distinct().ToArray();
+        if (distinctCids.Length == 0)
+        {
+            return [];
+        }
+
+        using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        using var command = connection.CreateCommand();
+        command.CommandText = DownloadTaskSqlReader.SelectColumns + "\n" + $"""
+            WHERE db.cid IN (SELECT CAST(value AS INTEGER) FROM json_each(@cids))
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadingRecordSql}
+            ORDER BY db.main_title COLLATE NOCASE, db.[order] ASC, db.id ASC
+            """;
+        command.Parameters.AddWithValue("@cids", JsonSerializer.Serialize(distinctCids));
+        return await ReadManyAsync(
+            connection,
+            command,
+            "downloading",
+            _clock.UtcNow,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<DownloadHistoryPage> GetHistoryPageAsync(
         DownloadHistoryCursor? cursor,
         int pageSize,
@@ -166,6 +194,33 @@ internal sealed class SqliteDownloadStoreQueries(
             ORDER BY h.finished_timestamp DESC, h.id DESC
             """;
         command.Parameters.AddWithValue("@cid", cid);
+        var result = await ReadHistoryManyAsync(
+            connection,
+            command,
+            _clock.UtcNow,
+            cancellationToken).ConfigureAwait(false);
+        return result.Records;
+    }
+
+    public async Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        var distinctCids = cids.Distinct().ToArray();
+        if (distinctCids.Length == 0)
+        {
+            return [];
+        }
+
+        using var connection = await _database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        using var command = connection.CreateCommand();
+        command.CommandText = DownloadHistoryRecordMapper.SelectColumns + "\n" + $"""
+            WHERE h.cid IN (SELECT CAST(value AS INTEGER) FROM json_each(@cids))
+              AND {SqliteDownloadStoreQuarantine.ExcludeDownloadHistoryRecordSql}
+            ORDER BY h.finished_timestamp DESC, h.id DESC
+            """;
+        command.Parameters.AddWithValue("@cids", JsonSerializer.Serialize(distinctCids));
         var result = await ReadHistoryManyAsync(
             connection,
             command,

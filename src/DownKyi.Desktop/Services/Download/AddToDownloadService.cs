@@ -17,6 +17,7 @@ using DownKyi.Domain.Downloads;
 using DownKyi.Presentation;
 using DownKyi.Services.Video;
 using DownKyi.Utils;
+using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Services.Download;
@@ -27,7 +28,6 @@ namespace DownKyi.Services.Download;
 internal sealed class AddToDownloadService : IAddToDownloadSession
 {
     private readonly DownloadTaskAdmissionService _admission;
-    private readonly DownloadDuplicatePolicy _duplicatePolicy;
     private readonly DownloadMovieMetadataBuilder _metadataBuilder;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppDialogService _dialogService;
@@ -38,7 +38,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
     public AddToDownloadService(
         PlayStreamType streamType,
         DownloadTaskAdmissionService admission,
-        DownloadDuplicatePolicy duplicatePolicy,
         DownloadMovieMetadataBuilder metadataBuilder,
         ISettingsStore settingsStore,
         IVideoTagProvider tagProvider,
@@ -48,7 +47,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         ILogger<AddToDownloadService> logger)
     {
         _admission = admission ?? throw new ArgumentNullException(nameof(admission));
-        _duplicatePolicy = duplicatePolicy ?? throw new ArgumentNullException(nameof(duplicatePolicy));
         _metadataBuilder = metadataBuilder ?? throw new ArgumentNullException(nameof(metadataBuilder));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
@@ -93,67 +91,49 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var directory = string.Empty;
-        var requestedContent = DownloadContentSelection.All;
-        var videoSettings = _settingsStore.Current.Video;
-        if (videoSettings.IsUseSaveVideoRootPath == AllowStatus.Yes)
+        var subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+            DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NotAttempted,
+            []);
+        if (subtitlePage != null)
         {
-            requestedContent = new DownloadContentSelection(
-                videoSettings.Content.DownloadAudio,
-                videoSettings.Content.DownloadVideo,
-                videoSettings.Content.DownloadDanmaku,
-                videoSettings.Content.DownloadSubtitle,
-                videoSettings.Content.DownloadCover);
-            directory = videoSettings.SaveVideoRootPath;
-        }
-        else
-        {
-            var subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NotAttempted,
-                []);
-            if (subtitlePage != null)
+            try
             {
-                try
-                {
-                    var player = await WbiRequestExecutor.ExecuteAsync(
-                        _wbiKeyProvider,
-                        (keys, unixTimeSeconds) => _client.PlayerV2Async(
-                            keys, unixTimeSeconds, subtitlePage.Avid, subtitlePage.Bvid,
-                            subtitlePage.Cid, cancellationToken),
-                        TimeProvider.System,
-                        cancellationToken).ConfigureAwait(false);
-                    var subtitleTracks = player?.Subtitle?.Subtitles?.Select(track =>
-                        new DownloadSettingsDialog.SubtitleTrack(
-                            track.Id, track.Lan, track.LanDoc, track.Type, track.SubtitleAddress))
-                        .ToArray() ?? [];
-                    subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                        subtitleTracks.Length > 0
-                            ? DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Available
-                            : DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NoResource,
-                        subtitleTracks);
-                }
-                catch (Exception exception) when (exception is HttpRequestException or BilibiliApiResponseException
-                                                  || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogWarningMessage("Subtitle tracks could not be loaded; opening download settings without them.", exception);
-                    subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
-                        DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Failed,
-                        []);
-                }
+                var player = await WbiRequestExecutor.ExecuteAsync(
+                    _wbiKeyProvider,
+                    (keys, unixTimeSeconds) => _client.PlayerV2Async(
+                        keys, unixTimeSeconds, subtitlePage.Avid, subtitlePage.Bvid,
+                        subtitlePage.Cid, cancellationToken),
+                    TimeProvider.System,
+                    cancellationToken).ConfigureAwait(false);
+                var subtitleTracks = player?.Subtitle?.Subtitles?.Select(track =>
+                    new DownloadSettingsDialog.SubtitleTrack(
+                        track.Id, track.Lan, track.LanDoc, track.Type, track.SubtitleAddress))
+                    .ToArray() ?? [];
+                subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+                    subtitleTracks.Length > 0
+                        ? DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Available
+                        : DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.NoResource,
+                    subtitleTracks);
             }
-            var result = await _dialogService.ShowAsync(
-                DownloadSettingsDialog.CreateRequest(subtitleDiscovery),
-                cancellationToken).ConfigureAwait(true);
-            if (DownloadSettingsDialog.DecodeResult(result) is { } dialogSelection)
+            catch (Exception exception) when (exception is HttpRequestException or BilibiliApiResponseException
+                                              || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                directory = dialogSelection.Directory;
-                requestedContent = dialogSelection.RequestedContent;
-            }
-            else
-            {
-                return DownloadSelectionResult.Canceled;
+                _logger.LogWarningMessage("Subtitle tracks could not be loaded; opening download settings without them.", exception);
+                subtitleDiscovery = new DownloadSettingsDialog.SubtitleTrackDiscovery(
+                    DownloadSettingsDialog.SubtitleTrackDiscoveryStatus.Failed,
+                    []);
             }
         }
+        var result = await _dialogService.ShowAsync(
+            DownloadSettingsDialog.CreateRequest(subtitleDiscovery),
+            cancellationToken).ConfigureAwait(true);
+        if (DownloadSettingsDialog.DecodeResult(result) is not { } dialogSelection)
+        {
+            return DownloadSelectionResult.Canceled;
+        }
+
+        var directory = dialogSelection.Directory;
+        var requestedContent = dialogSelection.RequestedContent;
         if (string.IsNullOrEmpty(directory))
         {
             return DownloadSelectionResult.Unavailable;
@@ -173,116 +153,129 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         return DownloadSelectionResult.Accepted(
             new DownloadAddSelection(directory, requestedContent));
     }
-    public async Task<DownloadAddResult> AddToDownload(
-        string directory,
-        FinalizedDownload finalizedDownload,
+
+    public async Task<DownloadAddResult> AddToDownloadBatch(
+        DownloadAddSelection selection,
+        IReadOnlyList<FinalizedDownload> finalizedDownloads,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrEmpty(directory);
-        ArgumentNullException.ThrowIfNull(finalizedDownload);
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(finalizedDownloads);
         cancellationToken.ThrowIfCancellationRequested();
-        if (finalizedDownload.StopReason != null)
+        if (finalizedDownloads.Count == 1 && finalizedDownloads[0].StopReason != null)
         {
-            return DownloadAddResult.FromPlan(finalizedDownload);
+            return DownloadAddResult.FromPlan(finalizedDownloads[0]);
         }
 
         var settings = _settingsStore.Current;
         var addedCount = 0;
         var duplicateCount = 0;
         var failedCount = 0;
+        var skippedCount = finalizedDownloads.Sum(download => download.SkippedCount);
+        var pending = CreatePendingDownloads(selection.Directory, finalizedDownloads, settings);
         try
         {
-            foreach (var finalizedSection in finalizedDownload.Sections)
+            var review = await _admission
+                .ReviewDuplicatesAsync(
+                    pending.Select(download => download.Item).ToArray(),
+                    cancellationToken)
+                .ConfigureAwait(true);
+            duplicateCount += review.ActiveDuplicateIds.Count;
+            var redownloadCompleted = false;
+            if (review.CompletedDuplicateIds.Count > 0)
             {
-                foreach (var finalizedPage in finalizedSection.Pages)
+                var completedNames = pending
+                    .Where(download => review.CompletedDuplicateIds.Contains(download.Item.DownloadBase.Id))
+                    .Select(download => GetDisplayName(download.Item))
+                    .ToArray();
+                redownloadCompleted = await DownloadDuplicateBatchDialogContract.ShowAsync(
+                    _dialogService,
+                    new DownloadDuplicateBatchPrompt(
+                        completedNames,
+                        review.ActiveDuplicateIds.Count),
+                    cancellationToken).ConfigureAwait(true) ==
+                    DownloadDuplicateBatchAction.RedownloadCompleted;
+                if (!redownloadCompleted)
                 {
-                    var page = finalizedPage.Page;
-                    var downloadingItem = DownloadTaskDraftFactory.Create(
-                        directory,
-                        finalizedDownload.Video,
-                        finalizedSection.Section,
-                        finalizedDownload.Sections.Count,
-                        page,
-                        finalizedPage.VideoQuality,
-                        finalizedPage.AudioQualityFormat,
-                        finalizedPage.AvailableMedia,
-                        settings,
-                        finalizedPage.FinalizedContent);
-                    if (await _duplicatePolicy
-                        .ShouldSkipAsync(
-                            downloadingItem,
-                            settings.Basic.RepeatDownloadStrategy,
-                            cancellationToken)
-                        .ConfigureAwait(true))
+                    duplicateCount += review.CompletedDuplicateIds.Count;
+                }
+            }
+
+            foreach (var download in pending)
+            {
+                if (review.ActiveDuplicateIds.Contains(download.Item.DownloadBase.Id)
+                    || review.CompletedDuplicateIds.Contains(download.Item.DownloadBase.Id)
+                    && !redownloadCompleted)
+                {
+                    continue;
+                }
+
+                if (settings.Video.Content.GenerateMovieMetadata
+                    && download.Item.DownloadBase.NeedDownloadContent.Video)
+                {
+                    download.Item.Metadata = await _metadataBuilder
+                        .BuildAsync(download.Video, download.Page, cancellationToken)
+                        .ConfigureAwait(true);
+                }
+                try
+                {
+                    var admitted = await _admission
+                        .AdmitAsync(
+                            download.Item,
+                            settings.Basic.RepeatFileAutoAddNumberSuffix,
+                            cancellationToken,
+                            redownloadCompleted
+                            && review.CompletedDuplicateIds.Contains(download.Item.DownloadBase.Id))
+                        .ConfigureAwait(true);
+                    if (!admitted)
                     {
                         duplicateCount++;
                         continue;
                     }
-                    if (settings.Video.Content.GenerateMovieMetadata
-                        && downloadingItem.DownloadBase.NeedDownloadContent.Video)
-                    {
-                        downloadingItem.Metadata = await _metadataBuilder
-                            .BuildAsync(finalizedDownload.Video, page, cancellationToken)
-                        .ConfigureAwait(true);
-                    }
-                    try
-                    {
-                        var admitted = await _admission
-                            .AdmitAsync(
-                                downloadingItem,
-                                settings.Basic.RepeatFileAutoAddNumberSuffix,
-                                cancellationToken)
-                            .ConfigureAwait(true);
-                        if (!admitted)
-                        {
-                            duplicateCount++;
-                            continue;
-                        }
 
-                        addedCount++;
-                    }
-                    catch (DownloadRuntimeUnavailableException exception)
-                    {
-                        failedCount++;
-                        _logger.LogWarningMessage("Download task admission rejected because runtime is unavailable.", exception);
-                        var alert = new AlertService(_dialogService);
-                        await alert
-                            .ShowError(
-                                DictionaryResource.GetString("DownloadRuntimeUnavailable"),
-                                cancellationToken)
-                            .ConfigureAwait(true);
-                        return CreateResult(
-                            addedCount,
-                            duplicateCount,
-                            failedCount,
-                            finalizedDownload.SkippedCount,
-                            DownloadAddStopReason.RuntimeUnavailable);
-                    }
-                    catch (IOException exception)
-                    {
-                        failedCount++;
-                        _logger.LogWarningMessage("Download task admission failed.", exception);
-                        var alert = new AlertService(_dialogService);
-                        await alert
-                            .ShowError(
-                                DictionaryResource.GetString("DirectoryError"),
-                                cancellationToken)
+                    addedCount++;
+                }
+                catch (DownloadRuntimeUnavailableException exception)
+                {
+                    failedCount++;
+                    _logger.LogWarningMessage("Download task admission rejected because runtime is unavailable.", exception);
+                    var alert = new AlertService(_dialogService);
+                    await alert
+                        .ShowError(
+                            DictionaryResource.GetString("DownloadRuntimeUnavailable"),
+                            cancellationToken)
                         .ConfigureAwait(true);
-                    }
+                    return CreateResult(
+                        addedCount,
+                        duplicateCount,
+                        failedCount,
+                        skippedCount,
+                        DownloadAddStopReason.RuntimeUnavailable);
+                }
+                catch (IOException exception)
+                {
+                    failedCount++;
+                    _logger.LogWarningMessage("Download task admission failed.", exception);
+                    var alert = new AlertService(_dialogService);
+                    await alert
+                        .ShowError(
+                            DictionaryResource.GetString("DirectoryError"),
+                            cancellationToken)
+                    .ConfigureAwait(true);
                 }
             }
         }
         catch (OperationCanceledException exception) when (
             cancellationToken.IsCancellationRequested
             && (addedCount > 0 || duplicateCount > 0 || failedCount > 0
-                || finalizedDownload.SkippedCount > 0))
+                || skippedCount > 0))
         {
             throw new DownloadAddCanceledException(
                 DownloadAddResult.CanceledWithProgress(
                     addedCount,
                     duplicateCount,
                     failedCount,
-                    finalizedDownload.SkippedCount),
+                    skippedCount),
                 exception,
                 cancellationToken);
         }
@@ -291,9 +284,47 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
             addedCount,
             duplicateCount,
             failedCount,
-            finalizedDownload.SkippedCount,
+            skippedCount,
             failedCount > 0 ? DownloadAddStopReason.TaskAdmissionFailed : null);
     }
+
+    private static List<PendingDownload> CreatePendingDownloads(
+        string directory,
+        IReadOnlyList<FinalizedDownload> finalizedDownloads,
+        ApplicationSettings settings)
+    {
+        var pending = new List<PendingDownload>();
+        foreach (var finalizedDownload in finalizedDownloads.Where(download => download.StopReason == null))
+        {
+            foreach (var finalizedSection in finalizedDownload.Sections)
+            {
+                foreach (var finalizedPage in finalizedSection.Pages)
+                {
+                    pending.Add(new PendingDownload(
+                        DownloadTaskDraftFactory.Create(
+                            directory,
+                            finalizedDownload.Video,
+                            finalizedSection.Section,
+                            finalizedDownload.Sections.Count,
+                            finalizedPage.Page,
+                            finalizedPage.VideoQuality,
+                            finalizedPage.AudioQualityFormat,
+                            finalizedPage.AvailableMedia,
+                            settings,
+                            finalizedPage.FinalizedContent),
+                        finalizedDownload.Video,
+                        finalizedPage.Page));
+                }
+            }
+        }
+
+        return pending;
+    }
+
+    private static string GetDisplayName(DownloadingItem item) =>
+        string.Equals(item.DownloadBase.MainTitle, item.DownloadBase.Name, StringComparison.Ordinal)
+            ? item.DownloadBase.Name
+            : $"{item.DownloadBase.MainTitle} - {item.DownloadBase.Name}";
 
     private static DownloadAddResult CreateResult(
         int addedCount,
@@ -309,5 +340,10 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
             skippedCount,
             failureReason);
     }
+
+    private sealed record PendingDownload(
+        DownloadingItem Item,
+        VideoInfoView Video,
+        VideoPage Page);
 
 }

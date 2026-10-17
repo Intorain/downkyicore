@@ -64,7 +64,8 @@ internal static class DownloadSettingsDialog
         return new Dictionary<string, object?>(StringComparer.Ordinal)
         { [ResultParameter] = (directory, requestedContent) };
     }
-    public static (string Directory, DownloadContentSelection RequestedContent)? DecodeResult(AppDialogResult result) =>
+    public static (string Directory, DownloadContentSelection RequestedContent)?
+        DecodeResult(AppDialogResult result) =>
         result.Outcome != AppDialogOutcome.Accepted
             ? null
             : result.Parameters.TryGetValue(ResultParameter, out var value) &&

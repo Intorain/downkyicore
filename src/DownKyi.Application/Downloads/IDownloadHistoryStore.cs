@@ -32,6 +32,31 @@ public interface IDownloadHistoryStore
         return records;
     }
 
+    async Task<IReadOnlyList<DownloadHistoryRecord>> GetHistoryByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(cids);
+        if (cids.Count == 0)
+        {
+            return [];
+        }
+
+        var requestedCids = cids.ToHashSet();
+        var records = new List<DownloadHistoryRecord>();
+        DownloadHistoryCursor? cursor = null;
+        do
+        {
+            var page = await GetHistoryPageAsync(cursor, 500, cancellationToken)
+                .ConfigureAwait(false);
+            records.AddRange(page.Items.Where(record => requestedCids.Contains(record.Cid)));
+            cursor = page.NextCursor;
+        }
+        while (cursor != null);
+
+        return records;
+    }
+
     Task<OperationResult> DeleteHistoryAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken);

@@ -23,6 +23,10 @@ public interface IDownloadHistoryService
         long cid,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<DownloadHistoryRecord>> GetByCidsAsync(
+        IReadOnlyCollection<long> cids,
+        CancellationToken cancellationToken);
+
     Task<OperationResult> DeleteAsync(
         DownloadTaskId taskId,
         CancellationToken cancellationToken);

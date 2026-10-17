@@ -108,22 +108,6 @@ internal class ViewBasicViewModel : ViewModelBase
         set => SetProperty(ref _repeatFileAutoAddNumberSuffix, value);
     }
 
-    private IReadOnlyList<RepeatDownloadStrategyDisplay> _repeatDownloadStrategy = Array.Empty<RepeatDownloadStrategyDisplay>();
-
-    public IReadOnlyList<RepeatDownloadStrategyDisplay> RepeatDownloadStrategy
-    {
-        get => _repeatDownloadStrategy;
-        set => SetProperty(ref _repeatDownloadStrategy, value);
-    }
-
-    private RepeatDownloadStrategyDisplay _selectedRepeatDownloadStrategy = null!;
-
-    public RepeatDownloadStrategyDisplay SelectedRepeatDownloadStrategy
-    {
-        get => _selectedRepeatDownloadStrategy;
-        set => SetProperty(ref _selectedRepeatDownloadStrategy, value);
-    }
-
     #endregion
 
     public ViewBasicViewModel(
@@ -142,13 +126,6 @@ internal class ViewBasicViewModel : ViewModelBase
             new() { Name = DictionaryResource.GetString("ParseSelectedItem"), ParseScope = ParseScope.SelectedItem },
             new() { Name = DictionaryResource.GetString("ParseCurrentSection"), ParseScope = ParseScope.CurrentSection },
             new() { Name = DictionaryResource.GetString("ParseAll"), ParseScope = ParseScope.All }
-        };
-
-        RepeatDownloadStrategy = new List<RepeatDownloadStrategyDisplay>
-        {
-            new() { Name = DictionaryResource.GetString("RepeatDownloadAsk"), RepeatDownloadStrategy = Core.Settings.RepeatDownloadStrategy.Ask },
-            new() { Name = DictionaryResource.GetString("RepeatDownloadReDownload"), RepeatDownloadStrategy = Core.Settings.RepeatDownloadStrategy.ReDownload },
-            new() { Name = DictionaryResource.GetString("RepeatDownloadReJumpOver"), RepeatDownloadStrategy = Core.Settings.RepeatDownloadStrategy.JumpOver }
         };
 
         #endregion
@@ -196,10 +173,6 @@ internal class ViewBasicViewModel : ViewModelBase
         // 解析范围
         var parseScope = basic.ParseScope;
         SelectedParseScope = ParseScopes.FirstOrDefault(t => t.ParseScope == parseScope) ?? ParseScopes[0];
-
-        // 重复下载策略
-        var repeatDownloadStrategy = basic.RepeatDownloadStrategy;
-        SelectedRepeatDownloadStrategy = RepeatDownloadStrategy.FirstOrDefault(t => t.RepeatDownloadStrategy == repeatDownloadStrategy) ?? RepeatDownloadStrategy[0];
 
         // 重复下载文件自动添加数字后缀
         var repeatFileAutoAddNumberSuffix = basic.RepeatFileAutoAddNumberSuffix;
@@ -317,29 +290,6 @@ internal class ViewBasicViewModel : ViewModelBase
         {
             RepeatFileAutoAddNumberSuffix = RepeatFileAutoAddNumberSuffix
         }).RepeatFileAutoAddNumberSuffix == RepeatFileAutoAddNumberSuffix;
-        PublishTip(isSucceed);
-    }
-
-    // 重复下载策略事件
-    private RelayCommand<object>? _repeatDownloadStrategyCommand;
-
-    public RelayCommand<object> RepeatDownloadStrategyCommand => _repeatDownloadStrategyCommand ??= RequiredParameterCommand.Create<object>(ExecuteRepeatDownloadStrategyCommand);
-
-    /// <summary>
-    /// 重复下载策略事件
-    /// </summary>
-    /// <param name="parameter"></param>
-    private void ExecuteRepeatDownloadStrategyCommand(object parameter)
-    {
-        if (parameter is not RepeatDownloadStrategyDisplay repeatDownloadStrategy)
-        {
-            return;
-        }
-
-        var isSucceed = UpdateBasic(settings => settings with
-        {
-            RepeatDownloadStrategy = repeatDownloadStrategy.RepeatDownloadStrategy
-        }).RepeatDownloadStrategy == repeatDownloadStrategy.RepeatDownloadStrategy;
         PublishTip(isSucceed);
     }
 

@@ -139,10 +139,6 @@ internal partial class ViewVideoViewModel : ViewModelBase
 
         SelectedFfmpegMaxParallelJob = videoSettings.FfmpegMaxParallelJobs;
 
-        // 是否使用默认下载目录
-        var isUseSaveVideoRootPath = videoSettings.IsUseSaveVideoRootPath;
-        IsUseDefaultDirectory = isUseSaveVideoRootPath == AllowStatus.Yes;
-
         // 默认下载目录
         SaveVideoDirectory = videoSettings.SaveVideoRootPath;
 

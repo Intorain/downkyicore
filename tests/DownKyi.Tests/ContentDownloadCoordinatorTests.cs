@@ -298,7 +298,9 @@ public sealed class ContentDownloadCoordinatorTests
             return Task.FromResult(directory == null
                 ? DownloadSelectionResult.Canceled
                 : DownloadSelectionResult.Accepted(
-                    new DownloadAddSelection(directory, Selection.RequestedContent)));
+                    new DownloadAddSelection(
+                        directory,
+                        Selection.RequestedContent)));
         }
 
         public Task<PreparedDownload> PrepareAsync(
@@ -328,19 +330,23 @@ public sealed class ContentDownloadCoordinatorTests
                 [new VideoSection()]));
         }
 
-        public Task<DownloadAddResult> AddToDownload(
-            string selectedDirectory,
-            FinalizedDownload finalizedDownload,
+        public Task<DownloadAddResult> AddToDownloadBatch(
+            DownloadAddSelection selection,
+            IReadOnlyList<FinalizedDownload> finalizedDownloads,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Assert.Equal(directory, selectedDirectory);
-            Assert.NotNull(finalizedDownload);
-            PrepareCountWhenFirstAdded ??= PrepareCount;
-            AddCount++;
-            afterAdd?.Invoke(AddCount);
+            Assert.Equal(directory, selection.Directory);
+            foreach (var finalizedDownload in finalizedDownloads)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Assert.NotNull(finalizedDownload);
+                PrepareCountWhenFirstAdded ??= PrepareCount;
+                AddCount++;
+                afterAdd?.Invoke(AddCount);
+            }
             return Task.FromResult(DownloadAddResult.FromCounts(
-                addedCount: 1,
+                addedCount: finalizedDownloads.Count,
                 duplicateCount: 0,
                 failedCount: 0,
                 skippedCount: 0));

@@ -5,11 +5,11 @@ public enum AppDialog
     Alert = 0,
     DownloadSettings = 1,
     ParsingSelector = 2,
-    AlreadyDownloaded = 3,
-    NewVersionAvailable = 4,
-    LegacyUpgrade = 5,
-    StartupDiagnostics = 6,
-    DownloadContentConflict = 7
+    NewVersionAvailable = 3,
+    LegacyUpgrade = 4,
+    StartupDiagnostics = 5,
+    DownloadContentConflict = 6,
+    DownloadDuplicateBatch = 7
 }
 
 public enum AppDialogOutcome

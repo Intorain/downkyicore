@@ -58,6 +58,8 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("_admissionGate.WaitAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_runtimeAvailability.EnsureAcceptingTasks();", admissionService, StringComparison.Ordinal);
         Assert.Contains("GetDownloadingByCidAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("GetDownloadedByCidAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("DuplicateKey.From", admissionService, StringComparison.Ordinal);
         Assert.Contains("_projections.AddDownloadingAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_database.ExecuteImmediateTransactionAsync", reservations, StringComparison.Ordinal);
         Assert.Contains("HasOutputClaimConflictCoreAsync", reservations, StringComparison.Ordinal);
@@ -78,8 +80,6 @@ public sealed class DownloadAdmissionArchitectureTests
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadContentConflictResolver.cs");
         var planner = ReadSource(
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadActionPlanner.cs");
-        var duplicatePolicy = ReadSource(
-            "src", "DownKyi.Desktop", "Services", "Download", "DownloadDuplicatePolicy.cs");
         var content = ReadSource(
             "src", "DownKyi.Desktop", "Services", "Media", "ContentDownloadCoordinator.cs");
         var video = ReadSource(
@@ -87,7 +87,7 @@ public sealed class DownloadAdmissionArchitectureTests
 
         Assert.Contains("Task<DownloadSelectionResult> SelectDownloadAsync", contract, StringComparison.Ordinal);
         Assert.Contains("Task<PreparedDownload> PrepareAsync", contract, StringComparison.Ordinal);
-        Assert.Contains("FinalizedDownload finalizedDownload", contract, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<FinalizedDownload> finalizedDownloads", contract, StringComparison.Ordinal);
         Assert.Contains("DownloadContentSelection RequestedContent", selection, StringComparison.Ordinal);
         Assert.Contains("DownloadMediaCapabilities AvailableMedia", prepared, StringComparison.Ordinal);
         Assert.Contains("DownloadMediaOutputModes SupportedModes", prepared, StringComparison.Ordinal);
@@ -108,11 +108,6 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("_actionPlanner", content, StringComparison.Ordinal);
         Assert.Contains(".PlanBatchAsync(", content, StringComparison.Ordinal);
         Assert.Contains("_actionPlanner", video, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadingByCidAsync", duplicatePolicy, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadedByCidAsync", duplicatePolicy, StringComparison.Ordinal);
-        Assert.DoesNotContain("NeedDownloadContent", duplicatePolicy, StringComparison.Ordinal);
-        Assert.DoesNotContain("IPhysicalOutputPathResolver", duplicatePolicy, StringComparison.Ordinal);
-        Assert.DoesNotContain("RemoveDownloadedAsync", duplicatePolicy, StringComparison.Ordinal);
         Assert.DoesNotContain("HasPlayback", planner, StringComparison.Ordinal);
         Assert.DoesNotContain("_downloadContent", service, StringComparison.Ordinal);
         Assert.DoesNotContain("DownloadContentConflict", service, StringComparison.Ordinal);

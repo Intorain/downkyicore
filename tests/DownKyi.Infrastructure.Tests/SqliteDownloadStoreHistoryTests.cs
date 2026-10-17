@@ -59,6 +59,25 @@ public sealed class SqliteDownloadStoreHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task HistoryBatchQueryReturnsAllRequestedCidsOnly()
+    {
+        using var store = _fixture.CreateStore();
+        foreach (var cid in new long[] { 101, 202, 303 })
+        {
+            Assert.True((await store.AddHistoryAsync(
+                DownloadHistoryRecord.FromCompletedTask(
+                    _fixture.CreateCompletedTask($"history-{cid}", cid, cid: cid)),
+                TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        var candidates = await store.GetHistoryByCidsAsync(
+            [101, 303],
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([101L, 303L], candidates.Select(record => record.Cid).Order().ToArray());
+    }
+
+    [Fact]
     public async Task HistoryCandidateQueryQuarantinesCorruptMatchingRecords()
     {
         using var store = _fixture.CreateStore();

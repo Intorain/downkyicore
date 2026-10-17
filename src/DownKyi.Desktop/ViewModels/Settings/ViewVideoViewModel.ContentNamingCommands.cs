@@ -11,26 +11,6 @@ namespace DownKyi.ViewModels.Settings;
 
 internal partial class ViewVideoViewModel
 {
-    // 是否使用默认下载目录事件
-    private RelayCommand? _isUseDefaultDirectoryCommand;
-
-    public RelayCommand IsUseDefaultDirectoryCommand =>
-        _isUseDefaultDirectoryCommand ??= new RelayCommand(ExecuteIsUseDefaultDirectoryCommand);
-
-    /// <summary>
-    /// 是否使用默认下载目录事件
-    /// </summary>
-    private void ExecuteIsUseDefaultDirectoryCommand()
-    {
-        var isUseDefaultDirectory = IsUseDefaultDirectory ? AllowStatus.Yes : AllowStatus.No;
-
-        var isSucceed = UpdateVideo(settings => settings with
-        {
-            IsUseSaveVideoRootPath = isUseDefaultDirectory
-        }).IsUseSaveVideoRootPath == isUseDefaultDirectory;
-        PublishTip(isSucceed);
-    }
-
     // 修改默认下载目录事件
     private DownKyiAsyncDelegateCommand? _changeSaveVideoDirectoryCommand;
 
