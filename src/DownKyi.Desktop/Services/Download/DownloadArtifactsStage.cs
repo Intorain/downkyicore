@@ -125,48 +125,75 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
         context.EnsureActive(cancellationToken);
         if (context.NeedsCover)
         {
-            await _presenter.ShowDownloadingArtifactAsync(
-                context,
-                "DownloadingCover",
-                cancellationToken).ConfigureAwait(true);
-            var pageCoverFileName = DownloadOutputLayout.GetPageCoverPath(
-                context.WorkingBasePath,
-                input.Metadata.PageCoverAddress);
-            var pageCoverResult = await ProduceAndStageAsync(
-                context, "page-cover", pageCoverFileName,
-                () => _artifactWriter.DownloadCoverAsync(
-                    context.TaskId, input.Metadata.PageCoverAddress, pageCoverFileName,
-                    DownloadArtifactWriter.PageCoverTransferKey, cancellationToken),
-                cancellationToken).ConfigureAwait(true);
-            if (!pageCoverResult.TryGetValue(out var pageCover))
+            var coverResult = await DownloadSelectedCoverAsync(context, cancellationToken)
+                .ConfigureAwait(true);
+            if (!coverResult.IsSuccess)
             {
-                return StageFailure(pageCoverResult.Error);
+                return coverResult;
             }
-
-            context.PageCoverFile = pageCover.Files.SingleOrDefault();
-
-            await _presenter.ShowDownloadingArtifactAsync(
-                context,
-                "DownloadingCover",
-                cancellationToken).ConfigureAwait(true);
-            var coverFileName = DownloadOutputLayout.GetMainCoverPath(
-                context.WorkingBasePath,
-                input.Metadata.CoverAddress);
-            var coverResult = await ProduceAndStageAsync(
-                context, "cover", coverFileName,
-                () => _artifactWriter.DownloadCoverAsync(
-                    context.TaskId, input.Metadata.CoverAddress, coverFileName,
-                    DownloadArtifactWriter.MainCoverTransferKey, cancellationToken),
-                cancellationToken).ConfigureAwait(true);
-            if (!coverResult.TryGetValue(out var cover))
-            {
-                return StageFailure(coverResult.Error);
-            }
-
-            context.CoverFile = cover.Files.SingleOrDefault();
         }
 
         context.EnsureActive(cancellationToken);
+        return DownloadStageResult.Success(Name);
+    }
+
+    private async Task<OperationResult<DownloadStageResult>> DownloadSelectedCoverAsync(
+        DownloadExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        await _presenter.ShowDownloadingArtifactAsync(
+            context,
+            "DownloadingCover",
+            cancellationToken).ConfigureAwait(true);
+        var metadata = context.Input.Metadata;
+        var pageCover = (
+            Key: DownloadArtifactWriter.PageCoverTransferKey,
+            Address: metadata.PageCoverAddress,
+            File: DownloadOutputLayout.GetPageCoverPath(
+                context.WorkingBasePath, metadata.PageCoverAddress));
+        var mainCover = (
+            Key: DownloadArtifactWriter.MainCoverTransferKey,
+            Address: metadata.CoverAddress,
+            File: DownloadOutputLayout.GetMainCoverPath(
+                context.WorkingBasePath, metadata.CoverAddress));
+        var candidates = metadata.Media.EpisodeId > 0
+            ? new[] { pageCover, mainCover }
+            : new[] { mainCover, pageCover };
+
+        // Finish already-created outputs from older tasks without creating another image.
+        var existing = candidates.Where(candidate =>
+            context.HasPublished(candidate.Key)
+            || context.StagingDirectory != null
+            && DownloadFileIntegrity.Check(candidate.File).IsUsable).ToArray();
+        foreach (var candidate in existing.Length == 0 ? candidates : existing)
+        {
+            var result = await ProduceAndStageAsync(
+                context, candidate.Key, candidate.File,
+                () => _artifactWriter.DownloadCoverAsync(
+                    context.TaskId, candidate.Address, candidate.File,
+                    candidate.Key, cancellationToken),
+                cancellationToken).ConfigureAwait(true);
+            if (!result.TryGetValue(out var cover))
+            {
+                return StageFailure(result.Error);
+            }
+
+            var file = cover.Files.SingleOrDefault();
+            if (candidate.Key == DownloadArtifactWriter.MainCoverTransferKey)
+            {
+                context.CoverFile = file;
+            }
+            else
+            {
+                context.PageCoverFile = file;
+            }
+
+            if (existing.Length == 0 && (file != null || context.HasPublished(candidate.Key)))
+            {
+                break;
+            }
+        }
+
         return DownloadStageResult.Success(Name);
     }
 

@@ -563,14 +563,9 @@ public sealed class DownloadArtifactStageTests
             TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Assert.True(result.IsSuccess, result.Error?.Message);
-        Assert.Collection(
-            productionClient.Requests,
-            request => Assert.Equal(
-                "https://i1.hdslb.com/bfs/archive/page%2Fcover.jpg?token=%2B%2f",
-                request.Address.OriginalString),
-            request => Assert.Equal(
-                "https://i0.hdslb.com/bfs/archive/main%2Fcover.jpg?token=%2f%2B",
-                request.Address.OriginalString));
+        Assert.Equal(
+            "https://i0.hdslb.com/bfs/archive/main%2Fcover.jpg?token=%2f%2B",
+            Assert.Single(productionClient.Requests).Address.OriginalString);
         Assert.All(
             productionClient.Requests,
             request =>
@@ -768,13 +763,127 @@ public sealed class DownloadArtifactStageTests
             "The ownership oracle did not report the intentionally orphaned file.");
     }
 
-    [Fact]
-    public async Task PageAndMainCoversPersistUnderDistinctStableKeys()
+    [Theory]
+    [InlineData(-1, "https://example.test/main.png", DownloadArtifactWriter.MainCoverTransferKey)]
+    [InlineData(123, "https://example.test/page.jpg", DownloadArtifactWriter.PageCoverTransferKey)]
+    public async Task CoverSelectionCreatesOnlyThePreferredImage(
+        long episodeId,
+        string expectedAddress,
+        string expectedKey)
     {
+        var requestedAddresses = new List<string>();
         var client = new TestBilibiliApiClient
         {
-            DownloadFileAsyncHandler = (_, destination, token) =>
-                File.WriteAllTextAsync(destination, "image", token)
+            DownloadFileAsyncHandler = (request, destination, token) =>
+            {
+                requestedAddresses.Add(request.RequestAddress);
+                return File.WriteAllTextAsync(destination, "image", token);
+            }
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg",
+            episodeId: episodeId).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess);
+        var task = await context.GetTaskAsync().ConfigureAwait(true);
+        Assert.Equal(expectedAddress, Assert.Single(requestedAddresses));
+        Assert.Equal(expectedKey, Assert.Single(task.Plan.TransferFiles).Key);
+        Assert.Single(context.GetPhysicalArtifactFiles());
+        AssertPhysicalArtifactsAreDurablyOwned(context, task);
+    }
+
+    [Theory]
+    [InlineData(-1, "", "https://example.test/page.jpg")]
+    [InlineData(123, "https://example.test/main.png", "")]
+    public async Task MissingPreferredCoverAddressUsesTheOtherImage(
+        long episodeId,
+        string mainAddress,
+        string pageAddress)
+    {
+        var requestedAddresses = new List<string>();
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (request, destination, token) =>
+            {
+                requestedAddresses.Add(request.RequestAddress);
+                return File.WriteAllTextAsync(destination, "image", token);
+            }
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: mainAddress,
+            pageCoverUrl: pageAddress,
+            episodeId: episodeId).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal(
+            string.IsNullOrEmpty(mainAddress) ? pageAddress : mainAddress,
+            Assert.Single(requestedAddresses));
+        Assert.Single(context.GetPhysicalArtifactFiles());
+    }
+
+    [Theory]
+    [InlineData(-1, "https://example.test/main.png", "https://example.test/page.jpg")]
+    [InlineData(123, "https://example.test/page.jpg", "https://example.test/main.png")]
+    public async Task MissingPreferredCoverResponseUsesTheOtherImage(
+        long episodeId,
+        string missingAddress,
+        string fallbackAddress)
+    {
+        var requestedAddresses = new List<string>();
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (request, destination, token) =>
+            {
+                requestedAddresses.Add(request.RequestAddress);
+                return request.RequestAddress == missingAddress
+                    ? Task.FromException(new HttpRequestException(
+                        "not found", null, HttpStatusCode.NotFound))
+                    : File.WriteAllTextAsync(destination, "fallback", token);
+            }
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg",
+            episodeId: episodeId).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal([missingAddress, fallbackAddress], requestedAddresses);
+        Assert.Equal("fallback", await File.ReadAllTextAsync(
+            Assert.Single(context.GetPhysicalArtifactFiles()),
+            TestContext.Current.CancellationToken).ConfigureAwait(true));
+        AssertPhysicalArtifactsAreDurablyOwned(context, await context.GetTaskAsync().ConfigureAwait(true));
+    }
+
+    [Fact]
+    public async Task TransientCoverFailureDoesNotSilentlyUseTheOtherImage()
+    {
+        var requestedAddresses = new List<string>();
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (request, _, _) =>
+            {
+                requestedAddresses.Add(request.RequestAddress);
+                throw new HttpRequestException("temporary failure", null, HttpStatusCode.ServiceUnavailable);
+            }
         };
         using var context = await ArtifactTestContext.CreateAsync(
             client,
@@ -786,15 +895,91 @@ public sealed class DownloadArtifactStageTests
             context.Execution,
             TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        Assert.True(result.IsSuccess);
-        var task = await context.GetTaskAsync().ConfigureAwait(true);
-        Assert.Equal(
-            context.Execution.PageCoverFile,
-            task.Plan.TransferFiles[DownloadArtifactWriter.PageCoverTransferKey]);
-        Assert.Equal(
-            context.Execution.CoverFile,
-            task.Plan.TransferFiles[DownloadArtifactWriter.MainCoverTransferKey]);
-        Assert.NotEqual(context.Execution.PageCoverFile, context.Execution.CoverFile);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.artifact.cover.http", result.Error?.Code);
+        Assert.Equal("https://example.test/main.png", Assert.Single(requestedAddresses));
+    }
+
+    [Fact]
+    public async Task ExistingPageCoverIsRetainedWithoutDownloadingAnotherImage()
+    {
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (_, _, _) =>
+                throw new InvalidOperationException("Existing cover should be reused.")
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg").ConfigureAwait(true);
+        var existing = context.Downloading.DownloadBase!.FilePath + ".jpg";
+        await File.WriteAllTextAsync(
+            existing, "existing", TestContext.Current.CancellationToken).ConfigureAwait(true);
+        context.Execution.PublishedArtifacts[DownloadArtifactWriter.PageCoverTransferKey] = existing;
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal("existing", await File.ReadAllTextAsync(
+            existing, TestContext.Current.CancellationToken).ConfigureAwait(true));
+        Assert.Single(context.GetPhysicalArtifactFiles());
+    }
+
+    [Fact]
+    public async Task ExistingStagedPageAndMainCoversKeepBothDurableOwners()
+    {
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (_, _, _) =>
+                throw new InvalidOperationException("Existing covers should be reused.")
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg").ConfigureAwait(true);
+        context.Execution.StagingDirectory = Path.GetDirectoryName(
+            context.Downloading.DownloadBase!.FilePath);
+        var pageFile = DownloadOutputLayout.GetPageCoverPath(
+            context.Execution.WorkingBasePath, context.Execution.Input.Metadata.PageCoverAddress);
+        var mainFile = DownloadOutputLayout.GetMainCoverPath(
+            context.Execution.WorkingBasePath, context.Execution.Input.Metadata.CoverAddress);
+        await context.ClaimTransferFileAsync(DownloadArtifactWriter.PageCoverTransferKey, pageFile)
+            .ConfigureAwait(true);
+        await context.ClaimTransferFileAsync(DownloadArtifactWriter.MainCoverTransferKey, mainFile)
+            .ConfigureAwait(true);
+        await File.WriteAllTextAsync(pageFile, "page", TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        await File.WriteAllTextAsync(mainFile, "main", TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal(2, context.Execution.UnpublishedArtifacts.Count);
+        AssertPhysicalArtifactsAreDurablyOwned(context, await context.GetTaskAsync().ConfigureAwait(true));
+    }
+
+    [Fact]
+    public async Task CoverOnlyTaskWithNoAvailableImageFailsValidation()
+    {
+        using var context = await ArtifactTestContext.CreateAsync(
+            new TestBilibiliApiClient(),
+            cover: true).ConfigureAwait(true);
+
+        var run = await DownloadPipeline.ExecuteStagesAsync(
+            [context.Stage, new ValidateStage()],
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(run.Result.IsSuccess);
+        Assert.Equal("download.validate.no-resource", run.Result.Error?.Code);
+        Assert.Empty(context.GetPhysicalArtifactFiles());
     }
 
     [Fact]
@@ -1382,6 +1567,7 @@ public sealed class DownloadArtifactStageTests
             DanmakuOutputFormat? danmakuOutputFormat = null,
             string? coverUrl = null,
             string? pageCoverUrl = null,
+            long episodeId = -1,
             long[]? selectedSubtitleTrackIds = null,
             long? defaultSubtitleTrackId = null,
             Func<DanmakuApplicationSettings, DanmakuApplicationSettings>? configureDanmaku = null)
@@ -1431,6 +1617,7 @@ public sealed class DownloadArtifactStageTests
                 Avid = 1,
                 Bvid = "BV1test",
                 Cid = 2,
+                EpisodeId = episodeId,
                 FilePath = Path.Combine(outputDirectory, "output"),
                 CoverUrl = coverUrl ?? string.Empty,
                 PageCoverUrl = pageCoverUrl ?? string.Empty
