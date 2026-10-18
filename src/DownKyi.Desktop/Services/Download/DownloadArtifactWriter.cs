@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -94,6 +95,10 @@ internal sealed partial class DownloadArtifactWriter
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (HttpRequestException e) when (e.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            return OperationResult.Success(DownloadArtifactWriteResult.NotAvailable());
         }
         catch (HttpRequestException e)
         {
