@@ -9,8 +9,8 @@ body:
       value: |
         ## ⚠️ 提交前必讀
 
-        請完整填寫下列資訊。  
-        缺少版本、重現步驟、BV 號、錯誤訊息或日誌的 Issue，可能會被直接關閉。
+        請完整填寫下列資訊，並上傳 DownKyi 產生的診斷包。
+        診斷包為必填；未上傳 `downkyi-feedback.zip` 將無法提交 Issue。
 
   - type: checkboxes
     id: pre_check
@@ -241,29 +241,24 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: logs
+  - type: upload
+    id: diagnostic_package
     attributes:
-      label: "📄 日誌內容"
+      label: "📦 診斷包（必填）"
       description: |
-        必填。請貼上完整日誌，至少包含錯誤發生前後 50 行。
-        不要只貼最後一行。
-        如果日誌太長，請在下方上傳 log / txt / zip 檔案，並在此欄簡述日誌檔名稱。
-      placeholder: |
-        請貼上日誌，例如：
-
-        [2026-07-07 20:00:01] Start parse BV1xxxxx
-        [2026-07-07 20:00:03] Error: xxxxx
-        [2026-07-07 20:00:04] StackTrace: xxxxx
-      render: shell
+        請在 DownKyi 中依序開啟「設定 → 關於與反饋 → 反饋與診斷」，點擊「導出診斷日誌」。
+        在自動開啟的資料夾中選擇 `downkyi-feedback.zip`，並上傳到這裡。
+        診斷包只包含程式預先定義且已脫敏的近期警告、錯誤與異常診斷欄位，不包含原始日誌、資料庫或設定檔。
+        本倉庫為公開倉庫；上傳後任何人都可以下載附件，提交前請檢查壓縮包內容。
     validations:
       required: true
+      accept: ".zip"
 
   - type: upload
-    id: log_files
+    id: evidence_files
     attributes:
-      label: "📎 上傳日誌 / 截圖 / 錄影"
-      description: "請上傳 log、txt、zip、png、jpg 或 mp4。若沒有檔案可上傳，可略過。"
+      label: "📎 上傳截圖 / 錄影"
+      description: "如有需要，請補充上傳 png、jpg 或 mp4；診斷包仍須在上一欄單獨上傳。"
     validations:
       required: false
 
@@ -328,7 +323,7 @@ body:
       label: "🧾 最終確認"
       description: "未勾選將無法提交。"
       options:
-        - label: "我已提供完整版本資訊、重現步驟、實際行為、錯誤訊息與日誌"
+        - label: "我已提供完整版本資訊、重現步驟、實際行為、錯誤訊息與診斷包"
           required: true
         - label: "我理解缺少關鍵資訊的 Issue 可能會被關閉"
           required: true
@@ -341,5 +336,5 @@ body:
         - 🔧 **QR Code 登入失敗**：先檢查網路、代理、系統時間。
         - 🔧 **解析 / 下載失敗**：嘗試切換解析模式或下載器。
         - 🔧 **1080P 以上無法下載**：確認已登入，且帳號有對應權限。
-        - 🔧 **特定影片失敗**：請提供 BV 號、完整日誌與錯誤訊息。
-        - 🔧 **程式閃退**：請提供崩潰前後日誌、系統版本與操作步驟。
+        - 🔧 **特定影片失敗**：請提供 BV 號、診斷包與錯誤訊息。
+        - 🔧 **程式閃退**：請提供診斷包、系統版本與操作步驟。

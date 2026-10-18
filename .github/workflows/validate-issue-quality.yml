@@ -84,7 +84,9 @@ jobs:
             }
 
             function isFilled(text) {
-              return (text || "").trim().length > 0;
+              const normalized = (text || "").trim();
+              return normalized.length > 0 &&
+                normalized.toLowerCase() !== "_no response_";
             }
 
             async function ensureLabel(
@@ -144,14 +146,15 @@ jobs:
               "✅ 預期行為",
               "❌ 實際行為",
               "🧨 錯誤訊息",
-              "📄 日誌內容",
+              "📦 診斷包（必填）",
               "🛠️ 已嘗試的解決方式",
               "📊 發生頻率",
               "🔄 是否為舊版本正常、新版本異常？"
             ];
 
             const appDiagnosticSections = [
-              "应用内反馈：发生了什么"
+              "应用内反馈：发生了什么",
+              "诊断包（必填）"
             ];
 
             const engineeringBugSections = [
@@ -224,6 +227,26 @@ jobs:
               if (!isFilled(text)) {
                 problems.push(
                   `${section}：未填寫`
+                );
+              }
+            }
+
+            const diagnosticSection =
+              isEngineeringBug
+                ? ""
+                : isAppDiagnostic
+                  ? "诊断包（必填）"
+                  : "📦 診斷包（必填）";
+
+            if (diagnosticSection) {
+              const diagnosticText = getSection(diagnosticSection);
+              const hasFeedbackPackage =
+                /^\[downkyi-feedback\.zip\]\(https:\/\/github\.com\/user-attachments\/files\/\d+\/downkyi-feedback\.zip\)$/im
+                  .test(diagnosticText);
+
+              if (isFilled(diagnosticText) && !hasFeedbackPackage) {
+                problems.push(
+                  `${diagnosticSection}：請上傳 DownKyi 產生的 downkyi-feedback.zip`
                 );
               }
             }
