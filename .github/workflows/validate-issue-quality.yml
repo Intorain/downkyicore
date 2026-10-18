@@ -241,7 +241,7 @@ jobs:
             if (diagnosticSection) {
               const diagnosticText = getSection(diagnosticSection);
               const hasFeedbackPackage =
-                /downkyi-feedback(?:\s*\(\d+\))?\.zip/i
+                /^\[downkyi-feedback\.zip\]\(https:\/\/github\.com\/user-attachments\/files\/\d+\/downkyi-feedback\.zip\)$/im
                   .test(diagnosticText);
 
               if (isFilled(diagnosticText) && !hasFeedbackPackage) {
