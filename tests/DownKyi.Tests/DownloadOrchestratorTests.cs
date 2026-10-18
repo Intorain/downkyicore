@@ -22,7 +22,7 @@ public sealed class DownloadOrchestratorTests
         DownloadTaskId[] taskIds = await context.AddQueuedTasksAsync(48);
         var executions = new ConcurrentDictionary<DownloadTaskId, int>();
         var allExecuted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor((taskId, _) =>
+        var executor = new RecordingExecutor((taskId, _) =>
         {
             executions.AddOrUpdate(taskId, 1, static (_, count) => count + 1);
             if (executions.Count == taskIds.Length)
@@ -54,7 +54,7 @@ public sealed class DownloadOrchestratorTests
         DownloadTaskId[] taskIds = await context.AddQueuedTasksAsync(96);
         var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseWorkers = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (_, cancellationToken) =>
+        var executor = new RecordingExecutor(async (_, cancellationToken) =>
         {
             firstStarted.TrySetResult();
             await releaseWorkers.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -79,7 +79,7 @@ public sealed class DownloadOrchestratorTests
         var started = new ConcurrentDictionary<DownloadTaskId, byte>();
         var fourStarted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (taskId, _) =>
+        var executor = new RecordingExecutor(async (taskId, _) =>
         {
             started.TryAdd(taskId, 0);
             if (started.Count == 4)
@@ -161,7 +161,7 @@ public sealed class DownloadOrchestratorTests
                 allThreePaused.TrySetResult();
             }
         };
-        using var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
+        var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
         {
             var executionCount = executionCounts.AddOrUpdate(
                 taskId,
@@ -252,7 +252,7 @@ public sealed class DownloadOrchestratorTests
         var releaseNextExecution = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var executionCounts = new ConcurrentDictionary<DownloadTaskId, int>();
-        using var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
+        var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
         {
             var count = executionCounts.AddOrUpdate(taskId, 1, static (_, current) => current + 1);
             if (taskId == taskIds[0] && count == 1)
@@ -295,7 +295,7 @@ public sealed class DownloadOrchestratorTests
         using var context = new OrchestratorContext();
         DownloadTaskId taskId = Assert.Single(await context.AddQueuedTasksAsync(1));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor((_, _) =>
+        var executor = new RecordingExecutor((_, _) =>
         {
             started.TrySetResult();
             return Task.CompletedTask;
@@ -318,7 +318,7 @@ public sealed class DownloadOrchestratorTests
         using var context = new OrchestratorContext();
         DownloadTaskId taskId = Assert.Single(await context.AddQueuedTasksAsync(1));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor((_, _) =>
+        var executor = new RecordingExecutor((_, _) =>
         {
             started.TrySetResult();
             return Task.CompletedTask;
@@ -346,7 +346,7 @@ public sealed class DownloadOrchestratorTests
         using var context = new OrchestratorContext();
         DownloadTaskId taskId = Assert.Single(await context.AddQueuedTasksAsync(1));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor((_, _) =>
+        var executor = new RecordingExecutor((_, _) =>
         {
             started.TrySetResult();
             return Task.CompletedTask;
@@ -375,7 +375,7 @@ public sealed class DownloadOrchestratorTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var queuedStarted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
+        var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
         {
             if (taskId == taskIds[0])
             {
@@ -421,7 +421,7 @@ public sealed class DownloadOrchestratorTests
         DownloadTaskId[] taskIds = await context.AddQueuedTasksAsync(2);
         var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondExecuted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
+        var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
         {
             if (taskId == taskIds[0])
             {
@@ -454,7 +454,7 @@ public sealed class DownloadOrchestratorTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseExecution = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (_, cancellationToken) =>
+        var executor = new RecordingExecutor(async (_, cancellationToken) =>
         {
             started.TrySetResult();
             try
@@ -500,7 +500,7 @@ public sealed class DownloadOrchestratorTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseExecution = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (_, cancellationToken) =>
+        var executor = new RecordingExecutor(async (_, cancellationToken) =>
         {
             started.TrySetResult();
             try
@@ -547,7 +547,7 @@ public sealed class DownloadOrchestratorTests
         var started = new ConcurrentDictionary<DownloadTaskId, CancellationToken>();
         var bothStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondMayFinish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
+        var executor = new RecordingExecutor(async (taskId, cancellationToken) =>
         {
             started[taskId] = cancellationToken;
             if (started.Count == taskIds.Length)
@@ -585,7 +585,7 @@ public sealed class DownloadOrchestratorTests
         using var context = new OrchestratorContext();
         DownloadTaskId taskId = Assert.Single(await context.AddQueuedTasksAsync(1));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(
+        var executor = new RecordingExecutor(
             async (_, cancellationToken) =>
             {
                 started.TrySetResult();
@@ -621,7 +621,7 @@ public sealed class DownloadOrchestratorTests
         DownloadTaskId[] taskIds = await context.AddQueuedTasksAsync(2);
         var secondExecuted = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        using var executor = new RecordingExecutor(
+        var executor = new RecordingExecutor(
             (taskId, _) => taskId == taskIds[0]
                 ? Task.FromException(new TaskCanceledException("Synthetic transport timeout."))
                 : CompleteSecondAsync(),
@@ -744,18 +744,6 @@ public sealed class DownloadOrchestratorTests
         Func<Task>? persist = null,
         Func<DownloadTaskId, CancellationToken, Task>? markFailed = null) : IDownloadTaskExecutor
     {
-        public Task StartAsync(CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
         public Task ExecuteAsync(DownloadTaskId taskId, CancellationToken cancellationToken)
         {
             return execute(taskId, cancellationToken);
@@ -773,9 +761,6 @@ public sealed class DownloadOrchestratorTests
             return persist?.Invoke() ?? Task.CompletedTask;
         }
 
-        public void Dispose()
-        {
-        }
     }
 
     private sealed class InMemoryDownloadTaskStore :

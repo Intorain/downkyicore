@@ -142,7 +142,6 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
                 _stateWriter,
                 _fileService,
                 shutdownRecovery,
-                transferBackend,
                 _loggerFactory.CreateLogger<DownloadPipeline>());
         return new DownloadOrchestrator(
             pipeline,

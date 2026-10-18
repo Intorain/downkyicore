@@ -41,7 +41,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorCapsOneGlobalBudgetAcrossPrimaryAndBackupAddresses()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.InvalidMedia,
                 "invalid-media"));
@@ -66,7 +66,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorTriesNextAddressAfterCandidateRejection()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.CandidateRejected,
                 "download.transfer.insecure-address"),
@@ -95,7 +95,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorStopsAfterAllCandidatesAreRejected()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.CandidateRejected,
                 "download.transfer.insecure-address"),
@@ -126,7 +126,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorRetriesTransientFailureOnSameAddressBeforeMoving()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
                 "network-timeout"),
@@ -153,7 +153,7 @@ public sealed class DownloadRetryPolicyTests
             target,
             "invalid",
             TestContext.Current.CancellationToken);
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.InvalidMedia,
                 "download.transfer.invalid-media"));
@@ -170,7 +170,6 @@ public sealed class DownloadRetryPolicyTests
 
             Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
             Assert.Equal(DownloadTransferFailureKind.InvalidMedia, result.FailureKind);
-            Assert.Equal(0, backend.ResetCount);
             Assert.False(File.Exists(target));
         }
         finally
@@ -193,7 +192,7 @@ public sealed class DownloadRetryPolicyTests
             $"{target}.download",
             "resume",
             TestContext.Current.CancellationToken);
-        using var backend = new InspectingBackend(
+        var backend = new InspectingBackend(
             (attempt, request) =>
             {
                 if (attempt <= 2)
@@ -221,7 +220,6 @@ public sealed class DownloadRetryPolicyTests
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(DownloadTransferOutcome.Succeeded, result.Outcome);
-            Assert.Equal(1, backend.ResetCount);
             Assert.Equal(3, backend.Requests.Count);
         }
         finally
@@ -244,7 +242,7 @@ public sealed class DownloadRetryPolicyTests
             $"{target}.download",
             "resume",
             TestContext.Current.CancellationToken);
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ExpiredAddress,
                 "download.transfer.http-403"),
@@ -262,7 +260,6 @@ public sealed class DownloadRetryPolicyTests
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(DownloadTransferOutcome.Succeeded, result.Outcome);
-            Assert.Equal(0, backend.ResetCount);
             Assert.True(File.Exists(target));
             Assert.True(File.Exists($"{target}.download"));
         }
@@ -279,7 +276,7 @@ public sealed class DownloadRetryPolicyTests
         const string fileName = "media.tmp";
         var target = Path.Combine(directory, fileName);
         Directory.CreateDirectory($"{target}.download");
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
                 "download.transfer.timeout"));
@@ -297,50 +294,6 @@ public sealed class DownloadRetryPolicyTests
             Assert.Equal(DownloadTransferFailureKind.Disk, result.FailureKind);
             Assert.Equal("download.transfer.source-change-cleanup", result.ErrorCode);
             Assert.Equal(2, backend.Requests.Count);
-            Assert.Equal(1, backend.ResetCount);
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task CoordinatorDoesNotContactBackupWhenBackendResetFails()
-    {
-        var directory = CreateTemporaryDirectory("reset-failure");
-        const string fileName = "media.tmp";
-        var target = Path.Combine(directory, fileName);
-        await File.WriteAllTextAsync(
-            target,
-            "partial",
-            TestContext.Current.CancellationToken);
-        using var backend = new RecordingBackend(
-            DownloadTransferResult.Failed(
-                DownloadTransferFailureKind.TransientNetwork,
-                "download.transfer.timeout"))
-        {
-            ResetResult = DownloadTransferResult.Failed(
-                DownloadTransferFailureKind.TransientNetwork,
-                "download.transfer.backend-reset")
-        };
-
-        try
-        {
-            var result = await CreateCoordinator(backend, maximumAttempts: 5).TransferAsync(
-                CreateRequestAt(
-                    directory,
-                    fileName,
-                    "https://primary.invalid/media",
-                    "https://backup.invalid/media"),
-                static _ => Task.FromResult<IReadOnlyList<string>>([]),
-                TestContext.Current.CancellationToken);
-
-            Assert.Equal(DownloadTransferFailureKind.TransientNetwork, result.FailureKind);
-            Assert.Equal("download.transfer.backend-reset", result.ErrorCode);
-            Assert.Equal(2, backend.Requests.Count);
-            Assert.Equal(1, backend.ResetCount);
-            Assert.True(File.Exists(target));
         }
         finally
         {
@@ -352,7 +305,7 @@ public sealed class DownloadRetryPolicyTests
     public async Task BuiltinBackendRejectsMultipleAddressesBeforeStartingDownloader()
     {
         using var settings = new TestSettingsStore();
-        using var backend = new BuiltinTransferBackend(
+        var backend = new BuiltinTransferBackend(
             settings.Store,
             new DownloadDiagnosticLogger(
                 NullLogger<DownloadDiagnosticLogger>.Instance),
@@ -372,7 +325,7 @@ public sealed class DownloadRetryPolicyTests
     {
         var directory = CreateTemporaryDirectory("builtin-candidate-rejected");
         using var settings = new TestSettingsStore();
-        using var backend = new BuiltinTransferBackend(
+        var backend = new BuiltinTransferBackend(
             settings.Store,
             new DownloadDiagnosticLogger(
                 NullLogger<DownloadDiagnosticLogger>.Instance),
@@ -399,7 +352,7 @@ public sealed class DownloadRetryPolicyTests
     public async Task BuiltinBackendRecoversCompletedTargetBeforeResolvingAddress()
     {
         using var settings = new TestSettingsStore();
-        using var backend = new BuiltinTransferBackend(
+        var backend = new BuiltinTransferBackend(
             settings.Store,
             new DownloadDiagnosticLogger(
                 NullLogger<DownloadDiagnosticLogger>.Instance),
@@ -443,7 +396,7 @@ public sealed class DownloadRetryPolicyTests
         string invalidKind)
     {
         using var settings = new TestSettingsStore();
-        using var backend = new BuiltinTransferBackend(
+        var backend = new BuiltinTransferBackend(
             settings.Store,
             new DownloadDiagnosticLogger(
                 NullLogger<DownloadDiagnosticLogger>.Instance),
@@ -492,7 +445,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorRefreshesExpiredAddressesOnlyOnce()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ExpiredAddress,
                 "http-403"),
@@ -523,7 +476,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorDoesNotRefreshExpiredAddressesTwice()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ExpiredAddress,
                 "http-403"));
@@ -548,7 +501,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorDoesNotRetryDiskFailure()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.Disk,
                 "disk-write"));
@@ -566,7 +519,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorDoesNotRetryTlsFailureOrTryBackupAddresses()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.Tls,
                 "download.transfer.tls.untrusted"));
@@ -585,7 +538,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorDoesNotRetryPermanentFailureOrTryBackupAddresses()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.Permanent,
                 "download.transfer.permanent"));
@@ -604,7 +557,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorRetriesCleanedResumeRejectionOnceBeforeMoving()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ResumeRejected,
                 "download.transfer.resume-rejected"),
@@ -637,7 +590,7 @@ public sealed class DownloadRetryPolicyTests
             partial,
             "rejected partial bytes",
             TestContext.Current.CancellationToken);
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ResumeRejected,
                 "download.transfer.resume-rejected"),
@@ -667,7 +620,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorRetriesCleanedResumeRejectionAfterEarlierTransientAttempt()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
                 "download.transfer.timeout"),
@@ -710,7 +663,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorDoesNotSwallowCancellation()
     {
-        using var backend = new CancelingBackend();
+        var backend = new CancelingBackend();
         var coordinator = CreateCoordinator(backend, maximumAttempts: 5);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -726,7 +679,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorCancellationInterruptsBackoffWithoutAnotherAttempt()
     {
-        using var backend = new SignalingBackend();
+        var backend = new SignalingBackend();
         var coordinator = new DownloadTransferCoordinator(
             backend,
             new DownloadRetryPolicy(
@@ -915,7 +868,7 @@ public sealed class DownloadRetryPolicyTests
     [Fact]
     public async Task CoordinatorStopsRetryWhenInvalidArtifactCleanupFails()
     {
-        using var backend = new RecordingBackend(
+        var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.InvalidMedia,
                 "invalid-media"),
@@ -996,8 +949,6 @@ public sealed class DownloadRetryPolicyTests
             ExpectedBytes: 0,
             EnsureActive: static () => { },
             IsPauseRequested: static () => false,
-            WaitForPauseRequestedAsync: static token =>
-                Task.Delay(Timeout.InfiniteTimeSpan, token),
             PublishProgress: static _ => { },
             PersistProgressAsync: static (_, _) => Task.CompletedTask,
             CancellationToken.None,
@@ -1020,31 +971,7 @@ public sealed class DownloadRetryPolicyTests
 
         public List<DownloadTransferRequest> Requests { get; } = [];
 
-        public int ResetCount { get; private set; }
-
-        public DownloadTransferResult ResetResult { get; init; } =
-            DownloadTransferResult.Succeeded();
-
         public string Name => "recording";
-
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            ResetCount++;
-            return Task.FromResult(ResetResult);
-        }
 
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
@@ -1055,9 +982,6 @@ public sealed class DownloadRetryPolicyTests
                     : results[^1]);
         }
 
-        public void Dispose()
-        {
-        }
     }
 
     private sealed class CancelingBackend : ITransferBackend
@@ -1066,22 +990,12 @@ public sealed class DownloadRetryPolicyTests
 
         public string Name => "canceling";
 
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(DownloadTransferResult.Succeeded());
-
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
             Attempts++;
             throw new OperationCanceledException(request.CancellationToken);
         }
 
-        public void Dispose()
-        {
-        }
     }
 
     private sealed class SignalingBackend : ITransferBackend
@@ -1095,13 +1009,6 @@ public sealed class DownloadRetryPolicyTests
 
         public string Name => "signaling";
 
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(DownloadTransferResult.Succeeded());
-
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
             request.CancellationToken.ThrowIfCancellationRequested();
@@ -1112,9 +1019,6 @@ public sealed class DownloadRetryPolicyTests
                 "download.transfer.timeout"));
         }
 
-        public void Dispose()
-        {
-        }
     }
 
     private sealed class InspectingBackend(
@@ -1124,20 +1028,7 @@ public sealed class DownloadRetryPolicyTests
 
         public List<DownloadTransferRequest> Requests { get; } = [];
 
-        public int ResetCount { get; private set; }
-
         public string Name => "inspecting";
-
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            ResetCount++;
-            return Task.FromResult(DownloadTransferResult.Succeeded());
-        }
 
         public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
@@ -1145,8 +1036,5 @@ public sealed class DownloadRetryPolicyTests
             return Task.FromResult(transfer(++_attempt, request));
         }
 
-        public void Dispose()
-        {
-        }
     }
 }

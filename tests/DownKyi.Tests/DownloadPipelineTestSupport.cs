@@ -366,7 +366,6 @@ internal static class DownloadPipelineTestSupport
 
         public void Dispose()
         {
-            Backend.Dispose();
             _projections.Dispose();
             _tasks.Dispose();
             _store.Dispose();
@@ -392,24 +391,6 @@ internal static class DownloadPipelineTestSupport
 
         public string Name => "recording-media";
 
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(DownloadTransferResult.Succeeded());
-        }
-
         public async Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
             Requests.Add(request);
@@ -428,9 +409,6 @@ internal static class DownloadPipelineTestSupport
             return result;
         }
 
-        public void Dispose()
-        {
-        }
     }
 
     internal sealed class RecordingStage(

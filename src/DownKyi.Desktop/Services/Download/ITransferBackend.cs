@@ -14,21 +14,14 @@ internal sealed record DownloadTransferRequest(
     long ExpectedBytes,
     Action EnsureActive,
     Func<bool> IsPauseRequested,
-    Func<CancellationToken, Task> WaitForPauseRequestedAsync,
     Action<DownloadProgress> PublishProgress,
     Func<DownloadProgress, CancellationToken, Task> PersistProgressAsync,
     CancellationToken CancellationToken,
     string? StagingDirectory = null);
 
-internal interface ITransferBackend : IDisposable
+internal interface ITransferBackend
 {
     string Name { get; }
-
-    Task StartAsync(CancellationToken cancellationToken);
-
-    Task StopAsync(CancellationToken cancellationToken);
-
-    Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken);
 
     Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request);
 }
