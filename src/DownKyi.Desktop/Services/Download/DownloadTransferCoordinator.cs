@@ -122,7 +122,7 @@ internal sealed class DownloadTransferCoordinator
                     break;
                 case DownloadRetryAction.TryNextAddress:
                     var nextAddressIndex = addressIndex + 1;
-                    var sourceChangeFailure = await ResetForSourceChangeAsync(
+                    var sourceChangeFailure = await ClearArtifactsForSourceChangeAsync(
                         request,
                         currentAddress,
                         addresses[nextAddressIndex],
@@ -146,7 +146,7 @@ internal sealed class DownloadTransferCoordinator
                         return lastResult;
                     }
 
-                    var refreshChangeFailure = await ResetForSourceChangeAsync(
+                    var refreshChangeFailure = await ClearArtifactsForSourceChangeAsync(
                         request,
                         currentAddress,
                         refreshedAddresses[0],
@@ -187,7 +187,7 @@ internal sealed class DownloadTransferCoordinator
             $"Download transfer attempt failed; backend={backend}; attempt={attempt}/{maximumAttempts}; failure={failureKind}; error={errorCode}; next={nextAction}; delayMilliseconds={delayMilliseconds}");
     }
 
-    private async Task<DownloadTransferResult?> ResetForSourceChangeAsync(
+    private async Task<DownloadTransferResult?> ClearArtifactsForSourceChangeAsync(
         DownloadTransferRequest request,
         string currentAddress,
         string nextAddress,
@@ -197,35 +197,6 @@ internal sealed class DownloadTransferCoordinator
         if (string.Equals(currentAddress, nextAddress, StringComparison.Ordinal))
         {
             return null;
-        }
-
-        var resetFailure = await ResetTransferStateAsync(
-            request,
-            "download.transfer.source-change-cleanup",
-            deleteArtifacts,
-            cancellationToken).ConfigureAwait(true);
-        if (resetFailure != null)
-        {
-            return resetFailure;
-        }
-
-        _logger.LogInformationMessage(
-            $"Download transfer source changed; backend={_backend.Name}; partialState=cleared.");
-        return null;
-    }
-
-    private async Task<DownloadTransferResult?> ResetTransferStateAsync(
-        DownloadTransferRequest request,
-        string cleanupFailureCode,
-        bool deleteArtifacts,
-        CancellationToken cancellationToken)
-    {
-        var resetResult = await _backend
-            .ResetAsync(cancellationToken)
-            .ConfigureAwait(true);
-        if (resetResult.Outcome != DownloadTransferOutcome.Succeeded)
-        {
-            return resetResult;
         }
 
         if (deleteArtifacts)
@@ -240,10 +211,12 @@ internal sealed class DownloadTransferCoordinator
             {
                 return DownloadTransferResult.Failed(
                     DownloadTransferFailureKind.Disk,
-                    cleanupFailureCode);
+                    "download.transfer.source-change-cleanup");
             }
         }
 
+        _logger.LogInformationMessage(
+            $"Download transfer source changed; backend={_backend.Name}; partialState=cleared.");
         return null;
     }
 

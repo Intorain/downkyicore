@@ -45,7 +45,7 @@ public sealed class DownloadPipelineCommitBoundaryTests
             harness.Context.TaskId,
             "video-source",
             TestContext.Current.CancellationToken).ConfigureAwait(true);
-        using var pipeline = harness.CreatePipeline(new ValidationFailureStage());
+        var pipeline = harness.CreatePipeline(new ValidationFailureStage());
 
         await pipeline.ExecuteAsync(
             harness.Context.TaskId,
@@ -422,7 +422,6 @@ public sealed class DownloadPipelineCommitBoundaryTests
                 StateWriter,
                 FileService,
                 new DownloadTaskShutdownRecovery(_tasks, StateWriter),
-                NoopTransferBackend.Instance,
                 NullLogger.Instance);
         }
 
@@ -461,31 +460,6 @@ public sealed class DownloadPipelineCommitBoundaryTests
             File.WriteAllBytes(path, [1, 2, 3]);
             File.WriteAllBytes($"{path}.download", [5]);
             return path;
-        }
-    }
-
-    private sealed class NoopTransferBackend : ITransferBackend
-    {
-        public static NoopTransferBackend Instance { get; } = new();
-
-        private NoopTransferBackend()
-        {
-        }
-
-        public string Name => "noop";
-
-        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(DownloadTransferResult.Succeeded());
-
-        public Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request) =>
-            Task.FromResult(DownloadTransferResult.Succeeded());
-
-        public void Dispose()
-        {
         }
     }
 

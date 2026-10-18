@@ -16,9 +16,7 @@ internal sealed class DownloadPipeline : IDownloadTaskExecutor
     private readonly DownloadTaskStateWriter _stateWriter;
     private readonly DownloadTaskFileService _fileService;
     private readonly DownloadTaskShutdownRecovery _shutdownRecovery;
-    private readonly ITransferBackend _transferBackend;
     private readonly ILogger _logger;
-    private bool _disposed;
 
     public DownloadPipeline(
         DownloadExecutionContextFactory contextFactory,
@@ -26,7 +24,6 @@ internal sealed class DownloadPipeline : IDownloadTaskExecutor
         DownloadTaskStateWriter stateWriter,
         DownloadTaskFileService fileService,
         DownloadTaskShutdownRecovery shutdownRecovery,
-        ITransferBackend transferBackend,
         ILogger logger)
     {
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -35,7 +32,6 @@ internal sealed class DownloadPipeline : IDownloadTaskExecutor
         _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
         _shutdownRecovery = shutdownRecovery
             ?? throw new ArgumentNullException(nameof(shutdownRecovery));
-        _transferBackend = transferBackend ?? throw new ArgumentNullException(nameof(transferBackend));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -125,25 +121,4 @@ internal sealed class DownloadPipeline : IDownloadTaskExecutor
             FailedStage: null);
     }
 
-    public Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return _transferBackend.StartAsync(cancellationToken);
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        return _transferBackend.StopAsync(cancellationToken);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _transferBackend.Dispose();
-    }
 }

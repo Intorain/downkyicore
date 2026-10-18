@@ -12,19 +12,6 @@ namespace DownKyi.Tests;
 public sealed class BuiltinRangeDownloaderTests
 {
     [Fact]
-    public void PendingChunksAreScheduledAcrossTheWholeFile()
-    {
-        var chunks = BuiltinRangeDownloader.CreateChunks(totalBytes: 32, segmentSize: 4);
-
-        var starts = BuiltinRangeDownloader
-            .OrderChunksForDistributedStart(chunks)
-            .Select(static chunk => chunk.Start)
-            .ToArray();
-
-        Assert.Equal([0L, 16L, 8L, 24L, 4L, 12L, 20L, 28L], starts);
-    }
-
-    [Fact]
     public async Task ExistingCompletedTargetIsRecoveredWithoutAnotherRequest()
     {
         var payload = CreatePayload(12);
@@ -137,6 +124,38 @@ public sealed class BuiltinRangeDownloaderTests
                 target,
                 TestContext.Current.CancellationToken));
             Assert.False(File.Exists($"{target}.download"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SmallValidatedFileStillUsesConfiguredParallelism()
+    {
+        var payload = CreatePayload(8);
+        using var handler = new RangePayloadHandler(payload);
+        var directory = CreateTemporaryDirectory("range-small-parallel");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 4,
+                segmentSize: 20);
+
+            await downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(
+                [(0L, 1L), (2L, 3L), (4L, 5L), (6L, 7L)],
+                handler.ChunkRanges.OrderBy(static range => range.Start).ToArray());
+            Assert.Equal(payload, await File.ReadAllBytesAsync(
+                target,
+                TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -275,8 +294,9 @@ public sealed class BuiltinRangeDownloaderTests
                 payload.Length,
                 TestContext.Current.CancellationToken);
 
-            Assert.DoesNotContain(secondHandler.ChunkRanges, range => range.Start is 0 or 4 or 8);
+            Assert.DoesNotContain(secondHandler.ChunkRanges, range => range.Start is 0 or 4);
             Assert.Contains(secondHandler.ChunkRanges, range => range == (6L, 7L));
+            Assert.Contains(secondHandler.ChunkRanges, range => range == (8L, 11L));
             Assert.Equal(payload, await File.ReadAllBytesAsync(
                 target,
                 TestContext.Current.CancellationToken));

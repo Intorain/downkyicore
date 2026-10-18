@@ -692,7 +692,6 @@ public sealed class DurlDownloadIdentityTests
 
         public void Dispose()
         {
-            Backend?.Dispose();
             _staging?.CleanupCurrentSession();
             _projections.Dispose();
             _tasks.Dispose();
@@ -716,24 +715,6 @@ public sealed class DurlDownloadIdentityTests
 
         public string Name => "restart-recording";
 
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.CompletedTask;
-        }
-
-        public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(DownloadTransferResult.Succeeded());
-        }
-
         public async Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
         {
             Requests.Add(request);
@@ -744,8 +725,5 @@ public sealed class DurlDownloadIdentityTests
             return DownloadTransferResult.Succeeded();
         }
 
-        public void Dispose()
-        {
-        }
     }
 }

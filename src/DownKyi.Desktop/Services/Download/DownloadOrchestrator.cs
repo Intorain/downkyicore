@@ -54,17 +54,15 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public Task StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_tokenSource != null)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        await _executor.StartAsync(cancellationToken).ConfigureAwait(false);
-
         ResetSchedulerState();
         _tokenSource = new CancellationTokenSource();
         _admissionQueue = Channel.CreateUnbounded<DownloadTaskId>(new UnboundedChannelOptions
@@ -86,6 +84,7 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
             _admissionQueue.Reader,
             _downloadQueue.Writer,
             _tokenSource.Token);
+        return Task.CompletedTask;
     }
 
     public async Task EnqueueAsync(
@@ -433,21 +432,14 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
         }
         finally
         {
-            try
-            {
-                await _executor.StopAsync(cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                _tokenSource.Dispose();
-                _tokenSource = null;
-                _admissionQueue = null;
-                _downloadQueue = null;
-                _admissionWorker = Task.CompletedTask;
-                _downloadWorkers = [];
-                _scheduledTasks.Clear();
-                ResetSchedulerState();
-            }
+            _tokenSource.Dispose();
+            _tokenSource = null;
+            _admissionQueue = null;
+            _downloadQueue = null;
+            _admissionWorker = Task.CompletedTask;
+            _downloadWorkers = [];
+            _scheduledTasks.Clear();
+            ResetSchedulerState();
         }
     }
 
@@ -678,7 +670,6 @@ internal sealed class DownloadOrchestrator : IDownloadRuntime
         _tokenSource?.Dispose();
         _tokenSource = null;
         _schedulerIntentGate.Dispose();
-        _executor.Dispose();
     }
 
     private void ResetSchedulerState()

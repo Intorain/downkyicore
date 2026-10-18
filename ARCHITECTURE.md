@@ -65,7 +65,7 @@ flowchart LR
     Store --> Dispatch["post-commit dispatcher"]
     Dispatch --> Queue["Queue DownloadTaskId"]
     Queue --> Runtime["orchestrator + pipeline"]
-    Runtime --> Backend["selected transfer backend"]
+    Runtime --> Backend["built-in transfer backend"]
     Runtime --> Media["artifacts + FFmpeg + validation"]
     Runtime --> App
     App --> Projection["Desktop projection"]
@@ -115,6 +115,7 @@ flowchart LR
 ## Built-in transfer security boundary
 
 - Download runtime 只建立 in-process `BuiltinTransferBackend`；不得啟動、連線或封裝外部下載器。
+- `DownloadOrchestrator` 擁有 worker 啟停，`DownloadTransferCoordinator` 擁有重試與換來源清理，`BuiltinTransferBackend` 只執行單次傳輸，不維護額外的啟停或重置狀態。
 - Credential header 屬於 task，且只可給 exact HTTPS `bilibili.com` host／subdomain；其他 host 不得收到。禁止 downgrade 與 credential cross-origin redirect。
 - 每個 range response 必須精確符合要求的 `206 Content-Range`、總長度與 resource identity；任何 mismatch 都 fail closed 為 `ResumeRejected`。
 - Range ledger 是續傳的唯一真相。完成前所有區間必須無重疊、無缺口且各自到達終點，才可將 `.download` 原子邊界移成完成檔。

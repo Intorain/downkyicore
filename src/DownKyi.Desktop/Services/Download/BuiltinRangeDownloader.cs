@@ -18,9 +18,9 @@ using Microsoft.Extensions.Logging;
 namespace DownKyi.Services.Download;
 
 /// <summary>
-/// Downloads one resolved address as bounded HTTP ranges. The distributed range queue,
-/// resumable per-range state and read-stall watchdog are adapted from BBDown's MIT-licensed
-/// download pipeline. See THIRD-PARTY-NOTICES.md.
+/// Downloads one resolved address with bounded parallel HTTP range workers. The range
+/// segmentation, worker queue, resumable per-range state and read-stall watchdog are adapted
+/// from BBDown's MIT-licensed download pipeline. See THIRD-PARTY-NOTICES.md.
 /// </summary>
 internal sealed class BuiltinRangeDownloader : IDisposable
 {
@@ -182,66 +182,6 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         }
 
         return chunks;
-    }
-
-    internal static int CalculateAdaptiveSegmentCount(
-        long totalBytes,
-        int parallelCount,
-        long segmentSize = DefaultSegmentSize)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(totalBytes);
-        ArgumentOutOfRangeException.ThrowIfLessThan(parallelCount, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThan(segmentSize, 1);
-        if (totalBytes == 0)
-        {
-            return 0;
-        }
-
-        var adaptiveSegmentSize = CalculateAdaptiveSegmentSize(
-            totalBytes,
-            parallelCount,
-            segmentSize);
-        var count = 1 + ((totalBytes - 1) / adaptiveSegmentSize);
-        return checked((int)Math.Min(count, int.MaxValue));
-    }
-
-    internal static IReadOnlyList<BuiltinRangeChunk> OrderChunksForDistributedStart(
-        IEnumerable<BuiltinRangeChunk> chunks)
-    {
-        ArgumentNullException.ThrowIfNull(chunks);
-        var pending = chunks.Where(static chunk => !chunk.IsComplete).ToArray();
-        if (pending.Length <= 2)
-        {
-            return pending;
-        }
-
-        var ordered = new List<BuiltinRangeChunk>(pending.Length);
-        var scheduled = new bool[pending.Length];
-        var queue = new Queue<(int Start, int End)>();
-        queue.Enqueue((0, pending.Length - 1));
-        while (queue.TryDequeue(out var interval))
-        {
-            var index = interval.Start == 0
-                ? 0
-                : interval.Start + (interval.End - interval.Start + 1) / 2;
-            if (!scheduled[index])
-            {
-                scheduled[index] = true;
-                ordered.Add(pending[index]);
-            }
-
-            if (interval.Start <= index - 1)
-            {
-                queue.Enqueue((interval.Start, index - 1));
-            }
-
-            if (index + 1 <= interval.End)
-            {
-                queue.Enqueue((index + 1, interval.End));
-            }
-        }
-
-        return ordered;
     }
 
     private async Task<BuiltinRangeProbe> ProbeAsync(
@@ -573,7 +513,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         CancellationToken cancellationToken)
     {
         var queue = new ConcurrentQueue<BuiltinRangeChunk>(
-            OrderChunksForDistributedStart(state.Chunks));
+            state.Chunks.Where(static chunk => !chunk.IsComplete));
         if (queue.IsEmpty)
         {
             return initialReceivedBytes;

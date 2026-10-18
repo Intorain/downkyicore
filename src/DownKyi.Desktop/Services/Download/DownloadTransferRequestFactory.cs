@@ -32,7 +32,6 @@ internal static class DownloadTransferRequestFactory
             ensureActive,
             () => projections.GetRequiredSnapshot(taskId).Phase is
                 DownloadPhase.Pausing or DownloadPhase.Paused,
-            token => projections.WaitForPauseRequestAsync(taskId, token),
             progress => projections.PublishLiveProgress(taskId, progress),
             (progress, token) => stateWriter.UpdateProgressAsync(taskId, progress, token),
             cancellationToken,

@@ -43,24 +43,6 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
 
     public string Name => "built-in";
 
-    public Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
-    }
-
-    public Task<DownloadTransferResult> ResetAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(DownloadTransferResult.Succeeded());
-    }
-
     public async Task<DownloadTransferResult> TransferAsync(DownloadTransferRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -218,10 +200,6 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                     .ConfigureAwait(true);
             }
         }
-    }
-
-    public void Dispose()
-    {
     }
 
     internal static DownloadTransferResult ClassifyFailure(
