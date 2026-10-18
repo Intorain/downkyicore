@@ -78,6 +78,9 @@ public class PlayUrl : BaseModel
 
     [JsonIgnore]
     public PlayUrlAvailability? Availability { get; internal set; }
+
+    // Selection replaces the media collections on this copy and leaves the parsed source reusable.
+    internal PlayUrl CopyForSelection() => (PlayUrl)MemberwiseClone();
     // high_format
 }
 
