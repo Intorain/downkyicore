@@ -57,12 +57,12 @@ public sealed class VideoDetailViewArchitectureTests
     {
         var source = string.Join(Environment.NewLine, ViewNames.Select(Read));
 
-        Assert.Equal(62, Count(source, @"\{(?:Reflection)?Binding\s+([^},]+)"));
-        Assert.Equal(13, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
-        Assert.Equal(67, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
-        Assert.Equal(8, Count(source, @"\{StaticResource\s+([^}]+)\}"));
+        Assert.Equal(53, Count(source, @"\{(?:Reflection)?Binding\s+([^},]+)"));
+        Assert.Equal(12, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
+        Assert.Equal(62, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
+        Assert.Equal(7, Count(source, @"\{StaticResource\s+([^}]+)\}"));
         Assert.Equal(
-            13,
+            11,
             Count(
                 source,
                 @"<(?:behavior:[^\s/>]+|(?:Event|Data)TriggerBehavior|InvokeCommandAction|ChangePropertyAction)\b"));

@@ -4,7 +4,6 @@ public enum AppDialog
 {
     Alert = 0,
     DownloadSettings = 1,
-    ParsingSelector = 2,
     NewVersionAvailable = 3,
     LegacyUpgrade = 4,
     StartupDiagnostics = 5,

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using DownKyi.Core.Settings;
 using DownKyi.CustomControl;
 using DownKyi.Presentation;
 using DownKyi.Services.Video;
@@ -26,36 +25,6 @@ public sealed class VideoSelectionStateTests
         Assert.True(changing.Cancel);
         Assert.Equal(2, pager.ProposedCurrent);
         Assert.Equal(1, pager.Current);
-    }
-
-    [Fact]
-    public void GetPagesForScopeReturnsOnlySelectedPagesForSelectedItemScope()
-    {
-        var sections = CreateSections();
-
-        var pages = VideoSelectionState.GetPagesForScope(sections, ParseScope.SelectedItem);
-
-        Assert.Equal(new long[] { 101, 202 }, pages.Select(page => page.Cid));
-    }
-
-    [Fact]
-    public void GetPagesForScopeReturnsSelectedSectionPagesForCurrentSectionScope()
-    {
-        var sections = CreateSections();
-
-        var pages = VideoSelectionState.GetPagesForScope(sections, ParseScope.CurrentSection);
-
-        Assert.Equal(new long[] { 101, 102 }, pages.Select(page => page.Cid));
-    }
-
-    [Fact]
-    public void GetPagesForScopeReturnsAllPagesForAllScope()
-    {
-        var sections = CreateSections();
-
-        var pages = VideoSelectionState.GetPagesForScope(sections, ParseScope.All);
-
-        Assert.Equal(new long[] { 101, 102, 201, 202 }, pages.Select(page => page.Cid));
     }
 
     [Fact]

@@ -36,8 +36,6 @@ public sealed class VideoDetailCommandStateTests
         var commands = new[]
         {
             viewModel.InputCommand,
-            viewModel.ParseCommand,
-            viewModel.ParseAllVideoCommand,
             viewModel.AddToDownloadCommand
         };
         var invalidationCounts = commands.ToDictionary(command => command, _ => 0);
@@ -92,10 +90,9 @@ public sealed class VideoDetailCommandStateTests
             var buttons = view
                 .GetVisualDescendants()
                 .OfType<Button>()
-                .Where(button => ReferenceEquals(button.Command, viewModel.ParseAllVideoCommand)
-                    || ReferenceEquals(button.Command, viewModel.AddToDownloadCommand))
+                .Where(button => ReferenceEquals(button.Command, viewModel.AddToDownloadCommand))
                 .ToArray();
-            Assert.Equal(2, buttons.Length);
+            Assert.Single(buttons);
 
             viewModel.UiState.DisplayState = VideoDetailDisplayState.Busy;
             window.UpdateLayout();
@@ -109,312 +106,6 @@ public sealed class VideoDetailCommandStateTests
         {
             window.Close();
         }
-    }
-
-    [AvaloniaFact]
-    public async Task ManualParseRecoveryEnablesAndDispatchesSelectedDownload()
-    {
-        EnsureProductLanguageResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-manual-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.All }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub();
-        var downloadCoordinator = new VideoDetailDownloadCoordinatorStub();
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            downloadCoordinator,
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        var page = new DownKyi.Presentation.VideoPage
-        {
-            Bvid = "BV1G1421D7mL",
-            IsSelected = true
-        };
-        var section = new DownKyi.Presentation.VideoSection
-        {
-            IsSelected = true,
-            VideoPages = new List<DownKyi.Presentation.VideoPage> { page }
-        };
-        viewModel.UiState.VideoInfoView = new DownKyi.Presentation.VideoInfoView();
-        viewModel.VideoSections.Add(section);
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await workflow.PageStreamsStarted.Task
-            .WaitAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(true);
-
-        Assert.True(viewModel.UiState.IsBusy);
-        Assert.Equal(VideoDetailOperationStatus.Running, viewModel.UiState.OperationStatus);
-        Assert.Equal("正在解析音质、画质和视频编码……", viewModel.UiState.OperationStatusText);
-        Assert.True(viewModel.UiState.IsContentVisible);
-        Assert.False(viewModel.AddToDownloadCommand.CanExecute(null));
-        var downloadEnabled = WaitUntilExecutable(viewModel.AddToDownloadCommand);
-
-        workflow.ReleasePageStreams();
-        await downloadEnabled.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Equal(VideoDetailDisplayState.Content, viewModel.UiState.DisplayState);
-        Assert.Equal(VideoDetailOperationStatus.Success, viewModel.UiState.OperationStatus);
-        Assert.Equal("解析完成：已更新 1 个视频。", viewModel.UiState.OperationStatusText);
-        Assert.True(viewModel.AddToDownloadCommand.CanExecute(null));
-
-        viewModel.AddToDownloadCommand.Execute(null);
-        await downloadCoordinator.AddRequested.Task
-            .WaitAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(true);
-
-        Assert.False(downloadCoordinator.LastIsAll);
-        Assert.Same(viewModel.UiState.VideoInfoView, downloadCoordinator.LastVideoInfo);
-    }
-
-    [AvaloniaFact]
-    public async Task ParsingSelectorAcceptedScopesDispatchExactlyTheTypedSelection()
-    {
-        DesktopTestResources.EnsureProductThemeResources();
-        foreach (var scope in new[]
-        {
-            ParseScope.SelectedItem,
-            ParseScope.CurrentSection,
-            ParseScope.All
-        })
-        {
-            var settingsPath = Path.Combine(
-                Path.GetTempPath(),
-                $"downkyi-video-detail-selector-{Guid.NewGuid():N}.json");
-            using var settings = new SettingsStore(settingsPath);
-            settings.Update(current => current with
-            {
-                Basic = current.Basic with { ParseScope = ParseScope.None }
-            });
-            using var workflow = new VideoDetailWorkflowCoordinatorStub();
-            var parameters = new Dictionary<string, object?>(
-                ParsingSelectorDialog.Encode(new ParsingSelectorResult(scope)))
-            {
-                ["metadata"] = "ignored"
-            };
-            var dialogService = new DialogServiceStub(new AppDialogResult(
-                AppDialogOutcome.Accepted,
-                parameters));
-            using var viewModel = new ViewVideoDetailViewModel(
-                new DesktopInteractionContextStub(dialogService),
-                new ClipboardServiceStub(),
-                settings,
-                workflow,
-                new VideoDetailDownloadCoordinatorStub(),
-                NullLogger<ViewVideoDetailViewModel>.Instance);
-            var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-            viewModel.ParseAllVideoCommand.Execute(null);
-            await workflow.PageStreamsStarted.Task
-                .WaitAsync(TestContext.Current.CancellationToken)
-                .ConfigureAwait(true);
-
-            Assert.Equal(scope, workflow.LastParseScope);
-
-            workflow.ReleasePageStreams();
-            await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-        }
-    }
-
-    [AvaloniaFact]
-    public async Task ParseStatusExplainsWhenTheSelectedQualityHasNoRecognizedCodec()
-    {
-        EnsureProductLanguageResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-codec-status-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.All }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub
-        {
-            PageStreamResult = new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrl
-            {
-                Dash = new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlDash
-                {
-                    Video =
-                    [
-                        new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlDashVideo
-                        {
-                            Id = 80,
-                            CodecId = 99,
-                            BaseAddress = "https://media.invalid/video"
-                        }
-                    ],
-                    Audio =
-                    [
-                        new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlDashVideo
-                        {
-                            Id = 30280,
-                            BaseAddress = "https://media.invalid/audio"
-                        }
-                    ]
-                },
-                SupportFormats =
-                [
-                    new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlSupportFormat
-                    {
-                        Quality = 80,
-                        NewDescription = "1080P 高清"
-                    }
-                ]
-            }
-        };
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            new VideoDetailDownloadCoordinatorStub(),
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        var page = new DownKyi.Presentation.VideoPage { IsSelected = true };
-        viewModel.UiState.VideoInfoView = new DownKyi.Presentation.VideoInfoView();
-        viewModel.VideoSections.Add(new DownKyi.Presentation.VideoSection
-        {
-            IsSelected = true,
-            VideoPages = [page]
-        });
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-        var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await workflow.PageStreamsStarted.Task
-            .WaitAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(true);
-        workflow.ReleasePageStreams();
-        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Equal(VideoDetailOperationStatus.Warning, viewModel.UiState.OperationStatus);
-        Assert.Equal(
-            "解析完成，但 1 个视频的当前画质没有可识别的编码选项：1080P 高清（编码 ID：99）。",
-            viewModel.UiState.OperationStatusText);
-    }
-
-    [AvaloniaFact]
-    public async Task EmptySelectedParseScopeDoesNotPublishFalseSuccess()
-    {
-        EnsureProductLanguageResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-empty-parse-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.SelectedItem }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub();
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            new VideoDetailDownloadCoordinatorStub(),
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        viewModel.UiState.VideoInfoView = new DownKyi.Presentation.VideoInfoView();
-        viewModel.VideoSections.Add(new DownKyi.Presentation.VideoSection
-        {
-            IsSelected = true,
-            VideoPages = [new DownKyi.Presentation.VideoPage { IsSelected = false }]
-        });
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-        var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await workflow.PageStreamsStarted.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-        workflow.ReleasePageStreams();
-        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Equal(VideoDetailOperationStatus.Warning, viewModel.UiState.OperationStatus);
-        Assert.Equal("没有选中要解析的视频。", viewModel.UiState.OperationStatusText);
-    }
-
-    [AvaloniaFact]
-    public async Task UnavailablePlaybackDoesNotPublishFalseSuccess()
-    {
-        EnsureProductLanguageResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-unavailable-parse-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.All }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub { PageStreamResult = null };
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            new VideoDetailDownloadCoordinatorStub(),
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        viewModel.UiState.VideoInfoView = new DownKyi.Presentation.VideoInfoView();
-        viewModel.VideoSections.Add(new DownKyi.Presentation.VideoSection
-        {
-            IsSelected = true,
-            VideoPages = [new DownKyi.Presentation.VideoPage { IsSelected = true }]
-        });
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-        var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await workflow.PageStreamsStarted.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-        workflow.ReleasePageStreams();
-        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Equal(VideoDetailOperationStatus.Warning, viewModel.UiState.OperationStatus);
-        Assert.Equal("解析没有返回可用的媒体信息。", viewModel.UiState.OperationStatusText);
-    }
-
-    [AvaloniaFact]
-    public async Task ExpiredParseCannotOverwriteNewerOperationStatus()
-    {
-        EnsureProductLanguageResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-stale-parse-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.All }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub();
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            new VideoDetailDownloadCoordinatorStub(),
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        viewModel.UiState.VideoInfoView = new DownKyi.Presentation.VideoInfoView();
-        viewModel.VideoSections.Add(new DownKyi.Presentation.VideoSection
-        {
-            VideoPages = [new DownKyi.Presentation.VideoPage { IsSelected = true }]
-        });
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-        var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await workflow.PageStreamsStarted.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-        workflow.InvalidateCurrentOperation();
-        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
-        viewModel.UiState.OperationStatus = VideoDetailOperationStatus.Running;
-        viewModel.UiState.OperationStatusText = "newer operation";
-        workflow.ReleasePageStreams();
-        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Equal(VideoDetailOperationStatus.Running, viewModel.UiState.OperationStatus);
-        Assert.Equal("newer operation", viewModel.UiState.OperationStatusText);
     }
 
     [AvaloniaFact]
@@ -653,52 +344,12 @@ public sealed class VideoDetailCommandStateTests
     }
 
     [AvaloniaFact]
-    public async Task ParsingSelectorInvalidAcceptedResultFailsBeforeDispatch()
+    public async Task LegacyParsingSettingsDoNotStartParsingOrDownloading()
     {
         DesktopTestResources.EnsureProductThemeResources();
         var settingsPath = Path.Combine(
             Path.GetTempPath(),
-            $"downkyi-video-detail-selector-invalid-{Guid.NewGuid():N}.json");
-        using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with { ParseScope = ParseScope.None }
-        });
-        using var workflow = new VideoDetailWorkflowCoordinatorStub();
-        var dialogService = new DialogServiceStub(new AppDialogResult(
-            AppDialogOutcome.Accepted,
-            new Dictionary<string, object?>
-            {
-                ["metadata"] = "missing required scope"
-            }));
-        using var viewModel = new ViewVideoDetailViewModel(
-            new DesktopInteractionContextStub(dialogService),
-            new ClipboardServiceStub(),
-            settings,
-            workflow,
-            new VideoDetailDownloadCoordinatorStub(),
-            NullLogger<ViewVideoDetailViewModel>.Instance);
-        var completion = WaitUntilExecutableAfterDisabled(viewModel.ParseAllVideoCommand);
-
-        viewModel.ParseAllVideoCommand.Execute(null);
-        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-        Assert.Null(workflow.LastParseScope);
-        Assert.False(workflow.PageStreamsStarted.Task.IsCompleted);
-        Assert.Equal(VideoDetailOperationStatus.Error, viewModel.UiState.OperationStatus);
-        Assert.Equal(
-            "Accepted ParsingSelector result is missing a valid ParseScope.",
-            viewModel.UiState.OperationStatusText);
-        Assert.NotEqual(VideoDetailOperationStatus.Running, viewModel.UiState.OperationStatus);
-    }
-
-    [AvaloniaFact]
-    public async Task LegacyAutoDownloadSettingDoesNotStartOrExpandAutomaticParsing()
-    {
-        DesktopTestResources.EnsureProductThemeResources();
-        var settingsPath = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-video-detail-auto-{Guid.NewGuid():N}.json");
+            $"downkyi-video-detail-legacy-parsing-{Guid.NewGuid():N}.json");
         using var settings = new SettingsStore(settingsPath);
         settings.Update(current => current with
         {
@@ -709,15 +360,17 @@ public sealed class VideoDetailCommandStateTests
                 ParseScope = ParseScope.SelectedItem
             }
         });
-        var page = new DownKyi.Presentation.VideoPage
-        {
-            Bvid = "BV1G1421D7mL",
-            IsSelected = true
-        };
         var section = new DownKyi.Presentation.VideoSection
         {
             IsSelected = true,
-            VideoPages = new List<DownKyi.Presentation.VideoPage> { page }
+            VideoPages =
+            [
+                new DownKyi.Presentation.VideoPage
+                {
+                    Bvid = "BV1G1421D7mL",
+                    IsSelected = true
+                }
+            ]
         };
         using var workflow = new VideoDetailWorkflowCoordinatorStub
         {
@@ -741,21 +394,13 @@ public sealed class VideoDetailCommandStateTests
             AppRoute.Index,
             "https://www.bilibili.com/video/BV1G1421D7mL",
             new AppNavigationParameters()));
-        await workflow.PageStreamsStarted.Task
-            .WaitAsync(TestContext.Current.CancellationToken)
-            .ConfigureAwait(true);
-
-        workflow.ReleasePageStreams();
         await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Assert.Equal(VideoDetailDisplayState.Content, viewModel.UiState.DisplayState);
         Assert.False(viewModel.UiState.IsBusy);
         Assert.True(viewModel.InputCommand.CanExecute(null));
-        Assert.True(viewModel.ParseCommand.CanExecute(null));
-        Assert.True(viewModel.ParseAllVideoCommand.CanExecute(null));
         Assert.True(viewModel.AddToDownloadCommand.CanExecute(null));
-        Assert.Equal(ParseScope.SelectedItem, workflow.LastParseScope);
-        Assert.Equal(2, workflow.OperationStartCount);
+        Assert.Equal(1, workflow.OperationStartCount);
         Assert.Equal(0, downloadCoordinator.AddRequestCount);
         Assert.False(downloadCoordinator.AddRequested.Task.IsCompleted);
 
@@ -766,50 +411,6 @@ public sealed class VideoDetailCommandStateTests
 
         Assert.Equal(1, downloadCoordinator.AddRequestCount);
         Assert.False(downloadCoordinator.LastIsAll);
-    }
-
-    [AvaloniaFact]
-    public async Task AutoParseDoesNotReplaceNoContentStatusWithNoSelection()
-    {
-        EnsureProductLanguageResources();
-        foreach (var parseScope in new[] { ParseScope.All, ParseScope.SelectedItem })
-        {
-            var settingsPath = Path.Combine(
-                Path.GetTempPath(),
-                $"downkyi-video-detail-no-content-{Guid.NewGuid():N}.json");
-            using var settings = new SettingsStore(settingsPath);
-            settings.Update(current => current with
-            {
-                Basic = current.Basic with
-                {
-                    IsAutoParseVideo = AllowStatus.Yes,
-                    ParseScope = parseScope
-                }
-            });
-            using var workflow = new VideoDetailWorkflowCoordinatorStub
-            {
-                DetailResult = VideoDetailParseResult.Empty
-            };
-            using var viewModel = new ViewVideoDetailViewModel(
-                new DesktopInteractionContextStub(),
-                new ClipboardServiceStub(),
-                settings,
-                workflow,
-                new VideoDetailDownloadCoordinatorStub(),
-                NullLogger<ViewVideoDetailViewModel>.Instance);
-            var completion = WaitUntilExecutableAfterDisabled(viewModel.InputCommand);
-            viewModel.UiState.InputText = "unrecognized content";
-
-            viewModel.InputCommand.Execute(null);
-            await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
-
-            Assert.Equal(VideoDetailDisplayState.Empty, viewModel.UiState.DisplayState);
-            Assert.Equal(VideoDetailOperationStatus.Error, viewModel.UiState.OperationStatus);
-            Assert.Equal("没有找到可解析的视频内容。", viewModel.UiState.OperationStatusText);
-            Assert.Equal(1, workflow.OperationStartCount);
-            Assert.Null(workflow.LastParseScope);
-            Assert.False(workflow.PageStreamsStarted.Task.IsCompleted);
-        }
     }
 
     [AvaloniaFact]
@@ -859,8 +460,6 @@ public sealed class VideoDetailCommandStateTests
         Assert.Equal(expectedState, viewModel.UiState.DisplayState);
         Assert.False(viewModel.UiState.IsBusy);
         Assert.True(viewModel.InputCommand.CanExecute(null));
-        Assert.True(viewModel.ParseCommand.CanExecute(null));
-        Assert.True(viewModel.ParseAllVideoCommand.CanExecute(null));
         Assert.True(viewModel.AddToDownloadCommand.CanExecute(null));
         if (operationException is OperationCanceledException)
         {
@@ -962,8 +561,6 @@ public sealed class VideoDetailCommandStateTests
     private sealed class VideoDetailWorkflowCoordinatorStub : IVideoDetailWorkflowCoordinator
     {
         private readonly CancellationTokenSource _operationCancellation = new();
-        private readonly TaskCompletionSource _releasePageStreams =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _version;
 
         public string CurrentInput { get; private set; } = string.Empty;
@@ -974,15 +571,7 @@ public sealed class VideoDetailCommandStateTests
 
         public bool CancelCurrentOperationBeforeDetailFailure { get; init; }
 
-        public DownKyi.Core.BiliApi.VideoStream.Models.PlayUrl? PageStreamResult { get; init; } =
-            CreatePlayablePageStream();
-
-        public TaskCompletionSource PageStreamsStarted { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
         public int OperationStartCount => Volatile.Read(ref _version);
-
-        public ParseScope? LastParseScope { get; private set; }
 
         public VideoDetailOperation StartOperation()
         {
@@ -1029,56 +618,6 @@ public sealed class VideoDetailCommandStateTests
             }
 
             return DetailResult;
-        }
-
-        public Task<VideoStreamParseResult> LoadPageStreamAsync(
-            DownKyi.Presentation.VideoPage page,
-            VideoDetailOperation operation)
-        {
-            return Task.FromResult(VideoStreamParseResult.From(page, PageStreamResult));
-        }
-
-        public async Task<VideoStreamParseBatchResult> LoadPageStreamsAsync(
-            IEnumerable<DownKyi.Presentation.VideoSection> sections,
-            ParseScope parseScope,
-            VideoDetailOperation operation)
-        {
-            var pages = VideoSelectionState.GetPagesForScope(sections, parseScope);
-            LastParseScope = parseScope;
-            PageStreamsStarted.TrySetResult();
-            await _releasePageStreams.Task.ConfigureAwait(true);
-            return pages.Count == 0
-                ? VideoStreamParseBatchResult.NoPagesSelected
-                : VideoStreamParseBatchResult.From(
-                    pages.Select(page => VideoStreamParseResult.From(page, PageStreamResult)));
-        }
-
-        private static DownKyi.Core.BiliApi.VideoStream.Models.PlayUrl CreatePlayablePageStream()
-        {
-            return new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrl
-            {
-                Dash = new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlDash
-                {
-                    Audio =
-                    [
-                        new DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlDashVideo
-                        {
-                            Id = 30280,
-                            BaseAddress = "https://media.invalid/audio"
-                        }
-                    ]
-                }
-            };
-        }
-
-        public void ReleasePageStreams()
-        {
-            _releasePageStreams.TrySetResult();
-        }
-
-        public void InvalidateCurrentOperation()
-        {
-            Interlocked.Increment(ref _version);
         }
 
         public void Dispose()

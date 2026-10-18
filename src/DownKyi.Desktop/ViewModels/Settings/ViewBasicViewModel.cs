@@ -1,11 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Core.Settings;
 using DownKyi.Desktop.Appearance;
-using DownKyi.Models;
 using DownKyi.Utils;
 
 namespace DownKyi.ViewModels.Settings;
@@ -76,30 +73,6 @@ internal class ViewBasicViewModel : ViewModelBase
         set => SetProperty(ref _listenClipboard, value);
     }
 
-    private bool _autoParseVideo;
-
-    public bool AutoParseVideo
-    {
-        get => _autoParseVideo;
-        set => SetProperty(ref _autoParseVideo, value);
-    }
-
-    private IReadOnlyList<ParseScopeDisplay> _parseScopes = Array.Empty<ParseScopeDisplay>();
-
-    public IReadOnlyList<ParseScopeDisplay> ParseScopes
-    {
-        get => _parseScopes;
-        set => SetProperty(ref _parseScopes, value);
-    }
-
-    private ParseScopeDisplay _selectedParseScope = null!;
-
-    public ParseScopeDisplay SelectedParseScope
-    {
-        get => _selectedParseScope;
-        set => SetProperty(ref _selectedParseScope, value);
-    }
-
     private bool _repeatFileAutoAddNumberSuffix;
 
     public bool RepeatFileAutoAddNumberSuffix
@@ -117,18 +90,6 @@ internal class ViewBasicViewModel : ViewModelBase
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _themeController = themeController ?? throw new ArgumentNullException(nameof(themeController));
-        #region 属性初始化
-
-        // 解析范围
-        ParseScopes = new List<ParseScopeDisplay>
-        {
-            new() { Name = DictionaryResource.GetString("ParseNone"), ParseScope = ParseScope.None },
-            new() { Name = DictionaryResource.GetString("ParseSelectedItem"), ParseScope = ParseScope.SelectedItem },
-            new() { Name = DictionaryResource.GetString("ParseCurrentSection"), ParseScope = ParseScope.CurrentSection },
-            new() { Name = DictionaryResource.GetString("ParseAll"), ParseScope = ParseScope.All }
-        };
-
-        #endregion
     }
 
     /// <summary>
@@ -165,14 +126,6 @@ internal class ViewBasicViewModel : ViewModelBase
         // 是否监听剪贴板
         var isListenClipboard = basic.IsListenClipboard;
         ListenClipboard = isListenClipboard == AllowStatus.Yes;
-
-        // 是否自动解析视频
-        var isAutoParseVideo = basic.IsAutoParseVideo;
-        AutoParseVideo = isAutoParseVideo == AllowStatus.Yes;
-
-        // 解析范围
-        var parseScope = basic.ParseScope;
-        SelectedParseScope = ParseScopes.FirstOrDefault(t => t.ParseScope == parseScope) ?? ParseScopes[0];
 
         // 重复下载文件自动添加数字后缀
         var repeatFileAutoAddNumberSuffix = basic.RepeatFileAutoAddNumberSuffix;
@@ -242,41 +195,6 @@ internal class ViewBasicViewModel : ViewModelBase
         var isListenClipboard = ListenClipboard ? AllowStatus.Yes : AllowStatus.No;
 
         var isSucceed = UpdateBasic(settings => settings with { IsListenClipboard = isListenClipboard }).IsListenClipboard == isListenClipboard;
-        PublishTip(isSucceed);
-    }
-
-    private RelayCommand? _autoParseVideoCommand;
-
-    public RelayCommand AutoParseVideoCommand => _autoParseVideoCommand ??= new RelayCommand(ExecuteAutoParseVideoCommand);
-
-    /// <summary>
-    /// 是否自动解析视频
-    /// </summary>
-    private void ExecuteAutoParseVideoCommand()
-    {
-        var isAutoParseVideo = AutoParseVideo ? AllowStatus.Yes : AllowStatus.No;
-
-        var isSucceed = UpdateBasic(settings => settings with { IsAutoParseVideo = isAutoParseVideo }).IsAutoParseVideo == isAutoParseVideo;
-        PublishTip(isSucceed);
-    }
-
-    // 解析范围事件
-    private RelayCommand<object>? _parseScopesCommand;
-
-    public RelayCommand<object> ParseScopesCommand => _parseScopesCommand ??= RequiredParameterCommand.Create<object>(ExecuteParseScopesCommand);
-
-    /// <summary>
-    /// 解析范围事件
-    /// </summary>
-    /// <param name="parameter"></param>
-    private void ExecuteParseScopesCommand(object parameter)
-    {
-        if (parameter is not ParseScopeDisplay parseScope)
-        {
-            return;
-        }
-
-        var isSucceed = UpdateBasic(settings => settings with { ParseScope = parseScope.ParseScope }).ParseScope == parseScope.ParseScope;
         PublishTip(isSucceed);
     }
 
