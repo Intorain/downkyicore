@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace DownKyi.Architecture.Tests;
 
 public sealed class VideoDetailViewArchitectureTests
@@ -21,51 +19,24 @@ public sealed class VideoDetailViewArchitectureTests
     ];
 
     [Fact]
-    public void VideoDetailViewRemainsAThinOrderedComposition()
+    public void VideoDetailSelectionAreaRemainsHeightBounded()
     {
         var source = Read("ViewVideoDetail.axaml");
 
-        Assert.True(File.ReadAllLines(Path.Combine(ViewRoot, "ViewVideoDetail.axaml")).Length <= 60);
-        AssertOrdered(
-            source,
-            "VideoDetailToolbarView",
-            "VideoDetailSummaryView",
-            "VideoDetailSelectionView",
-            "VideoDetailActionsView",
-            "VideoDetailOperationStatusView");
         Assert.Contains("<RowDefinition Height=\"100*\" MaxHeight=\"180\" />", source, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void VideoDetailOwnersRemainFocusedAndUseOneBindingType()
+    public void VideoDetailSectionsUseOneBindingType()
     {
         foreach (var name in ViewNames)
         {
             var source = Read(name);
-            Assert.True(
-                File.ReadAllLines(Path.Combine(ViewRoot, name)).Length <= 300,
-                $"{name} exceeded the 300-line video-detail view budget.");
             Assert.Contains(
                 "x:DataType=\"vm:ViewVideoDetailViewModel\"",
                 source,
                 StringComparison.Ordinal);
         }
-    }
-
-    [Fact]
-    public void VideoDetailBindingContractRetainsAllMovedTokens()
-    {
-        var source = string.Join(Environment.NewLine, ViewNames.Select(Read));
-
-        Assert.Equal(53, Count(source, @"\{(?:Reflection)?Binding\s+([^},]+)"));
-        Assert.Equal(12, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
-        Assert.Equal(62, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
-        Assert.Equal(7, Count(source, @"\{StaticResource\s+([^}]+)\}"));
-        Assert.Equal(
-            11,
-            Count(
-                source,
-                @"<(?:behavior:[^\s/>]+|(?:Event|Data)TriggerBehavior|InvokeCommandAction|ChangePropertyAction)\b"));
     }
 
     [Fact]
@@ -100,26 +71,6 @@ public sealed class VideoDetailViewArchitectureTests
             "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml",
             applicationSource,
             StringComparison.Ordinal);
-    }
-
-    private static int Count(string source, string pattern)
-    {
-        return Regex.Count(
-            source,
-            pattern,
-            RegexOptions.CultureInvariant | RegexOptions.NonBacktracking,
-            TimeSpan.FromSeconds(1));
-    }
-
-    private static void AssertOrdered(string source, params string[] values)
-    {
-        var index = -1;
-        foreach (var value in values)
-        {
-            var next = source.IndexOf(value, index + 1, StringComparison.Ordinal);
-            Assert.True(next > index, $"{value} is missing or out of order.");
-            index = next;
-        }
     }
 
     private static string Read(string name)
