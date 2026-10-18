@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DownKyi.Application.Diagnostics;
@@ -10,9 +10,13 @@ namespace DownKyi.Services.Download;
 
 internal sealed class DownloadTaskStaging
 {
+    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
+
     private readonly object _gate = new();
-    private readonly ConcurrentDictionary<DownloadTaskId, string> _directories = new();
-    private readonly ConcurrentDictionary<string, FileStream> _sessionLocks = new();
+    private readonly Dictionary<DownloadTaskId, StagingPaths> _tasks = new();
+    private readonly Dictionary<string, FileStream> _sessionLocks = new(PathComparer);
     private readonly ILogger<DownloadTaskStaging> _logger;
 
     public DownloadTaskStaging(ILogger<DownloadTaskStaging> logger) =>
@@ -22,43 +26,33 @@ internal sealed class DownloadTaskStaging
     {
         ArgumentNullException.ThrowIfNull(taskId);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputBasePath);
-        if (!Guid.TryParseExact(stagingToken, "N", out _))
-        {
-            throw new ArgumentException("Staging token must be a GUID.", nameof(stagingToken));
-        }
-
-        var root = GetRoot(outputBasePath);
-        var sessionDirectory = Path.Combine(root, stagingToken);
-        var directory = Path.Combine(sessionDirectory, "data");
+        var paths = CreatePaths(outputBasePath, stagingToken);
         lock (_gate)
         {
-            if (_directories.TryGetValue(taskId, out var existing) &&
-                !string.Equals(existing, directory, OperatingSystem.IsWindows()
-                    ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("A download task's output directory changed.");
-            }
+            EnsureSameTaskDirectory(
+                _tasks.GetValueOrDefault(taskId, paths),
+                paths,
+                "A download task's output directory changed.");
 
-            EnsureOrdinaryStagingPath(root, directory);
-            if (!_sessionLocks.ContainsKey(sessionDirectory))
+            EnsureOrdinaryStagingPath(paths.RootDirectory, paths.DataDirectory);
+            if (!_sessionLocks.ContainsKey(paths.TaskDirectory))
             {
-                if (Directory.Exists(sessionDirectory) &&
-                    !File.Exists(Path.Combine(sessionDirectory, ".session-lock")))
+                if (Directory.Exists(paths.TaskDirectory) && !File.Exists(paths.LockFile))
                 {
                     throw new IOException("Existing staging has no task ownership marker.");
                 }
 
-                Directory.CreateDirectory(sessionDirectory);
-                EnsureOrdinaryStagingPath(root, sessionDirectory);
-                _sessionLocks[sessionDirectory] = new FileStream(
-                    Path.Combine(sessionDirectory, ".session-lock"),
+                Directory.CreateDirectory(paths.TaskDirectory);
+                EnsureOrdinaryStagingPath(paths.RootDirectory, paths.TaskDirectory);
+                _sessionLocks[paths.TaskDirectory] = new FileStream(
+                    paths.LockFile,
                     FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             }
 
-            Directory.CreateDirectory(directory);
-            EnsureOrdinaryStagingPath(root, directory);
-            _directories[taskId] = directory;
-            return directory;
+            Directory.CreateDirectory(paths.DataDirectory);
+            EnsureOrdinaryStagingPath(paths.RootDirectory, paths.DataDirectory);
+            _tasks[taskId] = paths;
+            return paths.DataDirectory;
         }
     }
 
@@ -66,66 +60,23 @@ internal sealed class DownloadTaskStaging
     {
         lock (_gate)
         {
-            if (!_directories.TryGetValue(taskId, out var directory))
-            {
-                return true;
-            }
-
-            var sessionDirectory = Path.GetDirectoryName(directory)!;
-            if (_sessionLocks.TryRemove(sessionDirectory, out var sessionLock))
-            {
-                sessionLock.Dispose();
-            }
-
-            var succeeded = TryDelete(sessionDirectory, Path.GetDirectoryName(sessionDirectory)!);
-            if (succeeded)
-            {
-                _directories.TryRemove(taskId, out _);
-            }
-
-            return succeeded;
+            return !_tasks.TryGetValue(taskId, out var paths) || CleanupTask(taskId, paths);
         }
     }
 
     public bool CleanupTask(DownloadTask task)
     {
         ArgumentNullException.ThrowIfNull(task);
-        var root = GetRoot(task.Output.BasePath);
-        var sessionDirectory = Path.Combine(root, task.Output.StagingToken);
+        var paths = CreatePaths(task.Output.BasePath, task.Output.StagingToken);
         lock (_gate)
         {
-            if (_directories.TryGetValue(task.Id, out var knownDirectory))
-            {
-                if (!string.Equals(Path.GetDirectoryName(knownDirectory), sessionDirectory,
-                        OperatingSystem.IsWindows()
-                            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException("A download task's staging identity changed.");
-                }
+            var knownPaths = _tasks.GetValueOrDefault(task.Id, paths);
+            EnsureSameTaskDirectory(
+                knownPaths,
+                paths,
+                "A download task's staging identity changed.");
 
-                return CleanupTask(task.Id);
-            }
-
-            if (!Directory.Exists(sessionDirectory))
-            {
-                return true;
-            }
-
-            try
-            {
-                EnsureOrdinaryStagingPath(root, sessionDirectory);
-                using (new FileStream(Path.Combine(sessionDirectory, ".session-lock"),
-                           FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                {
-                }
-
-                return TryDelete(sessionDirectory, root);
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                _logger.LogWarningMessage("Task-private staging cleanup could not complete.", exception);
-                return false;
-            }
+            return CleanupTask(task.Id, knownPaths);
         }
     }
 
@@ -133,21 +84,102 @@ internal sealed class DownloadTaskStaging
     {
         lock (_gate)
         {
-            foreach (var entry in _sessionLocks)
+            foreach (var sessionLock in _sessionLocks.Values)
             {
-                entry.Value.Dispose();
+                sessionLock.Dispose();
             }
 
             _sessionLocks.Clear();
-            _directories.Clear();
+            _tasks.Clear();
         }
     }
 
-    private static string GetRoot(string outputBasePath) =>
-        Path.Combine(
-            Path.GetDirectoryName(Path.GetFullPath(outputBasePath))
-            ?? throw new ArgumentException("Output base path must have a directory.", nameof(outputBasePath)),
-            ".downkyi", "staging");
+    private bool CleanupTask(DownloadTaskId taskId, StagingPaths paths)
+    {
+        if (!TryDeleteTaskDirectory(paths))
+        {
+            return false;
+        }
+
+        _tasks.Remove(taskId);
+        TryDeleteEmptyDirectory(paths.RootDirectory);
+        TryDeleteEmptyDirectory(paths.OwnerDirectory);
+        return true;
+    }
+
+    private bool TryDeleteTaskDirectory(StagingPaths paths)
+    {
+        try
+        {
+            _sessionLocks.Remove(paths.TaskDirectory, out var sessionLock);
+            sessionLock?.Dispose();
+            if (Directory.Exists(paths.TaskDirectory))
+            {
+                EnsureOrdinaryStagingPath(paths.RootDirectory, paths.TaskDirectory);
+                using var ownership = new FileStream(
+                    paths.LockFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            }
+
+            DeleteDirectory(paths.TaskDirectory, paths.RootDirectory);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarningMessage("Task-private staging cleanup could not complete.", exception);
+            return false;
+        }
+    }
+
+    private static void EnsureSameTaskDirectory(
+        StagingPaths actual,
+        StagingPaths expected,
+        string message)
+    {
+        if (!PathComparer.Equals(actual.TaskDirectory, expected.TaskDirectory))
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    private void TryDeleteEmptyDirectory(string directory)
+    {
+        try
+        {
+            if (!Directory.Exists(directory) ||
+                (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0 ||
+                Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                return;
+            }
+
+            Directory.Delete(directory, recursive: false);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogDebugMessage("Empty staging parent cleanup could not complete.");
+        }
+    }
+
+    private static StagingPaths CreatePaths(string outputBasePath, string stagingToken)
+    {
+        if (!Guid.TryParseExact(stagingToken, "N", out _))
+        {
+            throw new ArgumentException("Staging token must be a GUID.", nameof(stagingToken));
+        }
+
+        var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputBasePath))
+            ?? throw new ArgumentException(
+                "Output base path must have a directory.", nameof(outputBasePath));
+        var ownerDirectory = Path.Combine(outputDirectory, ".downkyi");
+        var rootDirectory = Path.Combine(ownerDirectory, "staging");
+        var taskDirectory = Path.Combine(rootDirectory, stagingToken);
+        return new StagingPaths(
+            ownerDirectory,
+            rootDirectory,
+            taskDirectory,
+            Path.Combine(taskDirectory, "data"),
+            Path.Combine(taskDirectory, ".session-lock"));
+    }
 
     private static void EnsureOrdinaryStagingPath(string root, string target)
     {
@@ -166,22 +198,19 @@ internal sealed class DownloadTaskStaging
         }
     }
 
-    private bool TryDelete(string directory, string root)
+    private static void DeleteDirectory(string directory, string root)
     {
-        try
+        if (Directory.Exists(directory))
         {
-            if (Directory.Exists(directory))
-            {
-                EnsureOrdinaryStagingPath(root, directory);
-                Directory.Delete(directory, recursive: true);
-            }
-
-            return true;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarningMessage("Task-private staging cleanup could not complete.", exception);
-            return false;
+            EnsureOrdinaryStagingPath(root, directory);
+            Directory.Delete(directory, recursive: true);
         }
     }
+
+    private sealed record StagingPaths(
+        string OwnerDirectory,
+        string RootDirectory,
+        string TaskDirectory,
+        string DataDirectory,
+        string LockFile);
 }
