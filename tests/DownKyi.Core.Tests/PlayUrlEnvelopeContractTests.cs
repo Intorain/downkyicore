@@ -1254,6 +1254,37 @@ public sealed class PlayUrlEnvelopeContractTests
     }
 
     [Fact]
+    public async Task BangumiSelectionWithUnspecifiedKindFallsBackWhenDurlLacksRequestedAudio()
+    {
+        var requests = new List<BilibiliHttpRequest>();
+        var client = new StubBilibiliApiClient((request, _) =>
+        {
+            requests.Add(request);
+            return Task.FromResult(requests.Count == 1
+                ? BetterEmbeddedBangumiDurlPage
+                : """
+                  {"code":0,"result":{"video_info":{"quality":112,"video_codecid":7,"durl":[],"dash":{"video":[{"id":112,"codecid":7,"base_url":"https://api.invalid/video-112"}],"audio":[{"id":30280,"base_url":"https://api.invalid/audio-30280"}]}}}}
+                  """);
+        });
+
+        var selected = await client.GetBangumiPlayUrlAsync(
+            1,
+            "BV1fixture",
+            2,
+            3489,
+            quality: 112,
+            videoCodecId: 7,
+            audioId: 30280,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, requests.Count);
+        Assert.Empty(selected!.Durl);
+        Assert.Equal("https://api.invalid/video-112", Assert.Single(selected.Dash.Video).BaseAddress);
+        Assert.Equal("https://api.invalid/audio-30280", Assert.Single(selected.Dash.Audio).BaseAddress);
+        Assert.Equal(PlayUrlResolutionSource.Api, selected.Diagnostics?.Source);
+    }
+
+    [Fact]
     public async Task BangumiDiscoveryFallsBackToApiWhenWebPageTimesOut()
     {
         var requests = 0;

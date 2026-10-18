@@ -33,7 +33,7 @@ internal static class FinalizedPlaybackResolver
         var video = SelectVideo(source, selection);
         var kind = !selection.RequireVideo
             ? PlayUrlStreamKind.Dash
-            : selection.StreamKind ?? (video.Length > 0
+            : selection.StreamKind ?? (video.Length > 0 || selection.AudioId is not null
                 ? PlayUrlStreamKind.Dash
                 : PlayUrlStreamKind.Durl);
 
