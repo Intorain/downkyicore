@@ -146,7 +146,6 @@ public sealed class PlayUrlEnvelopeContractTests
             2,
             1,
             new FinalizedPlaybackSelection(80, 7, null, PlayUrlStreamKind.Dash, true),
-            preferWebPage: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("https://api.invalid/video", Assert.Single(selected!.Dash.Video).BaseAddress);
@@ -180,7 +179,6 @@ public sealed class PlayUrlEnvelopeContractTests
             2,
             1,
             new FinalizedPlaybackSelection(0, null, 30280, PlayUrlStreamKind.Dash, false),
-            preferWebPage: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(selected!.Dash.Video);
@@ -216,7 +214,6 @@ public sealed class PlayUrlEnvelopeContractTests
             2,
             1,
             new FinalizedPlaybackSelection(80, 7, 30280, PlayUrlStreamKind.Dash, true),
-            preferWebPage: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, requests.Count);
@@ -420,7 +417,6 @@ public sealed class PlayUrlEnvelopeContractTests
         var selected = await client.GetVideoFinalizedPlaybackAsync(
             Keys, 1702204169, 1, "BV1fixture", 2, 1,
             new FinalizedPlaybackSelection(80, 7, null, PlayUrlStreamKind.Dash, true),
-            preferWebPage: true,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, requests);
@@ -763,6 +759,46 @@ public sealed class PlayUrlEnvelopeContractTests
     }
 
     [Fact]
+    public void FinalizedSelectionDoesNotConsumeTheSourceForAnotherTransport()
+    {
+        var source = new PlayUrl
+        {
+            Quality = 80,
+            VideoCodecid = 7,
+            Durl = [new PlayUrlDurl { Order = 1, SourceAddress = "https://media.invalid/durl" }],
+            Dash = new PlayUrlDash
+            {
+                Video = [new PlayUrlDashVideo
+                {
+                    Id = 80,
+                    CodecId = 7,
+                    BaseAddress = "https://media.invalid/dash"
+                }]
+            }
+        };
+
+        Assert.True(FinalizedPlaybackResolver.TrySelect(
+            source,
+            supplement: null,
+            new FinalizedPlaybackSelection(80, 7, null, PlayUrlStreamKind.Dash, true),
+            out var dash));
+        Assert.True(FinalizedPlaybackResolver.TrySelect(
+            source,
+            supplement: null,
+            new FinalizedPlaybackSelection(80, 7, null, PlayUrlStreamKind.Durl, true),
+            out var durl));
+
+        Assert.NotSame(source, dash);
+        Assert.NotSame(source, durl);
+        Assert.Single(source.Dash.Video);
+        Assert.Single(source.Durl);
+        Assert.Single(dash!.Dash.Video);
+        Assert.Empty(dash.Durl);
+        Assert.Empty(durl!.Dash.Video);
+        Assert.Single(durl.Durl);
+    }
+
+    [Fact]
     public void DownloadSelectionKeepsOneSourceManifestAndOnlyItsUsableAudio()
     {
         var primary = new PlayUrl
@@ -843,14 +879,11 @@ public sealed class PlayUrlEnvelopeContractTests
         var found = FinalizedPlaybackResolver.TrySelect(
             primary,
             supplement,
-            requestedQuality: 112,
-            requestedCodecId: null,
-            requestedAudioId: null,
-            requestedStreamKind: null,
+            new FinalizedPlaybackSelection(112, null, null, null, true),
             out var selected);
 
         Assert.True(found);
-        Assert.Same(supplement, selected);
+        Assert.NotSame(supplement, selected);
         Assert.Equal([30232], selected!.Dash.Audio.Select(audio => audio.Id));
         Assert.Equal(
             "https://media.invalid/dolby",
@@ -859,6 +892,8 @@ public sealed class PlayUrlEnvelopeContractTests
         Assert.DoesNotContain(
             selected.Dash.Audio,
             audio => audio.BaseAddress.Contains("api.invalid", StringComparison.Ordinal));
+        Assert.Equal(2, supplement.Dash.Audio.Count);
+        Assert.NotNull(supplement.Dash.Flac);
     }
 
     [Fact]
@@ -1097,15 +1132,11 @@ public sealed class PlayUrlEnvelopeContractTests
         var found = FinalizedPlaybackResolver.TrySelect(
             videoIsPrimary ? videoOnly : audioOnly,
             videoIsPrimary ? audioOnly : videoOnly,
-            requestedQuality: 112,
-            requestedCodecId: 13,
-            requestedAudioId: null,
-            requestedStreamKind: PlayUrlStreamKind.Dash,
-            requireVideo: true,
+            new FinalizedPlaybackSelection(112, 13, null, PlayUrlStreamKind.Dash, true),
             out var selected);
 
         Assert.True(found);
-        Assert.Same(videoOnly, selected);
+        Assert.NotSame(videoOnly, selected);
         Assert.Equal(112, Assert.Single(selected!.Dash.Video).Id);
         Assert.Empty(selected.Dash.Audio);
     }
@@ -1122,15 +1153,11 @@ public sealed class PlayUrlEnvelopeContractTests
         var found = FinalizedPlaybackResolver.TrySelect(
             audioIsPrimary ? audioOnly : videoOnly,
             audioIsPrimary ? videoOnly : audioOnly,
-            requestedQuality: 112,
-            requestedCodecId: 13,
-            requestedAudioId: 30280,
-            requestedStreamKind: PlayUrlStreamKind.Dash,
-            requireVideo: false,
+            new FinalizedPlaybackSelection(112, 13, 30280, PlayUrlStreamKind.Dash, false),
             out var selected);
 
         Assert.True(found);
-        Assert.Same(audioOnly, selected);
+        Assert.NotSame(audioOnly, selected);
         Assert.Empty(selected!.Dash.Video);
         Assert.Equal(30280, Assert.Single(selected.Dash.Audio).Id);
     }
@@ -1141,11 +1168,7 @@ public sealed class PlayUrlEnvelopeContractTests
         var found = FinalizedPlaybackResolver.TrySelect(
             CreateDashVideoOnlyPlayback(),
             CreateDashAudioOnlyPlayback(),
-            requestedQuality: 112,
-            requestedCodecId: 13,
-            requestedAudioId: 30280,
-            requestedStreamKind: PlayUrlStreamKind.Dash,
-            requireVideo: true,
+            new FinalizedPlaybackSelection(112, 13, 30280, PlayUrlStreamKind.Dash, true),
             out var selected);
 
         Assert.True(found);
@@ -1159,11 +1182,7 @@ public sealed class PlayUrlEnvelopeContractTests
         var found = FinalizedPlaybackResolver.TrySelect(
             CreateDashVideoOnlyPlayback(),
             CreateDashAudioOnlyPlayback(),
-            requestedQuality: 112,
-            requestedCodecId: 13,
-            requestedAudioId: null,
-            requestedStreamKind: PlayUrlStreamKind.Dash,
-            requireVideo: false,
+            new FinalizedPlaybackSelection(112, 13, null, PlayUrlStreamKind.Dash, false),
             out var selected);
 
         Assert.False(found);

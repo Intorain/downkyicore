@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using DownKyi.Core.BiliApi.VideoStream.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,16 +9,10 @@ internal static class BangumiPlaybackResolver
 {
     private const string EmbeddedPlaybackMarker = "playurlSSRData";
 
-    public static bool HasActualQuality(PlayUrl playUrl, int quality)
-    {
-        ArgumentNullException.ThrowIfNull(playUrl);
-        return PlayUrlAvailability.From(playUrl).Video.Any(video => video.Quality == quality);
-    }
-
     public static bool TryParseEmbeddedPayload(
         string webpage,
         string operationName,
-        out PlayUrl? playUrl,
+        [NotNullWhen(true)] out PlayUrl? playUrl,
         out string? playDetail)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operationName);

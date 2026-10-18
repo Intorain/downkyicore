@@ -65,7 +65,6 @@ internal sealed class DownloadPlaybackResolver
                         media.Cid,
                         media.Page,
                         selection,
-                        preferWebPage: true,
                         cancellationToken: cancellationToken),
                     _timeProvider,
                     cancellationToken),

@@ -4,257 +4,153 @@ namespace DownKyi.Core.BiliApi.VideoStream;
 
 internal static class FinalizedPlaybackResolver
 {
-    public static bool HasRequestedPlayback(
-        PlayUrl playUrl,
-        int requestedQuality,
-        int? requestedCodecId = null,
-        int? requestedAudioId = null,
-        PlayUrlStreamKind? requestedStreamKind = null,
-        bool requireVideo = true)
-    {
-        ArgumentNullException.ThrowIfNull(playUrl);
-        if (!requireVideo && requestedAudioId == null)
-        {
-            return false;
-        }
-
-        var availability = PlayUrlAvailability.From(playUrl);
-        if (requireVideo && !availability.Video.Any(candidate =>
-                candidate.Quality == requestedQuality
-                && (requestedCodecId == null || candidate.CodecId == requestedCodecId)
-                && (requestedStreamKind == null || candidate.StreamKind == requestedStreamKind)))
-        {
-            return false;
-        }
-
-        return requestedAudioId == null
-               || (requireVideo && requestedStreamKind == PlayUrlStreamKind.Durl)
-               || availability.Audio.Contains(requestedAudioId.Value);
-    }
-
     public static bool TrySelect(
         PlayUrl primary,
         PlayUrl? supplement,
         FinalizedPlaybackSelection selection,
         out PlayUrl? selected)
     {
-        ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(primary);
-        var sources = new[] { primary, supplement }.OfType<PlayUrl>().ToArray();
-        selected = SelectSingleSource(sources, selection)
+        ArgumentNullException.ThrowIfNull(selection);
+        if (selection.RequireVideo ? selection.VideoQuality <= 0 : selection.AudioId is not > 0)
+        {
+            selected = null;
+            return false;
+        }
+
+        PlayUrl[] sources = supplement is null ? [primary] : [primary, supplement];
+        selected = sources
+            .Select(source => SelectFromSource(source, selection))
+            .FirstOrDefault(candidate => candidate is not null)
             ?? SelectExactDashAcrossSources(sources, selection);
-        return selected != null;
-    }
-
-    public static bool TrySelect(
-        PlayUrl primary,
-        PlayUrl? supplement,
-        int requestedQuality,
-        int? requestedCodecId,
-        int? requestedAudioId,
-        PlayUrlStreamKind? requestedStreamKind,
-        out PlayUrl? selected)
-    {
-        return TrySelect(
-            primary,
-            supplement,
-            requestedQuality,
-            requestedCodecId,
-            requestedAudioId,
-            requestedStreamKind,
-            requireVideo: true,
-            out selected);
-    }
-
-    public static bool TrySelect(
-        PlayUrl primary,
-        PlayUrl? supplement,
-        int requestedQuality,
-        int? requestedCodecId,
-        int? requestedAudioId,
-        PlayUrlStreamKind? requestedStreamKind,
-        bool requireVideo,
-        out PlayUrl? selected)
-    {
-        return TrySelect(
-            primary,
-            supplement,
-            new FinalizedPlaybackSelection(
-                requestedQuality,
-                requestedCodecId,
-                requestedAudioId,
-                requestedStreamKind,
-                requireVideo),
-            out selected);
-    }
-
-    private static PlayUrl? SelectSingleSource(
-        PlayUrl[] sources,
-        FinalizedPlaybackSelection selection)
-    {
-        var source = sources.FirstOrDefault(candidate => HasRequestedPlayback(
-            candidate,
-            selection.VideoQuality,
-            selection.VideoCodecId,
-            selection.AudioId,
-            selection.StreamKind,
-            selection.RequireVideo));
-        return source == null
-            ? null
-            : SelectFromSource(source, selection);
+        return selected is not null;
     }
 
     private static PlayUrl? SelectFromSource(
         PlayUrl source,
         FinalizedPlaybackSelection selection)
     {
-        var sourceAvailability = PlayUrlAvailability.From(source);
-        var selectedKind = !selection.RequireVideo
+        var video = SelectVideo(source, selection);
+        var kind = !selection.RequireVideo
             ? PlayUrlStreamKind.Dash
-            : selection.StreamKind
-              ?? (sourceAvailability.Video.Any(candidate =>
-                  candidate.Quality == selection.VideoQuality
-                  && (selection.VideoCodecId == null
-                      || candidate.CodecId == selection.VideoCodecId)
-                  && candidate.StreamKind == PlayUrlStreamKind.Dash)
-                  ? PlayUrlStreamKind.Dash
-                  : PlayUrlStreamKind.Durl);
-        return selectedKind == PlayUrlStreamKind.Durl
-            ? SelectDurl(source)
-            : SelectDash(source, selection);
+            : selection.StreamKind ?? (video.Length > 0
+                ? PlayUrlStreamKind.Dash
+                : PlayUrlStreamKind.Durl);
+
+        return kind == PlayUrlStreamKind.Durl
+            ? SelectDurl(source, selection)
+            : SelectDash(source, source, selection, video);
     }
 
-    private static PlayUrl SelectDurl(PlayUrl source)
-    {
-        source.Dash = new PlayUrlDash();
-        return source;
-    }
-
-    private static PlayUrl? SelectDash(
+    private static PlayUrl? SelectDurl(
         PlayUrl source,
         FinalizedPlaybackSelection selection)
     {
-        var requestedDash = source.Dash.Video
-            .Where(PlayUrlAvailability.HasUsableAddress)
-            .Where(video => video.Id == selection.VideoQuality)
-            .Where(video => selection.VideoCodecId == null
-                || video.CodecId == selection.VideoCodecId)
-            .ToArray();
-        return (selection.RequireVideo, requestedDash.Length) switch
+        if (!selection.RequireVideo
+            || source.Quality != selection.VideoQuality
+            || source.VideoCodecid <= 0
+            || (selection.VideoCodecId is { } codecId && source.VideoCodecid != codecId)
+            || !PlayUrlAvailability.HasUsableDurl(source))
         {
-            (true, 0) => null,
-            _ => RetainDash(source, requestedDash, selection.RequireVideo)
-        };
+            return null;
+        }
+
+        var selected = source.CopyForSelection();
+        selected.Dash = new PlayUrlDash();
+        selected.Durl = source.Durl.ToArray();
+        selected.Availability = PlayUrlAvailability.From(selected);
+        return selected;
     }
 
-    private static PlayUrl RetainDash(
-        PlayUrl source,
-        IReadOnlyList<PlayUrlDashVideo> requestedVideo,
-        bool requireVideo)
+    private static PlayUrl? SelectDash(
+        PlayUrl videoSource,
+        PlayUrl audioSource,
+        FinalizedPlaybackSelection selection,
+        IReadOnlyList<PlayUrlDashVideo>? selectedVideo = null)
     {
-        source.Durl = [];
-        source.Dash.Video = requireVideo ? requestedVideo : [];
-        source.Dash.Audio = source.Dash.Audio
-            .Where(PlayUrlAvailability.HasUsableAddress)
-            .ToArray();
-        var dolbyAudio = (source.Dash.Dolby?.Audio ?? [])
-            .Where(PlayUrlAvailability.HasUsableAddress)
-            .ToArray();
-        source.Dash.Dolby = dolbyAudio.Length == 0
-            ? null
-            : new PlayUrlDashDolby { Audio = dolbyAudio };
-        source.Dash.Flac = PlayUrlAvailability.HasUsableAddress(source.Dash.Flac?.Audio)
-            ? source.Dash.Flac
-            : null;
-        return source;
+        IReadOnlyList<PlayUrlDashVideo> video = selection.RequireVideo
+            ? selectedVideo ?? SelectVideo(videoSource, selection)
+            : [];
+        if (selection.RequireVideo && video.Count == 0)
+        {
+            return null;
+        }
+
+        var audio = SelectAudio(audioSource, selection.AudioId);
+        var dolbyAudio = SelectDolby(audioSource, selection.AudioId);
+        var flacAudio = SelectFlac(audioSource, selection.AudioId);
+        if (selection.AudioId is not null
+            && audio.Length == 0 && dolbyAudio.Length == 0 && flacAudio is null)
+        {
+            return null;
+        }
+
+        var selected = videoSource.CopyForSelection();
+        selected.Quality = selection.RequireVideo ? selection.VideoQuality : videoSource.Quality;
+        selected.VideoCodecid = selection.VideoCodecId ?? videoSource.VideoCodecid;
+        selected.Durl = [];
+        selected.Dash = new PlayUrlDash
+        {
+            Duration = videoSource.Dash.Duration > 0
+                ? videoSource.Dash.Duration
+                : audioSource.Dash.Duration,
+            Video = video,
+            Audio = audio,
+            Dolby = dolbyAudio.Length == 0 ? null : new PlayUrlDashDolby { Audio = dolbyAudio },
+            Flac = flacAudio is null ? null : new PlayUrlDashFlac { Audio = flacAudio }
+        };
+        selected.Availability = PlayUrlAvailability.From(selected);
+        return selected;
     }
 
     private static PlayUrl? SelectExactDashAcrossSources(
         PlayUrl[] sources,
         FinalizedPlaybackSelection selection)
     {
-        var videoSource = sources.FirstOrDefault(source => HasRequestedPlayback(
-            source,
-            selection.VideoQuality,
-            selection.VideoCodecId,
-            requestedAudioId: null,
-            requestedStreamKind: PlayUrlStreamKind.Dash));
-        var audioSource = sources.FirstOrDefault(source => HasRequestedPlayback(
-            source,
-            selection.VideoQuality,
-            selection.VideoCodecId,
-            selection.AudioId,
-            requestedStreamKind: PlayUrlStreamKind.Dash,
-            requireVideo: false));
-        return (
-            sources.Length,
-            selection.RequireVideo,
-            selection.AudioId,
-            selection.StreamKind,
-            videoSource,
-            audioSource) switch
+        if (sources.Length < 2
+            || !selection.RequireVideo
+            || selection.AudioId is null
+            || selection.StreamKind == PlayUrlStreamKind.Durl)
         {
-            ( > 1, true, { } audioId, null or PlayUrlStreamKind.Dash,
-                not null, not null) => ComposeExactDash(
-                    videoSource,
-                    audioSource,
-                    selection,
-                    audioId),
-            _ => null
-        };
-    }
+            return null;
+        }
 
-    private static PlayUrl ComposeExactDash(
-        PlayUrl videoSource,
-        PlayUrl audioSource,
-        FinalizedPlaybackSelection selection,
-        int requestedAudioId)
-    {
-        var selected = new PlayUrl
-        {
-            Quality = selection.VideoQuality,
-            VideoCodecid = selection.VideoCodecId ?? videoSource.VideoCodecid,
-            Dash = new PlayUrlDash
-            {
-                Duration = videoSource.Dash.Duration > 0
-                    ? videoSource.Dash.Duration
-                    : audioSource.Dash.Duration,
-                Video = videoSource.Dash.Video
-                    .Where(PlayUrlAvailability.HasUsableAddress)
-                    .Where(stream => stream.Id == selection.VideoQuality)
-                    .Where(stream => selection.VideoCodecId == null
-                        || stream.CodecId == selection.VideoCodecId)
-                    .ToArray(),
-                Audio = audioSource.Dash.Audio
-                    .Where(PlayUrlAvailability.HasUsableAddress)
-                    .Where(stream => stream.Id == requestedAudioId)
-                    .ToArray(),
-                Dolby = SelectDolby(audioSource, requestedAudioId),
-                Flac = SelectFlac(audioSource, requestedAudioId)
-            }
-        };
-        selected.Availability = PlayUrlAvailability.From(selected);
-        return selected;
-    }
-
-    private static PlayUrlDashDolby? SelectDolby(
-        PlayUrl source,
-        int requestedAudioId)
-    {
-        var audio = (source.Dash.Dolby?.Audio ?? [])
-            .Where(PlayUrlAvailability.HasUsableAddress)
-            .Where(stream => stream.Id == requestedAudioId)
-            .ToArray();
-        return audio.Length == 0
+        var videoSource = sources.FirstOrDefault(source => SelectVideo(source, selection).Length > 0);
+        var audioSource = sources.FirstOrDefault(source =>
+            PlayUrlAvailability.From(source).Audio.Contains(selection.AudioId.Value));
+        return videoSource is null || audioSource is null
             ? null
-            : new PlayUrlDashDolby { Audio = audio };
+            : SelectDash(videoSource, audioSource, selection);
     }
 
-    private static PlayUrlDashFlac? SelectFlac(
+    private static PlayUrlDashVideo[] SelectVideo(
         PlayUrl source,
-        int requestedAudioId) =>
-        PlayUrlAvailability.HasUsableAddress(source.Dash.Flac?.Audio)
-        && source.Dash.Flac?.Audio?.Id == requestedAudioId
-            ? source.Dash.Flac
+        FinalizedPlaybackSelection selection) =>
+        source.Dash.Video
+            .Where(PlayUrlAvailability.HasUsableAddress)
+            .Where(stream => stream.CodecId > 0
+                && stream.Id == selection.VideoQuality
+                && (selection.VideoCodecId is null || stream.CodecId == selection.VideoCodecId))
+            .ToArray();
+
+    private static PlayUrlDashVideo[] SelectAudio(PlayUrl source, int? requestedId) =>
+        source.Dash.Audio
+            .Where(PlayUrlAvailability.HasUsableAddress)
+            .Where(stream => stream.Id > 0 && (requestedId is null || stream.Id == requestedId))
+            .ToArray();
+
+    private static PlayUrlDashVideo[] SelectDolby(PlayUrl source, int? requestedId) =>
+        (source.Dash.Dolby?.Audio ?? [])
+            .Where(PlayUrlAvailability.HasUsableAddress)
+            .Where(stream => stream.Id > 0 && (requestedId is null || stream.Id == requestedId))
+            .ToArray();
+
+    private static PlayUrlDashVideo? SelectFlac(PlayUrl source, int? requestedId) =>
+        source.Dash.Flac?.Audio is { } flac
+        && PlayUrlAvailability.HasUsableAddress(flac)
+        && flac.Id > 0
+        && (requestedId is null || flac.Id == requestedId)
+            ? flac
             : null;
+
 }
