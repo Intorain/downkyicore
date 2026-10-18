@@ -17,7 +17,6 @@ public sealed class SettingsArchitectureTests
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "DownloadManager", "ViewDownloadFinishedViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "Dialogs", "NewVersionAvailableDialogViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "Dialogs", "ViewDownloadSetterViewModel.cs")]
-    [InlineData("src", "DownKyi.Desktop", "ViewModels", "Dialogs", "ViewParsingSelectorViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "Friends", "ViewFollowerViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "Friends", "ViewFollowingViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "Services", "Account", "UserSessionCoordinator.cs")]

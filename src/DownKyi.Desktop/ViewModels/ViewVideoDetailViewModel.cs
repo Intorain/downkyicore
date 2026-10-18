@@ -57,9 +57,7 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
         UpperCommand = new RelayCommand(ExecuteUpperCommand);
         SelectAllCommand = new RelayCommand(() => SetAllSelected(UiState.IsSelectAll));
         ClearSelectionCommand = new RelayCommand(() => SetAllSelected(isSelected: false));
-        ParseCommand = new DownKyiAsyncDelegateCommand<object>(ExecuteParseCommandAsync, _logger, _ => !UiState.IsBusy, executionGate: operationCommandGate);
-        ParseAllVideoCommand = new DownKyiAsyncDelegateCommand(ExecuteParseAllVideoCommandAsync, _logger, () => !UiState.IsBusy, executionGate: operationCommandGate);
-        AddToDownloadCommand = new DownKyiAsyncDelegateCommand(() => AddToDownloadAsync(false), _logger, () => !UiState.IsBusy, executionGate: operationCommandGate);
+        AddToDownloadCommand = new DownKyiAsyncDelegateCommand(AddToDownloadAsync, _logger, () => !UiState.IsBusy, executionGate: operationCommandGate);
         UiState.IsBusyChanged += OnIsBusyChanged;
     }
 
@@ -74,15 +72,11 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
     public RelayCommand UpperCommand { get; }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
-    public DownKyiAsyncDelegateCommand<object> ParseCommand { get; }
-    public DownKyiAsyncDelegateCommand ParseAllVideoCommand { get; }
     public DownKyiAsyncDelegateCommand AddToDownloadCommand { get; }
 
     private void OnIsBusyChanged()
     {
         InputCommand.NotifyCanExecuteChanged();
-        ParseCommand.NotifyCanExecuteChanged();
-        ParseAllVideoCommand.NotifyCanExecuteChanged();
         AddToDownloadCommand.NotifyCanExecuteChanged();
     }
 
@@ -112,7 +106,6 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
     private async Task ExecuteInputCommandAsync(string? requestedInput)
     {
         var operation = _workflow.StartOperation();
-        var settings = _settingsStore.Current;
         ResetView();
         if (string.IsNullOrWhiteSpace(requestedInput))
         {
@@ -130,12 +123,6 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
             _logger.LogDebugMessage("Processing captured video input.");
             var result = await _workflow.LoadDetailAsync(operation).ConfigureAwait(true);
             await UiDispatcher.InvokeAsync(() => ApplyVideoDetailResult(result, operation.CancellationToken));
-            if (_workflow.IsCurrent(operation)
-                && result.Outcome == VideoDetailParseOutcome.Ready
-                && settings.Basic.IsAutoParseVideo == AllowStatus.Yes)
-            {
-                await ExecuteParseAllVideoCommandAsync().ConfigureAwait(true);
-            }
         }, VideoDetailDisplayState.Empty).ConfigureAwait(true);
     }
 
@@ -170,125 +157,7 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
         UiState.IsSelectAll = isSelected;
     }
 
-    private async Task ExecuteParseCommandAsync(object? parameter)
-    {
-        if (parameter is not VideoPage page)
-        {
-            return;
-        }
-
-        var operation = _workflow.StartOperation();
-        var settings = _settingsStore.Current;
-        SetOperationStatus(
-            VideoDetailOperationStatus.Running,
-            StatusText("VideoDetailStatusParsing", "正在解析音质、画质和视频编码……"));
-        SetDisplayState(VideoDetailDisplayState.Busy);
-        await RunOperationAsync(operation, async () =>
-        {
-            var result = await _workflow.LoadPageStreamAsync(page, operation).ConfigureAwait(true);
-            if (!_workflow.IsCurrent(operation))
-            {
-                return;
-            }
-
-            var batch = VideoStreamParseBatchResult.From(result);
-            await UiDispatcher.InvokeAsync(() =>
-            {
-                if (!_workflow.IsCurrent(operation))
-                {
-                    return;
-                }
-
-                ApplyVideoStreamResults(
-                    batch.Items,
-                    settings,
-                    operation.CancellationToken);
-                PublishParseStatus(batch);
-            });
-
-            RestoreDisplayStateIfCurrent(operation);
-        }, null).ConfigureAwait(true);
-    }
-
-    private async Task ExecuteParseAllVideoCommandAsync()
-    {
-        var parseScope = _settingsStore.Current.Basic.ParseScope;
-        if (parseScope != ParseScope.None)
-        {
-            await ExecuteParseAsync(parseScope).ConfigureAwait(true);
-            return;
-        }
-
-        var operation = _workflow.StartOperation();
-        SetOperationStatus(
-            VideoDetailOperationStatus.Running,
-            StatusText(
-                "VideoDetailStatusChooseParseScope",
-                "请选择本次要解析的范围。"));
-        await RunOperationAsync(operation, async () =>
-        {
-            var result = await ParsingSelectorDialog
-                .ShowAsync(AppDialogs, operation.CancellationToken)
-                .ConfigureAwait(true);
-            if (!_workflow.IsCurrent(operation))
-            {
-                return;
-            }
-
-            if (result != null)
-            {
-                await ExecuteParseAsync(result.Scope).ConfigureAwait(true);
-                return;
-            }
-
-            SetOperationStatus(
-                VideoDetailOperationStatus.Canceled,
-                StatusText("VideoDetailStatusCanceled", "操作已取消。"));
-        }, null).ConfigureAwait(true);
-    }
-
-    private async Task ExecuteParseAsync(ParseScope parseScope)
-    {
-        var operation = _workflow.StartOperation();
-        var settings = _settingsStore.Current;
-        SetOperationStatus(
-            VideoDetailOperationStatus.Running,
-            StatusText("VideoDetailStatusParsing", "正在解析音质、画质和视频编码……"));
-        SetDisplayState(VideoDetailDisplayState.Busy);
-        await RunOperationAsync(operation, async () =>
-        {
-            var result = await _workflow
-                .LoadPageStreamsAsync(VideoSections, parseScope, operation)
-                .ConfigureAwait(true);
-            if (!_workflow.IsCurrent(operation))
-            {
-                return;
-            }
-
-            await UiDispatcher.InvokeAsync(() =>
-            {
-                if (!_workflow.IsCurrent(operation))
-                {
-                    return;
-                }
-
-                ApplyVideoStreamResults(
-                    result.Items,
-                    settings,
-                    operation.CancellationToken);
-                PublishParseStatus(result);
-            });
-            if (!_workflow.IsCurrent(operation))
-            {
-                return;
-            }
-
-            RestoreDisplayState();
-            _logger.LogDebugMessage($"ParseScope: {parseScope:G}");
-        }, null).ConfigureAwait(true);
-    }
-
-    private async Task AddToDownloadAsync(bool isAll)
+    private async Task AddToDownloadAsync()
     {
         SetOperationStatus(
             VideoDetailOperationStatus.Running,
@@ -308,7 +177,7 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
                 _workflow.CurrentInput,
                 UiState.VideoInfoView,
                 VideoSections.ToList(),
-                isAll,
+                isAll: false,
                 operation.CancellationToken).ConfigureAwait(true);
             if (_workflow.IsCurrent(operation))
             {
@@ -350,26 +219,7 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
         SetDisplayState(VideoDetailDisplayState.Content);
         SetOperationStatus(
             VideoDetailOperationStatus.Success,
-            StatusText("VideoDetailStatusLoaded", "视频信息已载入，可选择内容并解析画质。"));
-    }
-
-    private void ApplyVideoStreamResults(
-        IReadOnlyList<VideoStreamParseResult> results,
-        ApplicationSettings settings,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        foreach (var result in results)
-        {
-            if (result.PlayUrl is { } playUrl)
-            {
-                VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
-                    playUrl,
-                    result.Page,
-                    settings,
-                    _logger);
-            }
-        }
+            StatusText("VideoDetailStatusLoaded", "视频信息已载入，可选择内容并下载。"));
     }
 
     private void PublishAddResult(DownloadAddResult result)
@@ -491,96 +341,6 @@ internal sealed class ViewVideoDetailViewModel : ViewModelBase
         SetDisplayState(UiState.VideoInfoView == null
             ? VideoDetailDisplayState.Idle
             : VideoDetailDisplayState.Content);
-    }
-
-    private void PublishParseStatus(VideoStreamParseBatchResult result)
-    {
-        if (!result.HadSelection)
-        {
-            SetOperationStatus(
-                VideoDetailOperationStatus.Warning,
-                StatusText(
-                    "VideoDetailStatusNoSelection",
-                    "没有选中要解析的视频。"));
-            return;
-        }
-
-        if (result.SuccessfulCount == 0)
-        {
-            SetOperationStatus(
-                VideoDetailOperationStatus.Warning,
-                StatusText(
-                    "VideoDetailStatusNoPlayback",
-                    "解析没有返回可用的媒体信息。"));
-            return;
-        }
-
-        var missingCodecs = result.Items
-            .Where(item => item.HasUsableContent)
-            .Select(item => new
-            {
-                Quality = item.Page.VideoQuality,
-                CodecIds = item.Page.PlaybackAvailability?.Video
-                    .Where(video => video.Quality == item.Page.VideoQuality?.Quality
-                        && (video.StreamKind == DownKyi.Core.BiliApi.VideoStream.Models.PlayUrlStreamKind.Durl)
-                            == item.Page.VideoQuality?.IsDurl)
-                    .Select(video => video.CodecId)
-                    .Distinct()
-                    .Order()
-                    .ToArray() ?? []
-            })
-            .Where(item => item.Quality != null && item.Quality.VideoCodecList.Count == 0)
-            .ToArray();
-        if (missingCodecs.Length > 0)
-        {
-            var qualityDetails = string.Join(
-                "、",
-                missingCodecs
-                    .Select(item => StatusText(
-                        "VideoDetailStatusMissingCodecDetail",
-                        "{0}（编码 ID：{1}）",
-                        string.IsNullOrWhiteSpace(item.Quality!.QualityFormat)
-                            ? "未知画质"
-                            : item.Quality.QualityFormat,
-                        item.CodecIds.Length == 0
-                            ? "未收到"
-                            : string.Join(",", item.CodecIds)))
-                    .Distinct(StringComparer.Ordinal));
-            var message = result.UnavailableCount > 0
-                ? StatusText(
-                    "VideoDetailStatusPartialMissingCodecs",
-                    "解析部分完成：已取得 {0} 个视频，{1} 个没有可用媒体；其中 {2} 个当前画质没有可识别的编码选项：{3}。",
-                    result.SuccessfulCount,
-                    result.UnavailableCount,
-                    missingCodecs.Length,
-                    qualityDetails)
-                : StatusText(
-                    "VideoDetailStatusMissingCodecs",
-                    "解析完成，但 {0} 个视频的当前画质没有可识别的编码选项：{1}。",
-                    missingCodecs.Length,
-                    qualityDetails);
-            SetOperationStatus(VideoDetailOperationStatus.Warning, message);
-            return;
-        }
-
-        if (result.UnavailableCount > 0)
-        {
-            SetOperationStatus(
-                VideoDetailOperationStatus.Warning,
-                StatusText(
-                    "VideoDetailStatusPartiallyParsed",
-                    "解析部分完成：已更新 {0} 个视频，{1} 个没有可用媒体。",
-                    result.SuccessfulCount,
-                    result.UnavailableCount));
-            return;
-        }
-
-        SetOperationStatus(
-            VideoDetailOperationStatus.Success,
-            StatusText(
-                "VideoDetailStatusParsed",
-                "解析完成：已更新 {0} 个视频。",
-                result.SuccessfulCount));
     }
 
     private void SetOperationStatus(VideoDetailOperationStatus status, string message)

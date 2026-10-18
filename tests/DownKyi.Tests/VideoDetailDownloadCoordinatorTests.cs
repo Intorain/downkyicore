@@ -1,7 +1,6 @@
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Downloads;
 using DownKyi.Core.BiliApi.VideoStream;
-using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Domain.Downloads;
 using DownKyi.Presentation;
 using DownKyi.Services;
@@ -69,29 +68,14 @@ public sealed class VideoDetailDownloadCoordinatorTests
     }
 
     [Fact]
-    public async Task ExistingVideoDataIsPreparedBeforeTheExplicitSelectionIsAdded()
+    public async Task SelectedVideoWithoutPreparsedPlaybackIsPreparedBeforeItIsAdded()
     {
         var session = new RecordingSession();
         var coordinator = CreateCoordinator(new RecordingFactory(session));
         var video = new VideoInfoView();
         var page = new VideoPage
         {
-            IsSelected = true,
-            PlaybackAvailability = PlayUrlAvailability.From(new PlayUrl
-            {
-                Dash = new PlayUrlDash
-                {
-                    Video =
-                    [
-                        new PlayUrlDashVideo
-                        {
-                            Id = 80,
-                            CodecId = 7,
-                            BaseAddress = "https://media.invalid/video-80"
-                        }
-                    ]
-                }
-            })
+            IsSelected = true
         };
         IList<VideoSection> sections = [new VideoSection { VideoPages = [page] }];
 
@@ -99,7 +83,7 @@ public sealed class VideoDetailDownloadCoordinatorTests
             "BV17x411w7KC",
             video,
             sections,
-            isAll: true,
+            isAll: false,
             TestContext.Current.CancellationToken);
 
         Assert.Equal(1, result.AddedCount);
@@ -164,7 +148,7 @@ public sealed class VideoDetailDownloadCoordinatorTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Assert.True(isAll);
+            Assert.False(isAll);
             Assert.Equal(Selection.RequestedContent, requestedContent);
             PrepareCount++;
             CreatedPreparedDownload = PreparedDownload.Create(videoInfoView, videoSections);

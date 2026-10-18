@@ -32,7 +32,6 @@ public sealed class DialogWindowChromeTests
         {
             new(new ViewAlertDialog(), HasCloseButton: true, UsesTwoColumns: true),
             new(new ViewDownloadSetter(), HasCloseButton: true, UsesTwoColumns: false),
-            new(new ViewParsingSelector(), HasCloseButton: true, UsesTwoColumns: true),
             new(new ViewUpgradingDialog(), HasCloseButton: true, UsesTwoColumns: true),
             new(new StartupDiagnosticsDialog(), HasCloseButton: true, UsesTwoColumns: true),
             new(new NewVersionAvailableDialog(), HasCloseButton: true, UsesTwoColumns: false)

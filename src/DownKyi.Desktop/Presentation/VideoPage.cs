@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.Models;
 using DownKyi.Core.BiliApi.VideoStream.Models;
@@ -161,19 +160,4 @@ internal class VideoPage : ObservableObject
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
         };
-    #region
-
-    // 视频画质选择事件
-    private RelayCommand? _videoQualitySelectedCommand;
-
-    public RelayCommand VideoQualitySelectedCommand => _videoQualitySelectedCommand ??= new RelayCommand(ExecuteVideoQualitySelectedCommand);
-
-    /// <summary>
-    /// 视频画质选择事件
-    /// </summary>
-    private void ExecuteVideoQualitySelectedCommand()
-    {
-    }
-
-    #endregion
 }

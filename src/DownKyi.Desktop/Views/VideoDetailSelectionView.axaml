@@ -199,53 +199,6 @@
                     Width="100"
                     Binding="{ReflectionBinding Duration}"
                     Header="{DynamicResource Duration}" />
-                <DataGridTemplateColumn
-                    Width="120"
-                    Header="{DynamicResource AudioQuality}">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate DataType="vmp:VideoPage">
-                            <Grid>
-                                <ComboBox
-                                    ItemsSource="{Binding AudioQualityFormatList,Mode=TwoWay}"
-                                    SelectedValue="{Binding AudioQualityFormat,Mode=TwoWay}" />
-                            </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn
-                    Width="120"
-                    Header="{DynamicResource VideoQuality}">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate DataType="vmp:VideoPage">
-                            <Grid>
-                                <ComboBox
-                                    DisplayMemberBinding="{Binding QualityFormat}"
-                                    ItemsSource="{Binding VideoQualityList,Mode=OneWay}"
-                                    SelectedItem="{Binding VideoQuality,Mode=TwoWay}">
-                                    <Interaction.Behaviors>
-                                        <EventTriggerBehavior EventName="SelectionChanged">
-                                            <InvokeCommandAction
-                                                Command="{Binding VideoQualitySelectedCommand}" />
-                                        </EventTriggerBehavior>
-                                    </Interaction.Behaviors>
-                                </ComboBox>
-                            </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn
-                    Width="120"
-                    Header="{DynamicResource VideoCodec}">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate DataType="vmp:VideoPage">
-                            <Grid>
-                                <ComboBox
-                                    ItemsSource="{Binding VideoQuality.VideoCodecList,Mode=OneWay}"
-                                    SelectedItem="{Binding VideoQuality.SelectedVideoCodec,Mode=TwoWay}" />
-                            </Grid>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
             </DataGrid.Columns>
 
         </DataGrid>

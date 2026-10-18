@@ -11,7 +11,7 @@
             BorderBrush="{DynamicResource BrushBorderSubtle}"
             BorderThickness="1"
             CornerRadius="{DynamicResource DownKyiRadiusMedium}">
-        <Grid ColumnDefinitions="Auto,Auto,32,*,Auto,Auto">
+        <Grid ColumnDefinitions="Auto,Auto,32,*,Auto">
             <CheckBox
                 Grid.Column="0"
                 VerticalAlignment="Center"
@@ -52,16 +52,6 @@
             </Grid>
             <Button
                 Grid.Column="4"
-                MinWidth="96"
-                Margin="8,0,0,0"
-                VerticalAlignment="Center"
-                Command="{Binding ParseAllVideoCommand}"
-                Content="{DynamicResource ParseVideo}"
-                FontSize="12"
-                Theme="{StaticResource BtnBorderStyle}"
-                Foreground="{DynamicResource BrushTextPrimary}" />
-            <Button
-                Grid.Column="5"
                 MinWidth="96"
                 Margin="8,0,0,0"
                 VerticalAlignment="Center"

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DownKyi.Core.BiliApi.BiliUtils;
-using DownKyi.Core.Settings;
 using DownKyi.Presentation;
 
 namespace DownKyi.Services.Video;
@@ -68,22 +67,4 @@ internal static class VideoSelectionState
         }
     }
 
-    public static List<VideoPage> GetPagesForScope(IEnumerable<VideoSection> sections, ParseScope parseScope)
-    {
-        return parseScope switch
-        {
-            ParseScope.SelectedItem => sections
-                .SelectMany(section => section.VideoPages)
-                .Where(page => page.IsSelected)
-                .ToList(),
-            ParseScope.CurrentSection => sections
-                .Where(section => section.IsSelected)
-                .SelectMany(section => section.VideoPages)
-                .ToList(),
-            ParseScope.All => sections
-                .SelectMany(section => section.VideoPages)
-                .ToList(),
-            _ => new List<VideoPage>()
-        };
-    }
 }

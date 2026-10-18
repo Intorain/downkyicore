@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,14 +29,6 @@ internal interface IVideoDetailWorkflowCoordinator : IDisposable
 
     Task<VideoDetailParseResult> LoadDetailAsync(VideoDetailOperation operation);
 
-    Task<VideoStreamParseResult> LoadPageStreamAsync(
-        VideoPage page,
-        VideoDetailOperation operation);
-
-    Task<VideoStreamParseBatchResult> LoadPageStreamsAsync(
-        IEnumerable<VideoSection> sections,
-        ParseScope parseScope,
-        VideoDetailOperation operation);
 }
 
 internal sealed class VideoDetailWorkflowCoordinator : IVideoDetailWorkflowCoordinator
@@ -93,7 +84,6 @@ internal sealed class VideoDetailWorkflowCoordinator : IVideoDetailWorkflowCoord
     {
         CurrentInput = string.Empty;
         _searchState.Clear();
-        _parseCoordinator.Reset();
     }
 
     public string SetInput(string requestedInput)
@@ -113,41 +103,9 @@ internal sealed class VideoDetailWorkflowCoordinator : IVideoDetailWorkflowCoord
         EnsureCurrent(operation);
         var result = await _parseCoordinator.LoadDetailAsync(
             CurrentInput,
-            refresh: true,
             operation.CancellationToken).ConfigureAwait(false);
         EnsureCurrent(operation);
         _searchState.Reset(result.VideoSections);
-        return result;
-    }
-
-    public async Task<VideoStreamParseResult> LoadPageStreamAsync(
-        VideoPage page,
-        VideoDetailOperation operation)
-    {
-        ArgumentNullException.ThrowIfNull(page);
-        EnsureCurrent(operation);
-        var result = await _parseCoordinator.LoadPageStreamAsync(
-            CurrentInput,
-            page,
-            refresh: true,
-            operation.CancellationToken).ConfigureAwait(false);
-        EnsureCurrent(operation);
-        return result;
-    }
-
-    public async Task<VideoStreamParseBatchResult> LoadPageStreamsAsync(
-        IEnumerable<VideoSection> sections,
-        ParseScope parseScope,
-        VideoDetailOperation operation)
-    {
-        ArgumentNullException.ThrowIfNull(sections);
-        EnsureCurrent(operation);
-        var pages = VideoSelectionState.GetPagesForScope(sections, parseScope);
-        var result = await _parseCoordinator.LoadPageStreamsAsync(
-            CurrentInput,
-            pages,
-            operation.CancellationToken).ConfigureAwait(false);
-        EnsureCurrent(operation);
         return result;
     }
 
