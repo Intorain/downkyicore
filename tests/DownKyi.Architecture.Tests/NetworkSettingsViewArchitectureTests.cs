@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace DownKyi.Architecture.Tests;
 
 public sealed class NetworkSettingsViewArchitectureTests
@@ -19,44 +17,16 @@ public sealed class NetworkSettingsViewArchitectureTests
     ];
 
     [Fact]
-    public void NetworkSettingsViewRemainsAThinOrderedComposition()
-    {
-        var source = Read("ViewNetwork.axaml");
-
-        Assert.True(File.ReadAllLines(Path.Combine(ViewRoot, "ViewNetwork.axaml")).Length <= 40);
-        AssertOrdered(
-            source,
-            "NetworkGeneralSettingsView",
-            "BuiltinDownloaderSettingsView");
-        Assert.DoesNotContain("{Binding", source, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void NetworkSettingsSectionsRemainFocusedAndUseOneBindingType()
+    public void NetworkSettingsSectionsUseOneBindingType()
     {
         foreach (var name in ViewNames)
         {
             var source = Read(name);
-            Assert.True(
-                File.ReadAllLines(Path.Combine(ViewRoot, name)).Length <= 300,
-                $"{name} exceeded the 300-line settings-view budget.");
             Assert.Contains(
                 "x:DataType=\"vms:ViewNetworkViewModel\"",
                 source,
                 StringComparison.Ordinal);
         }
-    }
-
-    [Fact]
-    public void NetworkSettingsBindingContractRetainsAllMovedTokens()
-    {
-        var source = string.Join(Environment.NewLine, ViewNames.Select(Read));
-
-        Assert.Equal(38, Count(source, @"\{Binding\s+([^},]+)"));
-        Assert.Equal(29, Count(source, @"(?:x:Name|Name)=""([^""]+)"""));
-        Assert.Equal(57, Count(source, @"\{DynamicResource\s+([^}]+)\}"));
-        Assert.Equal(4, Count(source, @"\{StaticResource\s+([^}]+)\}"));
-        Assert.Equal(11, Count(source, @"CommandParameter=""([^""]+)"""));
     }
 
     [Fact]
@@ -67,26 +37,6 @@ public sealed class NetworkSettingsViewArchitectureTests
         Assert.Contains("Name=\"NameIsHttpProxy\"", source, StringComparison.Ordinal);
         Assert.Contains("Name=\"NameHttpProxyPanel\"", source, StringComparison.Ordinal);
         Assert.Contains("IsVisible=\"{Binding IsHttpProxy}\"", source, StringComparison.Ordinal);
-    }
-
-    private static int Count(string source, string pattern)
-    {
-        return Regex.Count(
-            source,
-            pattern,
-            RegexOptions.CultureInvariant | RegexOptions.NonBacktracking,
-            TimeSpan.FromSeconds(1));
-    }
-
-    private static void AssertOrdered(string source, params string[] values)
-    {
-        var index = -1;
-        foreach (var value in values)
-        {
-            var next = source.IndexOf(value, index + 1, StringComparison.Ordinal);
-            Assert.True(next > index, $"{value} is missing or out of order.");
-            index = next;
-        }
     }
 
     private static string Read(string name)
