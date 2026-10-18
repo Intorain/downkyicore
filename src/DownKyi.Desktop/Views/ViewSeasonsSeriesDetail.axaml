@@ -262,32 +262,35 @@
                     Content="{DynamicResource SelectAll}"
                     Foreground="{DynamicResource BrushTextDark}"
                     IsChecked="{Binding IsSelectAll, Mode=TwoWay}" />
-                <custom:Loading
-                    Grid.Column="1"
-                    Width="24"
-                    Height="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Foreground="Gray"
-                    IsActive="{Binding Loading}"
-                    IsVisible="{Binding LoadingMoreVisibility}" />
                 <StackPanel
                     Grid.Column="1"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Orientation="Horizontal"
-                    Spacing="10"
-                    IsVisible="{Binding DownloadCommandGate.IsExecuting}">
-                    <custom:DownloadPreparationStatus
-                        CancelCommand="{Binding CancelDownloadPreparationCommand}"
-                        IsActive="{Binding DownloadCommandGate.IsExecuting}" />
-                    <TextBlock
-                        x:Name="DownloadPreparationProgressText"
-                        MaxWidth="220"
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource BrushTextGrey}"
-                        Text="{Binding DownloadPreparationProgressText}"
-                        TextWrapping="Wrap" />
+                    Spacing="10">
+                    <custom:Loading
+                        x:Name="LoadMoreIndicator"
+                        Width="24"
+                        Height="24"
+                        Foreground="Gray"
+                        IsActive="{Binding Loading}"
+                        IsVisible="{Binding LoadingMoreVisibility}" />
+                    <StackPanel
+                        x:Name="DownloadPreparationStatusPanel"
+                        Orientation="Horizontal"
+                        Spacing="10"
+                        IsVisible="{Binding DownloadCommandGate.IsExecuting}">
+                        <custom:DownloadPreparationStatus
+                            CancelCommand="{Binding CancelDownloadPreparationCommand}"
+                            IsActive="{Binding DownloadCommandGate.IsExecuting}" />
+                        <TextBlock
+                            x:Name="DownloadPreparationProgressText"
+                            MaxWidth="220"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource BrushTextGrey}"
+                            Text="{Binding DownloadPreparationProgressText}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
                 </StackPanel>
                 <Button
                     Grid.Column="2"

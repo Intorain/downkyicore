@@ -262,7 +262,8 @@ public sealed class UiSmokeTests
                 static action => action());
             var coordinator = new StreamingSeriesDownloadCoordinatorStub(
                 totalCount: 4,
-                itemsPerPage: 2);
+                itemsPerPage: 2,
+                pauseAdditionalPageLoads: true);
             series = new ViewSeasonsSeriesDetailViewModel(
                 new DesktopInteractionContextStub(navigation),
                 coordinator,
@@ -271,8 +272,16 @@ public sealed class UiSmokeTests
                 AppRoute.SeasonsSeries,
                 AppRoute.Index,
                 new SeriesNavigationPayload(42, 99)));
+            var view = new ViewSeasonsSeriesDetail { DataContext = series };
+            var window = new Window
+            {
+                Width = 960,
+                Height = 720,
+                Content = view
+            };
             try
             {
+                window.Show();
                 series.Medias[0].IsSelected = true;
 
                 var released = ObserveGateReleased(series.DownloadCommandGate);
@@ -282,12 +291,32 @@ public sealed class UiSmokeTests
                     .ConfigureAwait(true);
 
                 series.LoadMoreCommand.Execute(null);
+                await coordinator.AdditionalPageLoadStarted.Task
+                    .WaitAsync(TestContext.Current.CancellationToken)
+                    .ConfigureAwait(true);
                 await Dispatcher.UIThread.InvokeAsync(
                     static () => { },
                     DispatcherPriority.Background);
+                window.UpdateLayout();
 
                 Assert.Equal([1, 2], coordinator.RequestedPages);
                 Assert.Equal(string.Empty, series.DownloadPreparationProgressText);
+                Assert.True(series.LoadingMoreVisibility);
+                Assert.True(series.DownloadCommandGate.IsExecuting);
+
+                var loadMoreIndicator = Assert.IsType<DownKyi.CustomControl.Loading>(
+                    view.FindControl<DownKyi.CustomControl.Loading>("LoadMoreIndicator"));
+                var downloadStatus = Assert.IsType<StackPanel>(
+                    view.FindControl<StackPanel>("DownloadPreparationStatusPanel"));
+                Assert.True(loadMoreIndicator.IsVisible);
+                Assert.True(downloadStatus.IsVisible);
+                var loadMoreOrigin = loadMoreIndicator.TranslatePoint(default, view);
+                var downloadStatusOrigin = downloadStatus.TranslatePoint(default, view);
+                Assert.NotNull(loadMoreOrigin);
+                Assert.NotNull(downloadStatusOrigin);
+                Assert.True(
+                    loadMoreOrigin.Value.X + loadMoreIndicator.Bounds.Width
+                    <= downloadStatusOrigin.Value.X);
 
                 coordinator.DownloadCompletion.TrySetResult(
                     new ContentDownloadBatchResult(AddedCount: 1, SkippedCount: 0));
@@ -295,8 +324,10 @@ public sealed class UiSmokeTests
             }
             finally
             {
+                coordinator.AdditionalPageLoadCompletion.TrySetResult();
                 coordinator.DownloadCompletion.TrySetResult(
                     new ContentDownloadBatchResult(AddedCount: 0, SkippedCount: 0));
+                window.Close();
                 series.Dispose();
             }
         }).ConfigureAwait(true);
@@ -1543,7 +1574,8 @@ public sealed class UiSmokeTests
 
     private sealed class StreamingSeriesDownloadCoordinatorStub(
         int totalCount,
-        int itemsPerPage) : ISeasonsSeriesCoordinator
+        int itemsPerPage,
+        bool pauseAdditionalPageLoads = false) : ISeasonsSeriesCoordinator
     {
         public List<int> RequestedPages { get; } = [];
 
@@ -1557,7 +1589,13 @@ public sealed class UiSmokeTests
         public TaskCompletionSource<ContentDownloadBatchResult?> DownloadCompletion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<SeasonsSeriesPageSnapshot> LoadPageAsync(
+        public TaskCompletionSource AdditionalPageLoadStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource AdditionalPageLoadCompletion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<SeasonsSeriesPageSnapshot> LoadPageAsync(
             long mid,
             long id,
             SeasonsSeriesKind kind,
@@ -1567,6 +1605,14 @@ public sealed class UiSmokeTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             RequestedPages.Add(page);
+            if (pauseAdditionalPageLoads && page > 1)
+            {
+                AdditionalPageLoadStarted.TrySetResult();
+                await AdditionalPageLoadCompletion.Task
+                    .WaitAsync(cancellationToken)
+                    .ConfigureAwait(true);
+            }
+
             var firstIndex = ((page - 1) * itemsPerPage) + 1;
             var count = Math.Min(itemsPerPage, Math.Max(0, totalCount - firstIndex + 1));
             var archives = Enumerable.Range(firstIndex, count)
@@ -1577,10 +1623,10 @@ public sealed class UiSmokeTests
                     Title = $"fixture video {index}"
                 })
                 .ToArray();
-            return Task.FromResult(new SeasonsSeriesPageSnapshot(
+            return new SeasonsSeriesPageSnapshot(
                 archives,
                 "fixture series",
-                totalCount));
+                totalCount);
         }
 
         public async Task<ContentDownloadBatchResult?> AddToDownloadAsync(
