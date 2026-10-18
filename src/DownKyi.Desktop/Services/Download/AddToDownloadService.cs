@@ -35,7 +35,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
     private readonly DownloadPreparationService _preparationService;
     private readonly IWbiKeyProvider _wbiKeyProvider;
     private readonly IBilibiliApiClient _client;
-    private readonly DownloadDuplicateBatchChoices _duplicateChoices = new();
     public AddToDownloadService(
         PlayStreamType streamType,
         DownloadTaskAdmissionService admission,
@@ -189,10 +188,11 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                     .Where(download => review.CompletedDuplicateIds.Contains(download.Item.DownloadBase.Id))
                     .Select(download => GetDisplayName(download.Item))
                     .ToArray();
-                redownloadCompleted = await _duplicateChoices.ResolveCompletedAsync(
+                redownloadCompleted = await DownloadDuplicateBatchDialogContract.ShowAsync(
                     _dialogService,
-                    completedNames,
-                    review.ActiveDuplicateIds.Count,
+                    new DownloadDuplicateBatchPrompt(
+                        completedNames,
+                        review.ActiveDuplicateIds.Count),
                     cancellationToken).ConfigureAwait(true) ==
                     DownloadDuplicateBatchAction.RedownloadCompleted;
                 if (!redownloadCompleted)

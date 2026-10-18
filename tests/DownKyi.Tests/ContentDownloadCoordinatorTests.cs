@@ -96,7 +96,7 @@ public sealed class ContentDownloadCoordinatorTests
     }
 
     [Fact]
-    public async Task IncrementalBatchQueuesACompletedChunkBeforePreparingTheNextChunk()
+    public async Task CollectionBatchPreparesEveryItemBeforeSingleAdmission()
     {
         var session = new RecordingSession(@"D:\Downloads");
         var coordinator = CreateCoordinator(
@@ -111,66 +111,20 @@ public sealed class ContentDownloadCoordinatorTests
                 IsSelected: true))
             .ToArray();
 
-        var result = await coordinator.AddIncrementallyAsync(
+        var result = await coordinator.AddAsync(
             items,
             onlySelected: false,
-            progress,
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken,
+            progress);
 
         Assert.Equal(new ContentDownloadBatchResult(6, 0), result);
         Assert.Equal(1, session.DirectorySelectionCount);
         Assert.Equal(6, session.PrepareCount);
         Assert.Equal(6, session.AddCount);
-        Assert.Equal(2, session.BatchAddCount);
-        Assert.Equal(5, session.PrepareCountWhenFirstAdded);
+        Assert.Equal(1, session.BatchAddCount);
+        Assert.Equal(6, session.PrepareCountWhenFirstAdded);
         Assert.Equal(6, latestProgress?.ProcessedCount);
         Assert.Equal(6, latestProgress?.TotalCount);
-        Assert.Equal(6, latestProgress?.AddedCount);
-    }
-
-    [Fact]
-    public async Task IncrementalBatchStopsWhenAdmissionCannotContinue()
-    {
-        var session = new RecordingSession(
-            @"D:\Downloads",
-            batchResult: _ => DownloadAddResult.FromCounts(
-                addedCount: 0,
-                duplicateCount: 0,
-                failedCount: 1,
-                skippedCount: 0,
-                failureReason: DownloadAddStopReason.RuntimeUnavailable));
-        var infoServiceFactory = new RecordingInfoServiceFactory();
-        var coordinator = CreateCoordinator(
-            new RecordingFactory(session),
-            infoServiceFactory);
-        ContentDownloadBatchProgress? latestProgress = null;
-        var progress = new InlineProgress<ContentDownloadBatchProgress>(value => latestProgress = value);
-        var items = Enumerable.Range(1, 11)
-            .Select(index => new ContentDownloadItem(
-                $"BV1terminal{index}",
-                DownloadInfoKind.Video,
-                IsSelected: true))
-            .ToArray();
-
-        var result = await coordinator.AddIncrementallyAsync(
-            items,
-            onlySelected: false,
-            progress,
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(
-            new ContentDownloadBatchResult(
-                AddedCount: 0,
-                SkippedCount: 0,
-                DuplicateCount: 0,
-                FailedCount: 1,
-                StopReason: DownloadAddStopReason.RuntimeUnavailable),
-            result);
-        Assert.Equal(1, session.BatchAddCount);
-        Assert.Equal(5, session.PrepareCount);
-        Assert.Equal(5, infoServiceFactory.CreatedSources.Count);
-        Assert.Equal(0, latestProgress?.ProcessedCount);
-        Assert.Equal(1, latestProgress?.FailedCount);
     }
 
     [Fact]

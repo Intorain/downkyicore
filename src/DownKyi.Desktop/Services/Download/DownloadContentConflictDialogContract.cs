@@ -32,27 +32,22 @@ internal sealed record DownloadContentConflictPrompt
 
     private DownloadContentConflictPrompt(
         DownloadContentConflictPromptMode mode,
-        IReadOnlyList<DownloadContentConflictPromptItem> items,
-        bool appliesToRemainingItems)
+        IReadOnlyList<DownloadContentConflictPromptItem> items)
     {
         Mode = mode;
         Items = Array.AsReadOnly(items.ToArray());
-        AppliesToRemainingItems = appliesToRemainingItems;
     }
 
     public DownloadContentConflictPromptMode Mode { get; }
 
     public IReadOnlyList<DownloadContentConflictPromptItem> Items { get; }
 
-    public bool AppliesToRemainingItems { get; }
-
     public string PageName => GetSingleItem().PageName;
 
     public DownloadContentConflict Conflict => GetSingleItem().Conflict;
 
     public static DownloadContentConflictPrompt QualitySubstitutionBatch(
-        IReadOnlyList<DownloadContentConflictPromptItem> items,
-        bool appliesToRemainingItems = false)
+        IReadOnlyList<DownloadContentConflictPromptItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         if (items.Count == 0)
@@ -71,8 +66,7 @@ internal sealed record DownloadContentConflictPrompt
 
         return new DownloadContentConflictPrompt(
             DownloadContentConflictPromptMode.QualitySubstitutionBatch,
-            items,
-            appliesToRemainingItems);
+            items);
     }
 
     private DownloadContentConflictPromptItem GetSingleItem()

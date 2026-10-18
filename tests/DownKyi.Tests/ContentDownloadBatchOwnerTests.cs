@@ -9,7 +9,7 @@ namespace DownKyi.Tests;
 public sealed class ContentDownloadBatchOwnerTests
 {
     [Fact]
-    public async Task IncrementalBatchUsesTheIncrementalCoordinatorEntryPoint()
+    public async Task BatchForwardsPreparationProgressToTheCoordinator()
     {
         using var applicationCancellation = new ApplicationCancellation();
         var coordinator = new StubContentDownloadCoordinator(
@@ -17,18 +17,19 @@ public sealed class ContentDownloadBatchOwnerTests
                 new ContentDownloadBatchResult(1, 0)));
         using var owner = new ContentDownloadBatchOwner(coordinator, applicationCancellation);
         await owner.StartAsync(TestContext.Current.CancellationToken);
+        var progress = new Progress<ContentDownloadBatchProgress>();
 
         try
         {
-            var result = await owner.AddIncrementallyAsync(
+            var result = await owner.AddAsync(
                 [CreateItem("incremental")],
                 onlySelected: false,
-                progress: null,
-                TestContext.Current.CancellationToken);
+                TestContext.Current.CancellationToken,
+                progress);
 
             Assert.Equal(new ContentDownloadBatchResult(1, 0), result);
-            Assert.Equal(0, coordinator.AddCallCount);
-            Assert.Equal(1, coordinator.IncrementalAddCallCount);
+            Assert.Equal(1, coordinator.AddCallCount);
+            Assert.Same(progress, coordinator.LastProgress);
         }
         finally
         {
@@ -303,24 +304,16 @@ public sealed class ContentDownloadBatchOwnerTests
     {
         public int AddCallCount { get; private set; }
 
-        public int IncrementalAddCallCount { get; private set; }
+        public IProgress<ContentDownloadBatchProgress>? LastProgress { get; private set; }
 
         public Task<ContentDownloadBatchResult?> AddAsync(
             IReadOnlyList<ContentDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null)
         {
             AddCallCount++;
-            return executeAsync(items, onlySelected, cancellationToken);
-        }
-
-        public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
-            IReadOnlyList<ContentDownloadItem> items,
-            bool onlySelected,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken)
-        {
-            IncrementalAddCallCount++;
+            LastProgress = progress;
             return executeAsync(items, onlySelected, cancellationToken);
         }
     }

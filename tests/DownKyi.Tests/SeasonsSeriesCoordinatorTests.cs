@@ -113,16 +113,8 @@ public sealed class SeasonsSeriesCoordinatorTests
         public Task<ContentDownloadBatchResult?> AddAsync(
             IReadOnlyList<ContentDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException("Page loading must not submit a download batch.");
-        }
-
-        public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
-            IReadOnlyList<ContentDownloadItem> items,
-            bool onlySelected,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null)
         {
             throw new InvalidOperationException("Page loading must not submit a download batch.");
         }

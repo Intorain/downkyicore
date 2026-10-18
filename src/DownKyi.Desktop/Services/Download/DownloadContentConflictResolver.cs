@@ -54,33 +54,9 @@ internal sealed record DownloadContentConflictDecision(
     DownloadContentConflictAction Action,
     bool ApplyToAll);
 
-internal sealed class DownloadContentConflictChoices(
-    bool qualitySubstitutionDecisionAppliesToRemainingItems = false)
+internal sealed class DownloadContentConflictChoices
 {
     private readonly Dictionary<DownloadContentConflictKey, DownloadContentConflictAction> _choices = [];
-    private DownloadContentConflictAction? _qualitySubstitutionBatchAction;
-
-    public bool QualitySubstitutionDecisionAppliesToRemainingItems { get; } =
-        qualitySubstitutionDecisionAppliesToRemainingItems;
-
-    public bool TryGetQualitySubstitutionBatchAction(out DownloadContentConflictAction action)
-    {
-        if (_qualitySubstitutionBatchAction is { } rememberedAction)
-        {
-            action = rememberedAction;
-            return true;
-        }
-
-        action = default;
-        return false;
-    }
-
-    public DownloadContentConflictAction RememberQualitySubstitutionBatchAction(
-        DownloadContentConflictAction action)
-    {
-        _qualitySubstitutionBatchAction = action;
-        return action;
-    }
 
     public bool TryGet(
         DownloadContentConflict conflict,
@@ -181,7 +157,6 @@ internal sealed class DownloadContentConflictResolver
 
     public async Task<DownloadContentConflictAction> ResolveQualitySubstitutionBatchAsync(
         IReadOnlyList<DownloadContentConflictPromptItem> items,
-        bool appliesToRemainingItems,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -202,7 +177,7 @@ internal sealed class DownloadContentConflictResolver
 
         var decision = await DownloadContentConflictDialogContract.ShowAsync(
             _dialogService,
-            DownloadContentConflictPrompt.QualitySubstitutionBatch(items, appliesToRemainingItems),
+            DownloadContentConflictPrompt.QualitySubstitutionBatch(items),
             cancellationToken).ConfigureAwait(true);
         if (!decision.ApplyToAll)
         {

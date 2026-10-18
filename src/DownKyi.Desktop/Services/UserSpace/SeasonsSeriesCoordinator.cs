@@ -36,12 +36,8 @@ internal interface ISeasonsSeriesCoordinator
     Task<ContentDownloadBatchResult?> AddToDownloadAsync(
         IReadOnlyList<SeasonsSeriesDownloadItem> items,
         bool onlySelected,
-        CancellationToken cancellationToken);
-
-    Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
-        IReadOnlyList<SeasonsSeriesDownloadItem> items,
-        IProgress<ContentDownloadBatchProgress>? progress,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IProgress<ContentDownloadBatchProgress>? progress = null);
 }
 
 internal sealed class SeasonsSeriesCoordinator : ISeasonsSeriesCoordinator
@@ -115,26 +111,15 @@ internal sealed class SeasonsSeriesCoordinator : ISeasonsSeriesCoordinator
     public Task<ContentDownloadBatchResult?> AddToDownloadAsync(
         IReadOnlyList<SeasonsSeriesDownloadItem> items,
         bool onlySelected,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<ContentDownloadBatchProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(items);
         return _downloadCoordinator.AddAsync(
             CreateDownloadItems(items),
             onlySelected,
-            cancellationToken);
-    }
-
-    public Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
-        IReadOnlyList<SeasonsSeriesDownloadItem> items,
-        IProgress<ContentDownloadBatchProgress>? progress,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        return _downloadCoordinator.AddIncrementallyAsync(
-            CreateDownloadItems(items),
-            onlySelected: false,
-            progress,
-            cancellationToken);
+            cancellationToken,
+            progress);
     }
 
     private static ContentDownloadItem[] CreateDownloadItems(

@@ -35,8 +35,6 @@ internal readonly record struct DownloadAddResult
     public bool HasRecordedWork => AddedCount > 0 || DuplicateCount > 0
         || FailedCount > 0 || SkippedCount > 0;
 
-    public bool PreventsFurtherAdmission => StopReason == DownloadAddStopReason.RuntimeUnavailable;
-
     public static DownloadAddResult FromCounts(
         int addedCount,
         int duplicateCount,

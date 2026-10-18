@@ -227,11 +227,11 @@ public sealed class UiSmokeTests
                 Assert.False(coordinator.OnlySelected);
                 Assert.True(series.DownloadCommandGate.IsExecuting);
                 Assert.Equal(
-                    "正在加入下载列表 5/5",
+                    "正在准备下载项目 5/5",
                     series.DownloadPreparationProgressText);
                 var progress = Assert.IsType<TextBlock>(
                     view.FindControl<TextBlock>("DownloadPreparationProgressText"));
-                Assert.Equal("正在加入下载列表 5/5", progress.Text);
+                Assert.Equal("正在准备下载项目 5/5", progress.Text);
 
                 coordinator.DownloadCompletion.TrySetResult(
                     new ContentDownloadBatchResult(AddedCount: 5, SkippedCount: 0));
@@ -1498,12 +1498,8 @@ public sealed class UiSmokeTests
         public Task<ContentDownloadBatchResult?> AddToDownloadAsync(
             IReadOnlyList<SeasonsSeriesDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
-
-        public Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
-            IReadOnlyList<SeasonsSeriesDownloadItem> items,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null) => throw new NotSupportedException();
     }
 
     private sealed class ContinuousSeriesPageCoordinatorStub(
@@ -1541,12 +1537,8 @@ public sealed class UiSmokeTests
         public Task<ContentDownloadBatchResult?> AddToDownloadAsync(
             IReadOnlyList<SeasonsSeriesDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
-
-        public Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
-            IReadOnlyList<SeasonsSeriesDownloadItem> items,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken) => throw new NotSupportedException();
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null) => throw new NotSupportedException();
     }
 
     private sealed class StreamingSeriesDownloadCoordinatorStub(
@@ -1594,15 +1586,9 @@ public sealed class UiSmokeTests
         public async Task<ContentDownloadBatchResult?> AddToDownloadAsync(
             IReadOnlyList<SeasonsSeriesDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken) =>
-            await SubmitAsync(items, onlySelected, progress: null, cancellationToken)
-                .ConfigureAwait(true);
-
-        public async Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
-            IReadOnlyList<SeasonsSeriesDownloadItem> items,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken) =>
-            await SubmitAsync(items, onlySelected: false, progress, cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null) =>
+            await SubmitAsync(items, onlySelected, progress, cancellationToken)
                 .ConfigureAwait(true);
 
         private async Task<ContentDownloadBatchResult?> SubmitAsync(
@@ -1615,11 +1601,7 @@ public sealed class UiSmokeTests
             OnlySelected = onlySelected;
             progress?.Report(new ContentDownloadBatchProgress(
                 ProcessedCount: items.Count,
-                TotalCount: items.Count,
-                AddedCount: items.Count,
-                SkippedCount: 0,
-                DuplicateCount: 0,
-                FailedCount: 0));
+                TotalCount: items.Count));
             DownloadStarted.TrySetResult();
             return await DownloadCompletion.Task
                 .WaitAsync(cancellationToken)
@@ -1690,7 +1672,8 @@ public sealed class UiSmokeTests
         public async Task<ContentDownloadBatchResult?> AddAsync(
             IReadOnlyList<ContentDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var requestCount = Interlocked.Increment(ref _requestCount);
@@ -1706,13 +1689,6 @@ public sealed class UiSmokeTests
 
             return new ContentDownloadBatchResult(0, 0);
         }
-
-        public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
-            IReadOnlyList<ContentDownloadItem> items,
-            bool onlySelected,
-            IProgress<ContentDownloadBatchProgress>? progress,
-            CancellationToken cancellationToken) =>
-            AddAsync(items, onlySelected, cancellationToken);
     }
 
     private sealed class DesktopInteractionContextStub : IDesktopInteractionContext

@@ -96,7 +96,7 @@
     <system:String x:Key="PublicationWait">请稍等，马上就好~</system:String>
     <system:String x:Key="DiscoveringCollectionVideos">正在查找合集视频 {0}/{1}</system:String>
     <system:String x:Key="PreparingCollectionDownloads">已找到 {0} 个视频，正在准备下载</system:String>
-    <system:String x:Key="AddingCollectionDownloads">正在加入下载列表 {0}/{1}</system:String>
+    <system:String x:Key="PreparingCollectionDownloadItems">正在准备下载项目 {0}/{1}</system:String>
     
     <!--  Friend  -->
     <system:String x:Key="Friend">好友</system:String>
@@ -434,11 +434,11 @@
     
     <system:String x:Key="DownloadContentConflictTitle">下载选择需要确认</system:String>
     <system:String x:Key="DownloadDuplicateBatchTitle">重复下载需要确认</system:String>
-    <system:String x:Key="DownloadDuplicateBatchMessage">目前发现 {0} 部影片已经下载过。请选择跳过或重新下载；本次操作后续发现的重复影片也会沿用这项选择。</system:String>
+    <system:String x:Key="DownloadDuplicateBatchMessage">本次下载清单中有 {0} 部影片已经下载过。请选择跳过或重新下载。</system:String>
     <system:String x:Key="DownloadDuplicateBatchActiveMessage">另有 {0} 部影片已在下载队列中，将直接跳过。</system:String>
     <system:String x:Key="DownloadDuplicateBatchAffectedItems">查看已下载的 {0} 部影片</system:String>
-    <system:String x:Key="RedownloadDuplicateBatch">重新下载重复影片</system:String>
-    <system:String x:Key="SkipDuplicateBatch">跳过重复影片</system:String>
+    <system:String x:Key="RedownloadDuplicateBatch">重新下载这 {0} 部</system:String>
+    <system:String x:Key="SkipDuplicateBatch">跳过这 {0} 部</system:String>
     <system:String x:Key="DownloadContentConflictMessage">“{0}”无法完全符合原下载设置。请接受实际可取得的内容和品质，或跳过这一页。</system:String>
     <system:String x:Key="UseAvailableDownloadContent">使用{0}继续下载</system:String>
     <system:String x:Key="VideoQualitySubstitution">畫質：{0} → {1}</system:String>
@@ -454,12 +454,8 @@
     <system:String x:Key="DownloadQualityBatchGroup">{0}（{1} 部）</system:String>
     <system:String x:Key="DownloadQualityBatchAffectedItems">查看受影響的 {0} 部影片</system:String>
     <system:String x:Key="DownloadQualityBatchSettingsHint">若經常出現此提醒，可到「設定 → 影片」調整優先下載畫質與音質。</system:String>
-    <system:String x:Key="DownloadQualityIncrementalBatchMessage">目前處理的影片中有 {0} 部無法取得偏好品質。這個決定也會套用到本次合集後續遇到的品質替代。</system:String>
-    <system:String x:Key="DownloadQualityIncrementalBatchSettingsHint">後續相同情況不會再次詢問。若經常出現此提醒，可到「設定 → 影片」調整優先下載畫質與音質。</system:String>
     <system:String x:Key="UseAvailableQualityBatch">依清單品質下載（{0} 部）</system:String>
     <system:String x:Key="SkipQualityBatch">略過這 {0} 部</system:String>
-    <system:String x:Key="UseAvailableQualityIncrementalBatch">依可用品質繼續整個合集</system:String>
-    <system:String x:Key="SkipQualityIncrementalBatch">略過合集中的品質替代項目</system:String>
     
     
     <!-- CustomControl -->

@@ -324,10 +324,11 @@ internal class ViewSeasonsSeriesDetailViewModel : ViewModelBase
                 .ToArray();
             var progress = new Progress<ContentDownloadBatchProgress>(ApplyDownloadPreparationProgress);
             var result = await _coordinator
-                .AddAllToDownloadIncrementallyAsync(
+                .AddToDownloadAsync(
                     items,
-                    progress,
-                    cancellationToken)
+                    onlySelected: false,
+                    cancellationToken,
+                    progress)
                 .ConfigureAwait(true);
             cancellationToken.ThrowIfCancellationRequested();
             if (result != null)
@@ -370,7 +371,7 @@ internal class ViewSeasonsSeriesDetailViewModel : ViewModelBase
     private void ApplyDownloadPreparationProgress(ContentDownloadBatchProgress progress)
     {
         DownloadPreparationProgressText = DictionaryResource
-            .GetString("AddingCollectionDownloads")
+            .GetString("PreparingCollectionDownloadItems")
             .Replace(
                 "{0}",
                 progress.ProcessedCount.ToString(CultureInfo.CurrentCulture),
