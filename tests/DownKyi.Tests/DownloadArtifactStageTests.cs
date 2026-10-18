@@ -5,6 +5,7 @@ using Bilibili.Community.Service.Dm.V1;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Downloads;
 using DownKyi.Core.BiliApi.BiliUtils;
+using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
@@ -764,10 +765,10 @@ public sealed class DownloadArtifactStageTests
     }
 
     [Theory]
-    [InlineData(-1, "https://example.test/main.png", DownloadArtifactWriter.MainCoverTransferKey)]
-    [InlineData(123, "https://example.test/page.jpg", DownloadArtifactWriter.PageCoverTransferKey)]
+    [InlineData(PlayStreamType.Video, "https://example.test/main.png", DownloadArtifactWriter.MainCoverTransferKey)]
+    [InlineData(PlayStreamType.Cheese, "https://example.test/page.jpg", DownloadArtifactWriter.PageCoverTransferKey)]
     public async Task CoverSelectionCreatesOnlyThePreferredImage(
-        long episodeId,
+        PlayStreamType streamType,
         string expectedAddress,
         string expectedKey)
     {
@@ -785,7 +786,7 @@ public sealed class DownloadArtifactStageTests
             cover: true,
             coverUrl: "https://example.test/main.png",
             pageCoverUrl: "https://example.test/page.jpg",
-            episodeId: episodeId).ConfigureAwait(true);
+            streamType: streamType).ConfigureAwait(true);
 
         var result = await context.Stage.ExecuteAsync(
             context.Execution,
@@ -799,11 +800,51 @@ public sealed class DownloadArtifactStageTests
         AssertPhysicalArtifactsAreDurablyOwned(context, task);
     }
 
+    [Fact]
+    public async Task BangumiCoverOwnerCreatesEpisodeAndSeriesImages()
+    {
+        var requestedAddresses = new List<string>();
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (request, destination, token) =>
+            {
+                requestedAddresses.Add(request.RequestAddress);
+                return File.WriteAllTextAsync(destination, "image", token);
+            }
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg",
+            streamType: PlayStreamType.Bangumi).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal(
+            ["https://example.test/page.jpg", "https://example.test/main.png"],
+            requestedAddresses);
+        var task = await context.GetTaskAsync().ConfigureAwait(true);
+        Assert.Equal(
+            [DownloadArtifactWriter.MainCoverTransferKey, DownloadArtifactWriter.PageCoverTransferKey],
+            task.Plan.TransferFiles.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(
+            [
+                context.Downloading.DownloadBase.FilePath + ".Cover.png",
+                context.Downloading.DownloadBase.FilePath + ".jpg"
+            ],
+            context.GetPhysicalArtifactFiles());
+        AssertPhysicalArtifactsAreDurablyOwned(context, task);
+    }
+
     [Theory]
-    [InlineData(-1, "", "https://example.test/page.jpg")]
-    [InlineData(123, "https://example.test/main.png", "")]
+    [InlineData(PlayStreamType.Video, "", "https://example.test/page.jpg")]
+    [InlineData(PlayStreamType.Cheese, "https://example.test/main.png", "")]
     public async Task MissingPreferredCoverAddressUsesTheOtherImage(
-        long episodeId,
+        PlayStreamType streamType,
         string mainAddress,
         string pageAddress)
     {
@@ -821,7 +862,7 @@ public sealed class DownloadArtifactStageTests
             cover: true,
             coverUrl: mainAddress,
             pageCoverUrl: pageAddress,
-            episodeId: episodeId).ConfigureAwait(true);
+            streamType: streamType).ConfigureAwait(true);
 
         var result = await context.Stage.ExecuteAsync(
             context.Execution,
@@ -835,10 +876,10 @@ public sealed class DownloadArtifactStageTests
     }
 
     [Theory]
-    [InlineData(-1, "https://example.test/main.png", "https://example.test/page.jpg")]
-    [InlineData(123, "https://example.test/page.jpg", "https://example.test/main.png")]
+    [InlineData(PlayStreamType.Video, "https://example.test/main.png", "https://example.test/page.jpg")]
+    [InlineData(PlayStreamType.Cheese, "https://example.test/page.jpg", "https://example.test/main.png")]
     public async Task MissingPreferredCoverResponseUsesTheOtherImage(
-        long episodeId,
+        PlayStreamType streamType,
         string missingAddress,
         string fallbackAddress)
     {
@@ -859,7 +900,7 @@ public sealed class DownloadArtifactStageTests
             cover: true,
             coverUrl: "https://example.test/main.png",
             pageCoverUrl: "https://example.test/page.jpg",
-            episodeId: episodeId).ConfigureAwait(true);
+            streamType: streamType).ConfigureAwait(true);
 
         var result = await context.Stage.ExecuteAsync(
             context.Execution,
@@ -871,6 +912,34 @@ public sealed class DownloadArtifactStageTests
             Assert.Single(context.GetPhysicalArtifactFiles()),
             TestContext.Current.CancellationToken).ConfigureAwait(true));
         AssertPhysicalArtifactsAreDurablyOwned(context, await context.GetTaskAsync().ConfigureAwait(true));
+    }
+
+    [Fact]
+    public async Task MissingBangumiSeriesCoverKeepsTheEpisodeCover()
+    {
+        var client = new TestBilibiliApiClient
+        {
+            DownloadFileAsyncHandler = (request, destination, token) =>
+                request.RequestAddress.EndsWith("main.png", StringComparison.Ordinal)
+                    ? Task.FromException(new HttpRequestException(
+                        "not found", null, HttpStatusCode.NotFound))
+                    : File.WriteAllTextAsync(destination, "episode", token)
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client,
+            cover: true,
+            coverUrl: "https://example.test/main.png",
+            pageCoverUrl: "https://example.test/page.jpg",
+            streamType: PlayStreamType.Bangumi).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal("episode", await File.ReadAllTextAsync(
+            Assert.Single(context.GetPhysicalArtifactFiles()),
+            TestContext.Current.CancellationToken).ConfigureAwait(true));
     }
 
     [Fact]
@@ -1568,6 +1637,7 @@ public sealed class DownloadArtifactStageTests
             string? coverUrl = null,
             string? pageCoverUrl = null,
             long episodeId = -1,
+            PlayStreamType streamType = PlayStreamType.Video,
             long[]? selectedSubtitleTrackIds = null,
             long? defaultSubtitleTrackId = null,
             Func<DanmakuApplicationSettings, DanmakuApplicationSettings>? configureDanmaku = null)
@@ -1639,6 +1709,7 @@ public sealed class DownloadArtifactStageTests
                 {
                     Id = taskId.Value,
                     DownloadBase = downloadBase,
+                    PlayStreamType = streamType,
                     DownloadStatus = DownloadStatus.WaitForDownload
                 }
             };

@@ -296,22 +296,38 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         var pending = new List<PendingDownload>();
         foreach (var finalizedDownload in finalizedDownloads.Where(download => download.StopReason == null))
         {
+            var bangumiMainCoverAssigned = false;
             foreach (var finalizedSection in finalizedDownload.Sections)
             {
                 foreach (var finalizedPage in finalizedSection.Pages)
                 {
+                    var item = DownloadTaskDraftFactory.Create(
+                        directory,
+                        finalizedDownload.Video,
+                        finalizedSection.Section,
+                        finalizedDownload.Sections.Count,
+                        finalizedPage.Page,
+                        finalizedPage.VideoQuality,
+                        finalizedPage.AudioQualityFormat,
+                        finalizedPage.AvailableMedia,
+                        settings,
+                        finalizedPage.FinalizedContent);
+                    if (item.Downloading.PlayStreamType == PlayStreamType.Bangumi)
+                    {
+                        var ownsMainCover = finalizedPage.FinalizedContent.Cover
+                                            && !bangumiMainCoverAssigned;
+                        if (!ownsMainCover)
+                        {
+                            item.DownloadBase.CoverUrl = string.Empty;
+                        }
+                        else if (!string.IsNullOrWhiteSpace(item.DownloadBase.CoverUrl))
+                        {
+                            bangumiMainCoverAssigned = true;
+                        }
+                    }
+
                     pending.Add(new PendingDownload(
-                        DownloadTaskDraftFactory.Create(
-                            directory,
-                            finalizedDownload.Video,
-                            finalizedSection.Section,
-                            finalizedDownload.Sections.Count,
-                            finalizedPage.Page,
-                            finalizedPage.VideoQuality,
-                            finalizedPage.AudioQualityFormat,
-                            finalizedPage.AvailableMedia,
-                            settings,
-                            finalizedPage.FinalizedContent),
+                        item,
                         finalizedDownload.Video,
                         finalizedPage.Page));
                 }

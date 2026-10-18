@@ -840,6 +840,58 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
+    public async Task BangumiBatchAssignsTheSeriesCoverOnlyToTheFirstCoverTask()
+    {
+        using var context = CreateContext(generateMetadata: false);
+        var firstPage = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        firstPage.EpisodeId = 101;
+        firstPage.FirstFrame = "https://example.test/episode-1.jpg";
+        var secondPage = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        secondPage.Cid++;
+        secondPage.EpisodeId = 102;
+        secondPage.Name = "page-2";
+        secondPage.Order = 2;
+        secondPage.FirstFrame = "https://example.test/episode-2.jpg";
+        var requestedContent = DownloadContentSelection.None with { Cover = true };
+        var preparedDownload = await context.Service.PrepareAsync(
+            new VideoInfoView
+            {
+                Title = "bangumi",
+                TypeId = 13,
+                VideoZone = "Anime",
+                CoverUrl = "https://example.test/series.jpg"
+            },
+            [
+                new VideoSection
+                {
+                    Id = 1,
+                    IsSelected = true,
+                    Title = "episodes",
+                    VideoPages = [firstPage, secondPage]
+                }
+            ],
+            requestedContent,
+            isAll: true,
+            TestContext.Current.CancellationToken);
+
+        var added = await context.AddToDownloadAsync(
+            CreateSelection(_directory, requestedContent),
+            preparedDownload,
+            isAll: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, added);
+        var downloads = context.ListState.Downloading.OrderBy(item => item.Order).ToArray();
+        Assert.Equal("https://example.test/series.jpg", downloads[0].DownloadBase.CoverUrl);
+        Assert.Equal("https://example.test/episode-1.jpg", downloads[0].DownloadBase.PageCoverUrl);
+        Assert.Equal(string.Empty, downloads[1].DownloadBase.CoverUrl);
+        Assert.Equal("https://example.test/episode-2.jpg", downloads[1].DownloadBase.PageCoverUrl);
+        Assert.All(downloads, item => Assert.Equal(
+            PlayStreamType.Bangumi,
+            item.Downloading.PlayStreamType));
+    }
+
+    [Fact]
     public async Task AliasedSubtitleConflictDoesNotOverwriteTheExistingSubtitle()
     {
         var aliasRoot = Path.Combine(_directory, $"conflict-{Guid.NewGuid():N}");

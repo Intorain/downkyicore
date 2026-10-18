@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Domain.Results;
 
 namespace DownKyi.Services.Download;
@@ -146,17 +147,26 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
             "DownloadingCover",
             cancellationToken).ConfigureAwait(true);
         var metadata = context.Input.Metadata;
-        var pageCover = (
-            Key: DownloadArtifactWriter.PageCoverTransferKey,
-            Address: metadata.PageCoverAddress,
-            File: DownloadOutputLayout.GetPageCoverPath(
+        var pageCover = new CoverCandidate(
+            DownloadArtifactWriter.PageCoverTransferKey,
+            metadata.PageCoverAddress,
+            DownloadOutputLayout.GetPageCoverPath(
                 context.WorkingBasePath, metadata.PageCoverAddress));
-        var mainCover = (
-            Key: DownloadArtifactWriter.MainCoverTransferKey,
-            Address: metadata.CoverAddress,
-            File: DownloadOutputLayout.GetMainCoverPath(
+        var mainCover = new CoverCandidate(
+            DownloadArtifactWriter.MainCoverTransferKey,
+            metadata.CoverAddress,
+            DownloadOutputLayout.GetMainCoverPath(
                 context.WorkingBasePath, metadata.CoverAddress));
-        var candidates = metadata.Media.EpisodeId > 0
+        if (context.Input.StreamType == PlayStreamType.Bangumi)
+        {
+            return await DownloadCoverCandidatesAsync(
+                context,
+                [pageCover, mainCover],
+                stopAfterFirstCreated: false,
+                cancellationToken).ConfigureAwait(true);
+        }
+
+        var candidates = context.Input.StreamType == PlayStreamType.Cheese
             ? new[] { pageCover, mainCover }
             : new[] { mainCover, pageCover };
 
@@ -165,7 +175,20 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
             context.HasPublished(candidate.Key)
             || context.StagingDirectory != null
             && DownloadFileIntegrity.Check(candidate.File).IsUsable).ToArray();
-        foreach (var candidate in existing.Length == 0 ? candidates : existing)
+        return await DownloadCoverCandidatesAsync(
+            context,
+            existing.Length == 0 ? candidates : existing,
+            stopAfterFirstCreated: existing.Length == 0,
+            cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task<OperationResult<DownloadStageResult>> DownloadCoverCandidatesAsync(
+        DownloadExecutionContext context,
+        IReadOnlyList<CoverCandidate> candidates,
+        bool stopAfterFirstCreated,
+        CancellationToken cancellationToken)
+    {
+        foreach (var candidate in candidates)
         {
             var result = await ProduceAndStageAsync(
                 context, candidate.Key, candidate.File,
@@ -188,7 +211,7 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
                 context.PageCoverFile = file;
             }
 
-            if (existing.Length == 0 && (file != null || context.HasPublished(candidate.Key)))
+            if (stopAfterFirstCreated && (file != null || context.HasPublished(candidate.Key)))
             {
                 break;
             }
@@ -196,6 +219,8 @@ internal sealed class DownloadArtifactsStage : IDownloadPipelineStage
 
         return DownloadStageResult.Success(Name);
     }
+
+    private sealed record CoverCandidate(string Key, string Address, string File);
 
     private static async Task<OperationResult<DownloadArtifactWriteResult>> ProduceAndStageAsync(
         DownloadExecutionContext context,
