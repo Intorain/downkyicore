@@ -1,5 +1,5 @@
 name: "📦 应用内诊断反馈"
-description: "从 DownKyi 的反馈按钮提交错误诊断包"
+description: "提交从 DownKyi 设置中导出的错误诊断包"
 title: "[Bug] "
 labels: ["bug", "user-bug", "needs-triage"]
 
@@ -7,7 +7,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        请从 DownKyi 自动打开的文件夹选择 `downkyi-feedback.zip`，上传到下方。
+        请在 DownKyi 中依次打开「设置 → 关于与反馈 → 反馈与诊断」，点击「导出诊断日志」。
+        从自动打开的文件夹选择 `downkyi-feedback.zip`，上传到下方。
         压缩包只含程序预定义的错误诊断字段，不含原始日志、数据库或设置文件。
         本仓库为公开仓库；上传后任何人都可以下载附件。提交前请检查内容。
 
@@ -47,7 +48,7 @@ body:
     id: diagnostic_package
     attributes:
       label: "诊断包（必填）"
-      description: "上传 DownKyi 生成的 downkyi-feedback.zip。"
+      description: "在「设置 → 关于与反馈 → 反馈与诊断」中点击「导出诊断日志」，上传生成的 downkyi-feedback.zip。"
     validations:
       required: true
       accept: ".zip"
