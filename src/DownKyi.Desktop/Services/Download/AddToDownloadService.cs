@@ -245,7 +245,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                             DictionaryResource.GetString("DownloadRuntimeUnavailable"),
                             cancellationToken)
                         .ConfigureAwait(true);
-                    return CreateResult(
+                    return DownloadAddResult.FromCounts(
                         addedCount,
                         duplicateCount,
                         failedCount,
@@ -280,7 +280,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                 cancellationToken);
         }
 
-        return CreateResult(
+        return DownloadAddResult.FromCounts(
             addedCount,
             duplicateCount,
             failedCount,
@@ -325,21 +325,6 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
         string.Equals(item.DownloadBase.MainTitle, item.DownloadBase.Name, StringComparison.Ordinal)
             ? item.DownloadBase.Name
             : $"{item.DownloadBase.MainTitle} - {item.DownloadBase.Name}";
-
-    private static DownloadAddResult CreateResult(
-        int addedCount,
-        int duplicateCount,
-        int failedCount,
-        int skippedCount,
-        DownloadAddStopReason? failureReason)
-    {
-        return DownloadAddResult.FromCounts(
-            addedCount,
-            duplicateCount,
-            failedCount,
-            skippedCount,
-            failureReason);
-    }
 
     private sealed record PendingDownload(
         DownloadingItem Item,

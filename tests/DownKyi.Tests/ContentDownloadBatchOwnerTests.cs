@@ -9,6 +9,35 @@ namespace DownKyi.Tests;
 public sealed class ContentDownloadBatchOwnerTests
 {
     [Fact]
+    public async Task BatchForwardsPreparationProgressToTheCoordinator()
+    {
+        using var applicationCancellation = new ApplicationCancellation();
+        var coordinator = new StubContentDownloadCoordinator(
+            static (_, _, _) => Task.FromResult<ContentDownloadBatchResult?>(
+                new ContentDownloadBatchResult(1, 0)));
+        using var owner = new ContentDownloadBatchOwner(coordinator, applicationCancellation);
+        await owner.StartAsync(TestContext.Current.CancellationToken);
+        var progress = new Progress<ContentDownloadBatchProgress>();
+
+        try
+        {
+            var result = await owner.AddAsync(
+                [CreateItem("incremental")],
+                onlySelected: false,
+                TestContext.Current.CancellationToken,
+                progress);
+
+            Assert.Equal(new ContentDownloadBatchResult(1, 0), result);
+            Assert.Equal(1, coordinator.AddCallCount);
+            Assert.Same(progress, coordinator.LastProgress);
+        }
+        finally
+        {
+            await owner.StopAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Fact]
     public async Task SubmittedBatchesRunInFifoOrderWithoutOverlap()
     {
         using var applicationCancellation = new ApplicationCancellation();
@@ -273,10 +302,19 @@ public sealed class ContentDownloadBatchOwnerTests
         Func<IReadOnlyList<ContentDownloadItem>, bool, CancellationToken, Task<ContentDownloadBatchResult?>> executeAsync)
         : IContentDownloadCoordinator
     {
+        public int AddCallCount { get; private set; }
+
+        public IProgress<ContentDownloadBatchProgress>? LastProgress { get; private set; }
+
         public Task<ContentDownloadBatchResult?> AddAsync(
             IReadOnlyList<ContentDownloadItem> items,
             bool onlySelected,
-            CancellationToken cancellationToken) =>
-            executeAsync(items, onlySelected, cancellationToken);
+            CancellationToken cancellationToken,
+            IProgress<ContentDownloadBatchProgress>? progress = null)
+        {
+            AddCallCount++;
+            LastProgress = progress;
+            return executeAsync(items, onlySelected, cancellationToken);
+        }
     }
 }
