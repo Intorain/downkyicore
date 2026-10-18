@@ -11,6 +11,57 @@ public sealed class DownloadTaskStagingSafetyTests : IDisposable
         Path.GetTempPath(), "downkyi-staging-safety", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void LastTaskCleanupRemovesEmptyStagingHierarchy()
+    {
+        var outputBase = Path.Combine(_directory, "output");
+        var taskId = new DownloadTaskId("completed-task");
+        var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+        staging.GetDirectory(taskId, outputBase, Guid.NewGuid().ToString("N"));
+
+        Assert.True(staging.CleanupTask(taskId));
+
+        Assert.False(Directory.Exists(Path.Combine(_directory, ".downkyi")));
+    }
+
+    [Fact]
+    public void ParentCleanupWaitsForOtherTaskInSameOutputDirectory()
+    {
+        var outputBase = Path.Combine(_directory, "output");
+        var firstTask = new DownloadTaskId("first-task");
+        var secondTask = new DownloadTaskId("second-task");
+        var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+        var firstDirectory = staging.GetDirectory(
+            firstTask, outputBase, Guid.NewGuid().ToString("N"));
+        var secondDirectory = staging.GetDirectory(
+            secondTask, outputBase, Guid.NewGuid().ToString("N"));
+
+        Assert.True(staging.CleanupTask(firstTask));
+
+        Assert.False(Directory.Exists(firstDirectory));
+        Assert.True(Directory.Exists(secondDirectory));
+        Assert.True(Directory.Exists(Path.Combine(_directory, ".downkyi", "staging")));
+
+        Assert.True(staging.CleanupTask(secondTask));
+        Assert.False(Directory.Exists(Path.Combine(_directory, ".downkyi")));
+    }
+
+    [Fact]
+    public void ParentCleanupPreservesUnknownContent()
+    {
+        var outputBase = Path.Combine(_directory, "output");
+        var taskId = new DownloadTaskId("completed-task");
+        var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
+        staging.GetDirectory(taskId, outputBase, Guid.NewGuid().ToString("N"));
+        var unknownFile = Path.Combine(_directory, ".downkyi", "keep.txt");
+        File.WriteAllText(unknownFile, "keep");
+
+        Assert.True(staging.CleanupTask(taskId));
+
+        Assert.True(File.Exists(unknownFile));
+        Assert.False(Directory.Exists(Path.Combine(_directory, ".downkyi", "staging")));
+    }
+
+    [Fact]
     public void ShutdownPreservesOwnedTransferForNextSession()
     {
         var outputBase = Path.Combine(_directory, "output");
