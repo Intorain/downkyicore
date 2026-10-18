@@ -29,7 +29,8 @@ internal readonly record struct ContentDownloadBatchResult(
     int AddedCount,
     int SkippedCount,
     int DuplicateCount = 0,
-    int FailedCount = 0);
+    int FailedCount = 0,
+    DownloadAddStopReason? StopReason = null);
 
 internal readonly record struct ContentDownloadBatchProgress(
     int ProcessedCount,
@@ -103,8 +104,7 @@ internal interface IContentDownloadCoordinator
         IReadOnlyList<ContentDownloadItem> items,
         bool onlySelected,
         IProgress<ContentDownloadBatchProgress>? progress,
-        CancellationToken cancellationToken) =>
-        AddAsync(items, onlySelected, cancellationToken);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
@@ -127,39 +127,33 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<ContentDownloadBatchResult?> AddAsync(
+    public Task<ContentDownloadBatchResult?> AddAsync(
         IReadOnlyList<ContentDownloadItem> items,
         bool onlySelected,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(items);
-        cancellationToken.ThrowIfCancellationRequested();
+        CancellationToken cancellationToken) =>
+        AddCoreAsync(
+            items,
+            onlySelected,
+            batchSize: null,
+            progress: null,
+            cancellationToken);
 
-        var selectedItems = onlySelected
-            ? items.Where(item => item.IsSelected).ToArray()
-            : items.ToArray();
-        if (selectedItems.Length == 0)
-        {
-            return new ContentDownloadBatchResult(AddedCount: 0, SkippedCount: 0);
-        }
-
-        var addToDownloadSession = _serviceFactory.Create(ToPlayStreamType(selectedItems[0].Kind));
-        var flow = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
-            () => addToDownloadSession.SelectDownloadAsync(cancellationToken: cancellationToken),
-            selection => AddItemsAsync(
-                addToDownloadSession,
-                selectedItems,
-                selection,
-                cancellationToken),
-            cancellationToken).ConfigureAwait(true);
-        return flow.Outcome == DownloadAddFlowOutcome.Completed
-            ? flow.Value
-            : null;
-    }
-
-    public async Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
+    public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
         IReadOnlyList<ContentDownloadItem> items,
         bool onlySelected,
+        IProgress<ContentDownloadBatchProgress>? progress,
+        CancellationToken cancellationToken) =>
+        AddCoreAsync(
+            items,
+            onlySelected,
+            IncrementalPreparationBatchSize,
+            progress,
+            cancellationToken);
+
+    private async Task<ContentDownloadBatchResult?> AddCoreAsync(
+        IReadOnlyList<ContentDownloadItem> items,
+        bool onlySelected,
+        int? batchSize,
         IProgress<ContentDownloadBatchProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -184,10 +178,12 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
         var addToDownloadSession = _serviceFactory.Create(ToPlayStreamType(selectedItems[0].Kind));
         var flow = await DownloadAddCoordinator.AddToDownloadIfSelectionAcceptedAsync(
             () => addToDownloadSession.SelectDownloadAsync(cancellationToken: cancellationToken),
-            selection => AddItemsIncrementallyAsync(
+            selection => AddItemsAsync(
                 addToDownloadSession,
                 selectedItems,
                 selection,
+                batchSize ?? selectedItems.Length,
+                decisionsApplyToRemainingItems: batchSize != null,
                 progress,
                 cancellationToken),
             cancellationToken).ConfigureAwait(true);
@@ -200,77 +196,8 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
         IAddToDownloadSession addToDownloadSession,
         ContentDownloadItem[] items,
         DownloadAddSelection selection,
-        CancellationToken cancellationToken)
-    {
-        return Task.Run(async () =>
-        {
-            var addedCount = 0;
-            var skippedCount = 0;
-            var duplicateCount = 0;
-            var failedCount = 0;
-            var preparedDownloads = new List<PreparedDownload>(items.Length);
-            foreach (var item in items)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                PreparedDownload? preparedDownload;
-                try
-                {
-                    var infoService = await _infoServiceFactory
-                        .CreateAsync(item, cancellationToken)
-                        .ConfigureAwait(false);
-                    preparedDownload = await addToDownloadSession
-                        .PrepareAsync(infoService, selection.RequestedContent, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (BilibiliApiResponseException exception) when (IsUnavailableVideo(exception))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    skippedCount++;
-                    _logger.LogWarningMessage(
-                        $"A content download item was skipped because Bilibili reported it unavailable; " +
-                        $"operation={exception.Operation}; code={exception.Code}.",
-                        exception);
-                    continue;
-                }
-
-                if (preparedDownload == null)
-                {
-                    skippedCount++;
-                    continue;
-                }
-
-                preparedDownloads.Add(preparedDownload);
-            }
-
-            var finalizedDownloads = await _actionPlanner
-                .PlanBatchAsync(
-                    selection.RequestedContent,
-                    preparedDownloads,
-                    isAll: false,
-                    new DownloadContentConflictChoices(),
-                    cancellationToken)
-                .ConfigureAwait(true);
-            cancellationToken.ThrowIfCancellationRequested();
-            var addResult = await addToDownloadSession
-                .AddToDownloadBatch(selection, finalizedDownloads, cancellationToken)
-                .ConfigureAwait(false);
-            addedCount += addResult.AddedCount;
-            duplicateCount += addResult.DuplicateCount;
-            failedCount += addResult.FailedCount;
-            skippedCount += addResult.SkippedCount;
-
-            return new ContentDownloadBatchResult(
-                addedCount,
-                skippedCount,
-                duplicateCount,
-                failedCount);
-        }, cancellationToken);
-    }
-
-    private Task<ContentDownloadBatchResult> AddItemsIncrementallyAsync(
-        IAddToDownloadSession addToDownloadSession,
-        ContentDownloadItem[] items,
-        DownloadAddSelection selection,
+        int batchSize,
+        bool decisionsApplyToRemainingItems,
         IProgress<ContentDownloadBatchProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -281,10 +208,11 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
             var skippedCount = 0;
             var duplicateCount = 0;
             var failedCount = 0;
+            DownloadAddStopReason? stopReason = null;
             var conflictChoices = new DownloadContentConflictChoices(
-                qualitySubstitutionDecisionAppliesToRemainingItems: true);
+                qualitySubstitutionDecisionAppliesToRemainingItems: decisionsApplyToRemainingItems);
 
-            foreach (var itemBatch in items.Chunk(IncrementalPreparationBatchSize))
+            foreach (var itemBatch in items.Chunk(batchSize))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var preparedDownloads = new List<PreparedDownload>(itemBatch.Length);
@@ -341,6 +269,13 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
                 duplicateCount += addResult.DuplicateCount;
                 failedCount += addResult.FailedCount;
                 skippedCount += addResult.SkippedCount;
+                if (addResult.PreventsFurtherAdmission)
+                {
+                    stopReason = addResult.StopReason;
+                    ReportProgress();
+                    break;
+                }
+
                 processedCount += preparedDownloads.Count;
                 ReportProgress();
             }
@@ -349,7 +284,8 @@ internal sealed class ContentDownloadCoordinator : IContentDownloadCoordinator
                 addedCount,
                 skippedCount,
                 duplicateCount,
-                failedCount);
+                failedCount,
+                stopReason);
 
             void ReportProgress()
             {

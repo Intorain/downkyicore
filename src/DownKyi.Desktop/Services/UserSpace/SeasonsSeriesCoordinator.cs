@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Bilibili;
@@ -40,8 +41,7 @@ internal interface ISeasonsSeriesCoordinator
     Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
         IReadOnlyList<SeasonsSeriesDownloadItem> items,
         IProgress<ContentDownloadBatchProgress>? progress,
-        CancellationToken cancellationToken) =>
-        AddToDownloadAsync(items, onlySelected: false, cancellationToken);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class SeasonsSeriesCoordinator : ISeasonsSeriesCoordinator
@@ -118,14 +118,8 @@ internal sealed class SeasonsSeriesCoordinator : ISeasonsSeriesCoordinator
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(items);
-        var downloadItems = new List<ContentDownloadItem>(items.Count);
-        foreach (var item in items)
-        {
-            downloadItems.Add(new ContentDownloadItem(item.Bvid, DownloadInfoKind.Video, item.IsSelected));
-        }
-
         return _downloadCoordinator.AddAsync(
-            downloadItems,
+            CreateDownloadItems(items),
             onlySelected,
             cancellationToken);
     }
@@ -136,17 +130,18 @@ internal sealed class SeasonsSeriesCoordinator : ISeasonsSeriesCoordinator
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(items);
-        var downloadItems = new List<ContentDownloadItem>(items.Count);
-        foreach (var item in items)
-        {
-            downloadItems.Add(new ContentDownloadItem(item.Bvid, DownloadInfoKind.Video, item.IsSelected));
-        }
-
         return _downloadCoordinator.AddIncrementallyAsync(
-            downloadItems,
+            CreateDownloadItems(items),
             onlySelected: false,
             progress,
             cancellationToken);
     }
 
+    private static ContentDownloadItem[] CreateDownloadItems(
+        IEnumerable<SeasonsSeriesDownloadItem> items) =>
+        items.Select(static item => new ContentDownloadItem(
+                item.Bvid,
+                DownloadInfoKind.Video,
+                item.IsSelected))
+            .ToArray();
 }

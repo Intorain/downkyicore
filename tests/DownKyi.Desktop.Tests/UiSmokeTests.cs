@@ -248,6 +248,61 @@ public sealed class UiSmokeTests
     }
 
     [AvaloniaFact]
+    public async Task DownloadSelectedDoesNotReportCollectionDiscoveryWhileAnotherPageLoads()
+    {
+        await AvaloniaTestDispatcher.RunAsync(async () =>
+        {
+            DesktopTestResources.EnsureProductThemeResources();
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            ViewSeasonsSeriesDetailViewModel? series = null;
+            using var navigation = new AvaloniaNavigationService(
+                route => route == AppRoute.SeasonsSeries
+                    ? series!
+                    : throw new InvalidOperationException($"Unexpected route {route}."),
+                static action => action());
+            var coordinator = new StreamingSeriesDownloadCoordinatorStub(
+                totalCount: 4,
+                itemsPerPage: 2);
+            series = new ViewSeasonsSeriesDetailViewModel(
+                new DesktopInteractionContextStub(navigation),
+                coordinator,
+                NullLogger<ViewSeasonsSeriesDetailViewModel>.Instance);
+            navigation.Navigate(new AppNavigationRequest(
+                AppRoute.SeasonsSeries,
+                AppRoute.Index,
+                new SeriesNavigationPayload(42, 99)));
+            try
+            {
+                series.Medias[0].IsSelected = true;
+
+                var released = ObserveGateReleased(series.DownloadCommandGate);
+                series.AddToDownloadCommand.Execute(null);
+                await coordinator.DownloadStarted.Task
+                    .WaitAsync(TestContext.Current.CancellationToken)
+                    .ConfigureAwait(true);
+
+                series.LoadMoreCommand.Execute(null);
+                await Dispatcher.UIThread.InvokeAsync(
+                    static () => { },
+                    DispatcherPriority.Background);
+
+                Assert.Equal([1, 2], coordinator.RequestedPages);
+                Assert.Equal(string.Empty, series.DownloadPreparationProgressText);
+
+                coordinator.DownloadCompletion.TrySetResult(
+                    new ContentDownloadBatchResult(AddedCount: 1, SkippedCount: 0));
+                await released.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+            }
+            finally
+            {
+                coordinator.DownloadCompletion.TrySetResult(
+                    new ContentDownloadBatchResult(AddedCount: 0, SkippedCount: 0));
+                series.Dispose();
+            }
+        }).ConfigureAwait(true);
+    }
+
+    [AvaloniaFact]
     public async Task ShiftClickSelectsAcrossSeriesPagesAppendedToTheContinuousList()
     {
         await AvaloniaTestDispatcher.RunAsync(() =>
@@ -1444,6 +1499,11 @@ public sealed class UiSmokeTests
             IReadOnlyList<SeasonsSeriesDownloadItem> items,
             bool onlySelected,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
+            IReadOnlyList<SeasonsSeriesDownloadItem> items,
+            IProgress<ContentDownloadBatchProgress>? progress,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class ContinuousSeriesPageCoordinatorStub(
@@ -1481,6 +1541,11 @@ public sealed class UiSmokeTests
         public Task<ContentDownloadBatchResult?> AddToDownloadAsync(
             IReadOnlyList<SeasonsSeriesDownloadItem> items,
             bool onlySelected,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<ContentDownloadBatchResult?> AddAllToDownloadIncrementallyAsync(
+            IReadOnlyList<SeasonsSeriesDownloadItem> items,
+            IProgress<ContentDownloadBatchProgress>? progress,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
@@ -1641,6 +1706,13 @@ public sealed class UiSmokeTests
 
             return new ContentDownloadBatchResult(0, 0);
         }
+
+        public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
+            IReadOnlyList<ContentDownloadItem> items,
+            bool onlySelected,
+            IProgress<ContentDownloadBatchProgress>? progress,
+            CancellationToken cancellationToken) =>
+            AddAsync(items, onlySelected, cancellationToken);
     }
 
     private sealed class DesktopInteractionContextStub : IDesktopInteractionContext

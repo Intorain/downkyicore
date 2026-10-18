@@ -481,6 +481,45 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
+    public async Task CompletedDuplicateDecisionIsReusedAcrossSessionBatches()
+    {
+        using var context = CreateContext(generateMetadata: false);
+        var requestedContent = DownloadContentSelection.None with { Video = true };
+        var first = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        first.Cid = 1;
+        first.Name = "first";
+        var second = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
+        second.Cid = 2;
+        second.Name = "second";
+        second.Order = 2;
+        await context.Store.AddHistoryAsync(
+            CreateHistory(first, requestedContent),
+            TestContext.Current.CancellationToken);
+        await context.Store.AddHistoryAsync(
+            CreateHistory(second, requestedContent),
+            TestContext.Current.CancellationToken);
+        context.Dialogs.Result = new AppDialogResult(
+            AppDialogOutcome.Accepted,
+            DownloadDuplicateBatchDialogContract.Encode(
+                DownloadDuplicateBatchAction.SkipCompleted));
+        var selection = CreateSelection(_directory, requestedContent);
+
+        var firstResult = await context.AddToDownloadResultAsync(
+            selection,
+            await context.PrepareAsync(requestedContent, first),
+            cancellationToken: TestContext.Current.CancellationToken);
+        var secondResult = await context.AddToDownloadResultAsync(
+            selection,
+            await context.PrepareAsync(requestedContent, second),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, firstResult.DuplicateCount);
+        Assert.Equal(1, secondResult.DuplicateCount);
+        Assert.Single(context.Dialogs.Requests);
+        Assert.Equal(0, context.Store.AddCount);
+    }
+
+    [Fact]
     public async Task RedownloadDecisionLoadsMetadataAndAdmitsTheCompletedDuplicate()
     {
         using var context = CreateContext(generateMetadata: true);

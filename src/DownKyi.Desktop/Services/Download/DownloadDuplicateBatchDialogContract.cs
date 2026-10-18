@@ -37,6 +37,29 @@ internal sealed record DownloadDuplicateBatchPrompt
     public int ActiveDuplicateCount { get; }
 }
 
+internal sealed class DownloadDuplicateBatchChoices
+{
+    private DownloadDuplicateBatchAction? _completedAction;
+
+    public async Task<DownloadDuplicateBatchAction> ResolveCompletedAsync(
+        IAppDialogService dialogService,
+        IReadOnlyList<string> completedItemNames,
+        int activeDuplicateCount,
+        CancellationToken cancellationToken)
+    {
+        if (_completedAction is { } action)
+        {
+            return action;
+        }
+
+        _completedAction = await DownloadDuplicateBatchDialogContract.ShowAsync(
+            dialogService,
+            new DownloadDuplicateBatchPrompt(completedItemNames, activeDuplicateCount),
+            cancellationToken).ConfigureAwait(true);
+        return _completedAction.Value;
+    }
+}
+
 internal static class DownloadDuplicateBatchDialogContract
 {
     internal const string PromptParameter = "prompt";

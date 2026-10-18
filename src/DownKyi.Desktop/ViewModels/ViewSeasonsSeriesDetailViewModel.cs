@@ -443,10 +443,6 @@ internal class ViewSeasonsSeriesDetailViewModel : ViewModelBase
             _hasMorePages = newMedia.Length > 0 && Medias.Count < page.TotalCount;
             IsSelectAll = Medias.Count > 0 && Medias.All(media => media.IsSelected);
             NoDataVisibility = Medias.Count == 0;
-            if (DownloadCommandGate.IsExecuting)
-            {
-                DownloadPreparationProgressText = FormatCollectionDiscoveryProgress();
-            }
 
             return true;
         }

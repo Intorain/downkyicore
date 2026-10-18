@@ -129,6 +129,51 @@ public sealed class ContentDownloadCoordinatorTests
     }
 
     [Fact]
+    public async Task IncrementalBatchStopsWhenAdmissionCannotContinue()
+    {
+        var session = new RecordingSession(
+            @"D:\Downloads",
+            batchResult: _ => DownloadAddResult.FromCounts(
+                addedCount: 0,
+                duplicateCount: 0,
+                failedCount: 1,
+                skippedCount: 0,
+                failureReason: DownloadAddStopReason.RuntimeUnavailable));
+        var infoServiceFactory = new RecordingInfoServiceFactory();
+        var coordinator = CreateCoordinator(
+            new RecordingFactory(session),
+            infoServiceFactory);
+        ContentDownloadBatchProgress? latestProgress = null;
+        var progress = new InlineProgress<ContentDownloadBatchProgress>(value => latestProgress = value);
+        var items = Enumerable.Range(1, 11)
+            .Select(index => new ContentDownloadItem(
+                $"BV1terminal{index}",
+                DownloadInfoKind.Video,
+                IsSelected: true))
+            .ToArray();
+
+        var result = await coordinator.AddIncrementallyAsync(
+            items,
+            onlySelected: false,
+            progress,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            new ContentDownloadBatchResult(
+                AddedCount: 0,
+                SkippedCount: 0,
+                DuplicateCount: 0,
+                FailedCount: 1,
+                StopReason: DownloadAddStopReason.RuntimeUnavailable),
+            result);
+        Assert.Equal(1, session.BatchAddCount);
+        Assert.Equal(5, session.PrepareCount);
+        Assert.Equal(5, infoServiceFactory.CreatedSources.Count);
+        Assert.Equal(0, latestProgress?.ProcessedCount);
+        Assert.Equal(1, latestProgress?.FailedCount);
+    }
+
+    [Fact]
     public async Task UnavailableVideoIsSkippedWithoutStoppingFollowingItems()
     {
         const string unavailableSource = "BV1unavailable";
@@ -308,7 +353,8 @@ public sealed class ContentDownloadCoordinatorTests
     private sealed class RecordingSession(
         string? directory,
         Action<int>? afterAdd = null,
-        IReadOnlySet<int>? skippedPreparationCalls = null) : IAddToDownloadSession
+        IReadOnlySet<int>? skippedPreparationCalls = null,
+        Func<int, DownloadAddResult>? batchResult = null) : IAddToDownloadSession
     {
         public int DirectorySelectionCount { get; private set; }
 
@@ -373,6 +419,11 @@ public sealed class ContentDownloadCoordinatorTests
             cancellationToken.ThrowIfCancellationRequested();
             Assert.Equal(directory, selection.Directory);
             BatchAddCount++;
+            if (batchResult?.Invoke(BatchAddCount) is { } configuredResult)
+            {
+                return Task.FromResult(configuredResult);
+            }
+
             foreach (var finalizedDownload in finalizedDownloads)
             {
                 cancellationToken.ThrowIfCancellationRequested();

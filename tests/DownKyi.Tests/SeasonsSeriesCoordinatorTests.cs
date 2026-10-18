@@ -117,5 +117,14 @@ public sealed class SeasonsSeriesCoordinatorTests
         {
             throw new InvalidOperationException("Page loading must not submit a download batch.");
         }
+
+        public Task<ContentDownloadBatchResult?> AddIncrementallyAsync(
+            IReadOnlyList<ContentDownloadItem> items,
+            bool onlySelected,
+            IProgress<ContentDownloadBatchProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("Page loading must not submit a download batch.");
+        }
     }
 }

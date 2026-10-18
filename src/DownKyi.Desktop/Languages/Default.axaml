@@ -434,11 +434,11 @@
     
     <system:String x:Key="DownloadContentConflictTitle">下载选择需要确认</system:String>
     <system:String x:Key="DownloadDuplicateBatchTitle">重复下载需要确认</system:String>
-    <system:String x:Key="DownloadDuplicateBatchMessage">本次下载清单中有 {0} 部影片已经下载过。请选择跳过或重新下载。</system:String>
+    <system:String x:Key="DownloadDuplicateBatchMessage">目前发现 {0} 部影片已经下载过。请选择跳过或重新下载；本次操作后续发现的重复影片也会沿用这项选择。</system:String>
     <system:String x:Key="DownloadDuplicateBatchActiveMessage">另有 {0} 部影片已在下载队列中，将直接跳过。</system:String>
     <system:String x:Key="DownloadDuplicateBatchAffectedItems">查看已下载的 {0} 部影片</system:String>
-    <system:String x:Key="RedownloadDuplicateBatch">重新下载这 {0} 部</system:String>
-    <system:String x:Key="SkipDuplicateBatch">跳过这 {0} 部</system:String>
+    <system:String x:Key="RedownloadDuplicateBatch">重新下载重复影片</system:String>
+    <system:String x:Key="SkipDuplicateBatch">跳过重复影片</system:String>
     <system:String x:Key="DownloadContentConflictMessage">“{0}”无法完全符合原下载设置。请接受实际可取得的内容和品质，或跳过这一页。</system:String>
     <system:String x:Key="UseAvailableDownloadContent">使用{0}继续下载</system:String>
     <system:String x:Key="VideoQualitySubstitution">畫質：{0} → {1}</system:String>
