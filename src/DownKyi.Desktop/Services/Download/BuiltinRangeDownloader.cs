@@ -18,9 +18,9 @@ using Microsoft.Extensions.Logging;
 namespace DownKyi.Services.Download;
 
 /// <summary>
-/// Downloads one resolved address as bounded HTTP ranges. The distributed range queue,
-/// resumable per-range state and read-stall watchdog are adapted from BBDown's MIT-licensed
-/// download pipeline. See THIRD-PARTY-NOTICES.md.
+/// Downloads one resolved address with bounded parallel HTTP range workers. The range
+/// segmentation, worker queue, resumable per-range state and read-stall watchdog are adapted
+/// from BBDown's MIT-licensed download pipeline. See THIRD-PARTY-NOTICES.md.
 /// </summary>
 internal sealed class BuiltinRangeDownloader : IDisposable
 {
