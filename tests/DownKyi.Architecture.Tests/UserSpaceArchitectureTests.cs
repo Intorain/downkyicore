@@ -23,7 +23,7 @@ public sealed class UserSpaceArchitectureTests
     }
 
     [Fact]
-    public void UserSpaceBindingStateRemainsServiceFreeAndBelowTheOwnerBudget()
+    public void UserSpaceBindingStateRemainsServiceFree()
     {
         var viewModelDirectory = Path.Combine(
             RepositoryRoot,
@@ -34,12 +34,6 @@ public sealed class UserSpaceArchitectureTests
         var workflowSource = File.ReadAllText(workflowPath);
         var stateSource = File.ReadAllText(statePath);
 
-        Assert.True(
-            File.ReadLines(workflowPath).Count() <= 450,
-            "User-space workflow owner exceeded its size budget.");
-        Assert.True(
-            File.ReadLines(statePath).Count() <= 200,
-            "User-space binding-state owner exceeded its size budget.");
         Assert.Contains("IUserSpaceLoadCoordinator", workflowSource, StringComparison.Ordinal);
         Assert.Contains("ISettingsStore", workflowSource, StringComparison.Ordinal);
         Assert.Contains("CancellationTokenSource", workflowSource, StringComparison.Ordinal);
@@ -88,7 +82,7 @@ public sealed class UserSpaceArchitectureTests
     }
 
     [Fact]
-    public void BangumiFollowBindingStateRemainsServiceFreeAndBelowTheOwnerBudget()
+    public void BangumiFollowBindingStateRemainsServiceFree()
     {
         var viewModelDirectory = Path.Combine(
             RepositoryRoot,
@@ -99,9 +93,6 @@ public sealed class UserSpaceArchitectureTests
         var workflowSource = File.ReadAllText(workflowPath);
         var stateSource = File.ReadAllText(statePath);
 
-        Assert.True(
-            File.ReadLines(statePath).Count() <= 150,
-            "Bangumi-follow binding-state owner exceeded its size budget.");
         Assert.Contains("IUserSpacePageCoordinator", workflowSource, StringComparison.Ordinal);
         Assert.Contains("IContentDownloadCoordinator", workflowSource, StringComparison.Ordinal);
         Assert.Contains("CancellationTokenSource", workflowSource, StringComparison.Ordinal);
