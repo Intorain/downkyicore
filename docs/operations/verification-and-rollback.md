@@ -58,7 +58,8 @@ pwsh ./script/scan-secrets.ps1
 所有 PR 均執行 `Strict PR CI` 的 Format check 與三平台 Build and test、
 `CodeQL` 的 Analyze C#、`Dependency policy`。這六個 job 是目前 `main`
 branch protection 的 required checks，均無 PR path filter 或 job-level `if`。
-`Strict PR CI` 的 Format check 還做本地 upload/download action round trip。
+`Strict PR CI` 的 Format check 還做 FFmpeg Python guards、所有 workflow 的
+actionlint 與本地 upload/download action round trip。
 `Build`、macOS ad-hoc package 與 CI infrastructure 是額外的
 選擇性驗證，不列為全 PR required checks；把 path-filtered workflow 的
 job 設成 required 會讓沒有觸發該 workflow 的 PR 永久 Pending。反過來，
@@ -71,20 +72,20 @@ job 設成 required 會讓沒有觸發該 workflow 的 PR 永久 Pending。反�
 | 一般文件、`AGENTS.md`、`docs/maintenance.md` | 無額外 job；基線檢查文件及現有測試 | Build 發布鏈、macOS package、CI infrastructure：沒有對應 binary／package／runner 風險。`docs/testing/test-runner-policy.json` 是例外，須跑 CI infrastructure。 |
 | 一般應用程式 `.cs`／XAML，及一般測試 `.cs` | 基線三平台 build/test 與 CodeQL；測試修改由其所屬 test project 執行 | Build 發布鏈與 package matrix：程式變更本身不要求每張 PR 產生九種發布包；推 tag 前仍須 exact-head 手動 Build。CI infrastructure 只在其 path filter 命中時執行。 |
 | runner／測試基礎設施 owner、`quality.yml`、`ci-infrastructure.yml`、相關測試 | `CI infrastructure tests` 三平台 matrix | 發布包 job：runner 風險由專屬 slices 驗證；其餘一般測試仍由基線執行。 |
-| `script/assets/external-assets.json` | Build 的 tooling、manifest detection、遠端資產 preflight、三平台 release gate、package/ARM64 validation；另跑 macOS ad-hoc package | `Pre-release artifacts` 與 Publish release 在 PR 預期跳過：下載後全量驗收留給非 PR 的 exact-head Build。 |
-| FFmpeg 實作／工具、`install-appimagetool.ps1`、`build.yml`、`update-ffmpeg-assets.yml` | Build 的 tooling、manifest detection、PR FFmpeg manifest gate；`ffmpeg.sh`／`ffmpeg-assets.py` 另跑 macOS ad-hoc package | manifest 未變時 production preflight 應跳過，`release-gate` 因 `needs` 跳過，後續 package chain 亦跳過；tooling job 跑 FFmpeg Python tests 與 workflow lint，appimagetool 的實際安裝仍在 manifest／手動 Build 驗證。 |
+| `script/assets/external-assets.json` | Build 的遠端資產 preflight、三平台 release gate、package/ARM64 validation；另跑 macOS ad-hoc package | `Pre-release artifacts` 與 Publish release 在 PR 預期跳過：下載後全量驗收留給非 PR 的 exact-head Build。 |
+| FFmpeg 實作／工具、`install-appimagetool.ps1`、`build.yml`、`update-ffmpeg-assets.yml` | required Format check 的 FFmpeg Python guards 與 workflow lint；`ffmpeg.sh`／`ffmpeg-assets.py` 另跑 macOS ad-hoc package | Build 的包裝鏈由 manifest PR、手動預演或 tag 觸發；appimagetool 的實際安裝仍在 manifest PR／手動 Build 驗證。FFmpeg updater 的排程與手動入口由 `update-ffmpeg-assets.yml` 自己負責。 |
 | `script/macos/**`、macOS packaging inputs、`validate-publish-output.ps1` | macOS ad-hoc package x64／arm64；對應 package／architecture tests 仍在基線 | Build 發布鏈通常跳過；ad-hoc 驗證不宣稱 Developer ID／notarization。其他平台打包腳本（如 `script/pupnet/**`）由基線的現有針對性測試與發布前 Build 驗收，沒有通用 PR package matrix。 |
-| `validate-build-run-artifacts.ps1` 等下載後發布驗證腳本 | 基線中的 `ReleaseSafetyRegressionTests` synthetic inventory／package validator fixtures、`ReleaseWorkflowArchitectureTests` wiring；發布前手動 Build 驗證真實下載包 | PR Build 發布鏈預期跳過。只把腳本加進 Build `pull_request.paths` 仍無法執行下載驗證：manifest 未變，preflight 跳過，`release-gate` 及其後全部因 `needs` 跳過。強制跑包需改變另一層政策，成本與風險必須另證。 |
-| 其他 GitHub Actions 配置／本地 `.github/actions/**` | 基線 test／format（包含 action round trip）與 formal `actionlint`；若改到某個選擇性 workflow，執行該 workflow 的現有 PR path filter | 不因所有 Actions 修改而跑 Build；`build.yml` 命中 Build、`macos-adhoc-package.yml` 命中 macOS package 等。變更未納入某專屬 filter 時，需檢查基線與 focused tests 是否已覆蓋，而非把所有 workflow 全開。 |
+| `validate-build-run-artifacts.ps1` 等下載後發布驗證腳本 | 基線中的 `ReleaseSafetyRegressionTests` synthetic inventory／package validator fixtures、`ReleaseWorkflowArchitectureTests` wiring；發布前手動 Build 驗證真實下載包 | PR Build 發布鏈預期跳過；不為腳本修改啟動九種 package build。 |
+| 其他 GitHub Actions 配置／本地 `.github/actions/**` | 基線 test／format（包含 actionlint 與 action round trip）；若改到某個選擇性 workflow，執行該 workflow 的現有 PR path filter | 不因所有 Actions 修改而跑 Build；`macos-adhoc-package.yml` 命中 macOS package。變更未納入某專屬 filter 時，需檢查基線與 focused tests 是否已覆蓋。 |
 
 事件與依賴：
 
 | 事件 | 應執行 | 預期跳過／重跑條件 |
 | --- | --- | --- |
-| PR（目標 `main`；Build 另接受歷史 integration branch） | 六個 required checks；選擇性 workflow 依 changed paths；Build 內 FFmpeg tooling／diff detector／PR result gate 在 Build 被觸發時執行 | 沒有 manifest 變更時 Build preflight 與 release chain 跳過；PR 的 `pre-release-validation`、Publish release 永遠不執行。修正造成缺席的 path、`if` 或 `needs` 後，以新 head 重跑 PR。 |
+| PR（目標 `main`） | 六個 required checks；選擇性 workflow 依 changed paths；只有 production manifest 變更會在 PR 啟動 Build 的 preflight 與 package chain | PR 的 `pre-release-validation`、Publish release 永遠不執行。修正造成缺席的 path、`if` 或 `needs` 後，以新 head 重跑 PR。 |
 | push 到 `main` | Strict PR CI、CodeQL；Dependency policy、CI infrastructure 仍依各自 push paths | Build 沒有一般 branch push；macOS ad-hoc 沒有 push。需要實際包時手動在 exact head 執行 Build。 |
-| `workflow_dispatch` | Build（預設完整 release gate／package／六 scope 下載驗收，但不發布）、macOS ad-hoc、Dependency policy 等各自有手動入口的 workflow | Build 的 `update_ffmpeg_assets=true` 會改走 updater，刻意跳過 package chain；`bootstrap_ffmpeg_assets` 只供 updater。手動 Build 驗收須用預設 `false`。 |
-| `v*` tag push | Build preflight、三平台 release gate、所有 package 與 ARM64 validation、六 scope 下載驗收、Publish release；tag/version/subject 門檻適用 | PR 專屬 FFmpeg result gate 跳過；updater 跳過。任何必要上游失敗／跳過都應阻斷下游與發布，不可視作安全綠燈。 |
+| `workflow_dispatch` | Build 執行完整 release gate／package／六 scope 下載驗收但不發布；FFmpeg updater、macOS ad-hoc、Dependency policy 各有自己的手動入口 | 手動 Build 在 exact head 執行；FFmpeg 更新需從 updater workflow 啟動。 |
+| `v*` tag push | Build preflight、三平台 release gate、所有 package 與 ARM64 validation、六 scope 下載驗收、Publish release；tag/version/subject 門檻適用 | 任何必要上游失敗／跳過都應阻斷下游與發布，不可視作安全綠燈。 |
 
 真正的錯誤跳過包括：path filter 漏掉已證明必需的 owner、必需 job 的 `if`
 與事件不相容、`needs` 的上游在該事件不會成功、或 branch protection

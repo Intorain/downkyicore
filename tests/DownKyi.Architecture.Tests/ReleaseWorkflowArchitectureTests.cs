@@ -269,59 +269,20 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void TagReleaseDependencyChainDoesNotStartFromASkippedPullRequestOnlyJob()
+    public void BuildHasOneReleasePathAndTheUpdaterHasItsOwnEntryPoint()
     {
-        var workflow = File.ReadAllText(
-            Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
+        var build = ReadWorkflow("build.yml");
+        var updater = ReadWorkflow("update-ffmpeg-assets.yml");
+        var pullRequest = GetYamlBlock(NormalizeWorkflowLines(build), "  pull_request:", 2);
+        var paths = GetYamlSequenceValues(pullRequest, "    paths:", 4);
 
-        Assert.True(
-            HasRunnableManifestDetectionDependency(workflow),
-            "The manifest-detection dependency must succeed on tag/manual events instead of skipping the release chain.");
-    }
-
-    [Fact]
-    public void BuildPullRequestTriggerIsRestrictedToExternalAssetOwners()
-    {
-        var workflow = File.ReadAllText(
-            Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
-        var lines = workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var pullRequest = GetYamlBlock(lines, "  pull_request:", 2);
-        var pathBlock = GetYamlBlock(pullRequest.ToArray(), "    paths:", 4);
-        var triggerPaths = pathBlock
-            .Where(line => GetIndent(line) == 6 && line.TrimStart().StartsWith("- ", StringComparison.Ordinal))
-            .Select(line => line.Trim()[2..].Trim('\'', '"'))
-            .ToArray();
-        var tooling = GetYamlBlock(lines, "  ffmpeg-tooling:", 2);
-        var preflight = GetYamlBlock(lines, "  external-assets-preflight:", 2);
-        var gate = GetYamlBlock(lines, "  ffmpeg-required-gate:", 2);
-        var release = GetYamlBlock(lines, "  release-gate:", 2);
-
-        foreach (var requiredOwner in new[]
-                 {
-                     ".github/workflows/build.yml",
-                     ".github/workflows/update-ffmpeg-assets.yml",
-                     "script/assets/external-assets.json",
-                     "script/release-package-catalog.ps1",
-                     "script/resolve-release-plan.ps1",
-                     "script/tests/test_ffmpeg_assets.py"
-                 })
-        {
-            Assert.Contains(requiredOwner, triggerPaths);
-        }
-        Assert.DoesNotContain("needs: detect-production-manifest-change", tooling);
-        Assert.DoesNotContain("github.event_name != 'pull_request'", tooling);
-        Assert.Contains("    if: ${{ always() && !inputs.update_ffmpeg_assets && needs.ffmpeg-tooling.result == 'success' && (github.event_name != 'pull_request' || needs.detect-production-manifest-change.outputs.external_assets == 'true') }}", preflight);
-        Assert.Contains("    needs: external-assets-preflight", release);
-        Assert.Contains("    name: FFmpeg manifest gate", gate);
-        Assert.Contains("    if: ${{ always() && github.event_name == 'pull_request' }}", gate);
-        Assert.Contains("      - detect-production-manifest-change", gate);
-        Assert.Contains("      - ffmpeg-tooling", gate);
-        Assert.Contains("      - external-assets-preflight", gate);
-        Assert.Contains("          test \"$DETECTION_RESULT\" = success", gate);
-        Assert.Contains("          test \"$TOOLING_RESULT\" = success", gate);
-        Assert.Contains("          if [ \"$EXTERNAL_ASSETS\" = true ]; then", gate);
-        Assert.Contains("            test \"$PREFLIGHT_RESULT\" = skipped", gate);
-        Assert.DoesNotContain("src/DownKyi.Desktop/**", triggerPaths);
+        Assert.Equal("script/assets/external-assets.json", Assert.Single(paths));
+        Assert.DoesNotContain("ffmpeg-asset-updater:", build, StringComparison.Ordinal);
+        Assert.DoesNotContain("detect-production-manifest-change:", build, StringComparison.Ordinal);
+        Assert.DoesNotContain("ffmpeg-required-gate:", build, StringComparison.Ordinal);
+        Assert.Contains("  schedule:", updater, StringComparison.Ordinal);
+        Assert.Contains("  workflow_dispatch:", updater, StringComparison.Ordinal);
+        Assert.DoesNotContain("  workflow_call:", updater, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -348,13 +309,13 @@ public sealed class ReleaseWorkflowArchitectureTests
             ("script/validate-build-run-artifacts.ps1", []),
             ("script/pupnet/stage-canonical-publish.sh", []),
             ("script/validate-publish-output.ps1", ["macos"]),
-            (".github/actions/build-macos-app/action.yml", ["build", "macos"]),
+            (".github/actions/build-macos-app/action.yml", ["macos"]),
             ("script/macos/validate-dmg-package.sh", ["macos"]),
-            ("script/download-external-asset.ps1", ["build"]),
-            ("script/resolve-release-plan.ps1", ["build"]),
-            ("script/ffmpeg-assets.py", ["build", "macos"]),
+            ("script/download-external-asset.ps1", []),
+            ("script/resolve-release-plan.ps1", []),
+            ("script/ffmpeg-assets.py", ["macos"]),
             ("script/assets/external-assets.json", ["build", "macos"]),
-            (".github/workflows/build.yml", ["build"]),
+            (".github/workflows/build.yml", []),
             (".github/workflows/quality.yml", ["infrastructure"])
         };
         foreach (var (path, extraWorkflows) in pullRequests)
@@ -383,42 +344,24 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void BuildJobDependenciesPreserveExpectedSkipsAndFormalReleaseGate()
+    public void BuildDependenciesRequireThePreflightAndDownloadedArtifactGate()
     {
-        var workflow = ReadWorkflow("build.yml");
-        var lines = NormalizeWorkflowLines(workflow);
-        var updater = GetYamlBlock(lines, "  ffmpeg-asset-updater:", 2);
+        var lines = NormalizeWorkflowLines(ReadWorkflow("build.yml"));
         var preflight = GetYamlBlock(lines, "  external-assets-preflight:", 2);
-        var pullRequestGate = GetYamlBlock(lines, "  ffmpeg-required-gate:", 2);
         var releaseGate = GetYamlBlock(lines, "  release-gate:", 2);
         var preRelease = GetYamlBlock(lines, "  pre-release-validation:", 2);
         var release = GetYamlBlock(lines, "  release:", 2);
 
-        Assert.Contains("    needs: ffmpeg-tooling", updater);
-        AssertJobConditionContains(updater, "inputs.update_ffmpeg_assets");
-
-        Assert.Contains("      - ffmpeg-tooling", preflight);
-        Assert.Contains("      - detect-production-manifest-change", preflight);
-        AssertJobConditionContains(
-            preflight,
-            "!inputs.update_ffmpeg_assets",
-            "needs.ffmpeg-tooling.result == 'success'",
-            "github.event_name != 'pull_request'",
-            "needs.detect-production-manifest-change.outputs.external_assets == 'true'");
-
-        Assert.Contains("      - ffmpeg-tooling", pullRequestGate);
-        Assert.Contains("      - external-assets-preflight", pullRequestGate);
-        AssertJobConditionContains(pullRequestGate, "always()", "github.event_name == 'pull_request'");
-
+        Assert.DoesNotContain(preflight, line => GetIndent(line) == 4 &&
+            (line.TrimStart().StartsWith("if:", StringComparison.Ordinal) ||
+             line.TrimStart().StartsWith("needs:", StringComparison.Ordinal)));
         Assert.Contains("    needs: external-assets-preflight", releaseGate);
         Assert.DoesNotContain(releaseGate, line =>
             GetIndent(line) == 4 && line.TrimStart().StartsWith("if:", StringComparison.Ordinal));
-
         Assert.Contains(
             "    needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]",
             preRelease);
-        AssertJobConditionContains(preRelease, "github.event_name != 'pull_request'", "!inputs.update_ffmpeg_assets");
-
+        AssertJobConditionContains(preRelease, "github.event_name != 'pull_request'");
         Assert.Contains("    needs: [changelog, pre-release-validation]", release);
         AssertJobConditionContains(release, "startsWith(github.ref, 'refs/tags/')");
     }
@@ -446,80 +389,25 @@ public sealed class ReleaseWorkflowArchitectureTests
     }
 
     [Fact]
-    public void FfmpegPullRequestValidationFailuresReachTheRequiredCheck()
+    public void FfmpegToolingChecksRunInTheRequiredPrJob()
     {
-        var workflow = File.ReadAllText(
-            Path.Combine(RepositoryRoot, ".github", "workflows", "build.yml"));
-        var lines = workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var detector = GetYamlBlock(lines, "  detect-production-manifest-change:", 2);
-        var tooling = GetYamlBlock(lines, "  ffmpeg-tooling:", 2);
-        var preflight = GetYamlBlock(lines, "  external-assets-preflight:", 2);
-        var gate = GetYamlBlock(lines, "  ffmpeg-required-gate:", 2);
+        var qualitySteps = GetWorkflowSteps(ReadWorkflow("quality.yml"), "  format:");
+        var preflight = GetYamlBlock(NormalizeWorkflowLines(ReadWorkflow("build.yml")),
+            "  external-assets-preflight:", 2);
 
-        Assert.Contains("              - 'script/assets/external-assets.json'", detector);
-        Assert.DoesNotContain("ffmpeg_related:", detector);
-        Assert.DoesNotContain("    needs: detect-production-manifest-change", tooling);
-        Assert.Contains("      - name: Run FFmpeg asset guards", tooling);
-        Assert.Contains("        run: python -m unittest script/tests/test_ffmpeg_assets.py -v", tooling);
-        Assert.DoesNotContain("continue-on-error: true", tooling);
-        Assert.Contains("        run: python script/ffmpeg-assets.py validate-manifest --manifest script/assets/external-assets.json", preflight);
-        Assert.Contains("        run: python script/ffmpeg-assets.py preflight --manifest script/assets/external-assets.json --timeout 30", preflight);
-        Assert.Contains("          set -e", gate);
-        Assert.DoesNotContain("FFMPEG_RELATED", gate);
-        Assert.Contains("          EXTERNAL_ASSETS: ${{ needs.detect-production-manifest-change.outputs.external_assets }}", gate);
-        Assert.Contains("          test \"$TOOLING_RESULT\" = success", gate);
-        Assert.Contains("            test \"$PREFLIGHT_RESULT\" = success", gate);
-        Assert.DoesNotContain("continue-on-error: true", gate);
-    }
-
-    [Fact]
-    public void TagReleaseDependencyGuardRejectsJobLevelSkipsAndNonExecutableLookalikes()
-    {
-        const string validWorkflow = """
-            jobs:
-              detect-production-manifest-change:
-                runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
-                steps:
-                  - name: Detect pull request changes
-                    id: filter
-                    if: github.event_name == 'pull_request'
-                    uses: dorny/paths-filter@v3
-            """;
-        string[] invalidMutations =
-        [
-            validWorkflow.Replace(
-                "    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}",
-                "    if: github.event_name == 'pull_request'\n    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}",
-                StringComparison.Ordinal),
-            validWorkflow.Replace(
-                "if: github.event_name == 'pull_request'",
-                "if: github.event_name != 'pull_request'",
-                StringComparison.Ordinal),
-            validWorkflow.Replace(
-                "uses: dorny/paths-filter@v3",
-                "run: echo not-a-diff-detector",
-                StringComparison.Ordinal),
-            validWorkflow.Replace(
-                "uses: dorny/paths-filter@v3",
-                "continue-on-error: true\n        uses: dorny/paths-filter@v3",
-                StringComparison.Ordinal),
-            validWorkflow + """
-                  - name: Failing non-PR transition
-                    if: github.event_name != 'pull_request'
-                    run: exit 1
-                """,
-            validWorkflow + """
-                  - name: Failing multiline non-PR transition
-                    if: github.event_name != 'pull_request'
-                    run: |
-                      echo starting
-                      exit 1
-                """
-        ];
-
-        Assert.True(HasRunnableManifestDetectionDependency(validWorkflow));
-        Assert.All(invalidMutations, mutation =>
-            Assert.False(HasRunnableManifestDetectionDependency(mutation)));
+        Assert.Contains(FindWorkflowStep(qualitySteps, "Run FFmpeg asset guards"),
+            line => line.Contains("python -m unittest script/tests/test_ffmpeg_assets.py -v",
+                StringComparison.Ordinal));
+        Assert.Contains(FindWorkflowStep(qualitySteps, "Validate GitHub Actions workflows"),
+            line => line.Contains("uses: $/.github/actions/actionlint", StringComparison.Ordinal));
+        AssertStepHasNoContinueOnError(qualitySteps, "Run FFmpeg asset guards");
+        AssertStepHasNoContinueOnError(qualitySteps, "Validate GitHub Actions workflows");
+        Assert.Contains(preflight, line => line.Contains(
+            "python script/ffmpeg-assets.py validate-manifest --manifest script/assets/external-assets.json",
+            StringComparison.Ordinal));
+        Assert.Contains(preflight, line => line.Contains(
+            "python script/ffmpeg-assets.py preflight --manifest script/assets/external-assets.json --timeout 30",
+            StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1232,32 +1120,6 @@ public sealed class ReleaseWorkflowArchitectureTests
         }
     }
 
-    private static bool HasRunnableManifestDetectionDependency(string workflow)
-    {
-        var lines = workflow.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var job = GetYamlBlock(lines, "  detect-production-manifest-change:", 2);
-        if (job.Count == 0 || HasYamlKeyPrefix(job, 4, "if:"))
-        {
-            return false;
-        }
-
-        var stepsStart = job.FindIndex(line =>
-            GetIndent(line) == 4 && string.Equals(line.Trim(), "steps:", StringComparison.Ordinal));
-        if (stepsStart < 0)
-        {
-            return false;
-        }
-
-        var steps = GetYamlSequenceBlocks(job[(stepsStart + 1)..], 6);
-        var pullRequestDetector = steps.Any(step =>
-            HasExactIf(step, "github.event_name == 'pull_request'") &&
-            HasYamlKey(step, 8, "id: filter") &&
-            HasYamlValuePrefix(step, 8, "uses:", "dorny/paths-filter@") &&
-            !HasYamlKey(step, 8, "continue-on-error: true"));
-
-        return pullRequestDetector && steps.Count == 1;
-    }
-
     private static string ReadWorkflow(string name) =>
         File.ReadAllText(Path.Combine(RepositoryRoot, ".github", "workflows", name));
 
@@ -1472,36 +1334,6 @@ public sealed class ReleaseWorkflowArchitectureTests
         }
 
         return result;
-    }
-
-    private static bool HasExactIf(IReadOnlyList<string> block, string expression)
-    {
-        return block.Any(line =>
-            GetIndent(line) == 8 &&
-            string.Equals(line.Trim(), $"if: {expression}", StringComparison.Ordinal));
-    }
-
-    private static bool HasYamlKey(IReadOnlyList<string> block, int indent, string key)
-    {
-        return block.Any(line =>
-            GetIndent(line) == indent && string.Equals(line.Trim(), key, StringComparison.Ordinal));
-    }
-
-    private static bool HasYamlKeyPrefix(IReadOnlyList<string> block, int indent, string key)
-    {
-        return block.Any(line =>
-            GetIndent(line) == indent && line.Trim().StartsWith(key, StringComparison.Ordinal));
-    }
-
-    private static bool HasYamlValuePrefix(
-        IReadOnlyList<string> block,
-        int indent,
-        string key,
-        string valuePrefix)
-    {
-        return block.Any(line =>
-            GetIndent(line) == indent &&
-            line.Trim().StartsWith($"{key} {valuePrefix}", StringComparison.Ordinal));
     }
 
     private static int GetIndent(string line)

@@ -197,10 +197,10 @@ public sealed class AgentEnvironmentArchitectureTests
         Assert.Contains("--prerelease", updaterWorkflow, StringComparison.Ordinal);
         Assert.Contains("--latest=false", updaterWorkflow, StringComparison.Ordinal);
         Assert.Contains("releases/latest", updaterWorkflow, StringComparison.Ordinal);
-        Assert.Contains(
-            "  ffmpeg-asset-updater:\n    name: Update mirrored FFmpeg assets\n    needs: ffmpeg-tooling\n    if: ${{ inputs.update_ffmpeg_assets }}\n    permissions:\n      contents: write\n    uses: ./.github/workflows/update-ffmpeg-assets.yml",
-            Read(".github/workflows/build.yml").Replace("\r\n", "\n", StringComparison.Ordinal),
-            StringComparison.Ordinal);
+        Assert.Contains("  schedule:", updaterWorkflow, StringComparison.Ordinal);
+        Assert.Contains("  workflow_dispatch:", updaterWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("update-ffmpeg-assets.yml",
+            Read(".github/workflows/build.yml"), StringComparison.Ordinal);
 
         Assert.DoesNotMatch(@"\.nuget/packages/grpc\.tools/\d", workflowSources);
         Assert.Contains("-getProperty:PkgGrpc_Tools", workflowSources, StringComparison.Ordinal);

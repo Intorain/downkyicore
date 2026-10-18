@@ -2,7 +2,6 @@ name: Build
 
 permissions:
   contents: read
-  pull-requests: read
 
 on:
   push:
@@ -11,88 +10,13 @@ on:
   pull_request:
     branches:
       - main
-      - release/v1.1.1-integration
     paths:
-      - '.github/workflows/build.yml'
-      - '.github/workflows/update-ffmpeg-assets.yml'
       - 'script/assets/external-assets.json'
-      - 'script/download-external-asset.ps1'
-      - 'script/install-appimagetool.ps1'
-      - 'script/assemble-release-assets.ps1'
-      - 'script/release-package-catalog.ps1'
-      - 'script/resolve-release-plan.ps1'
-      - '.github/actions/build-macos-app/action.yml'
-      - 'script/ffmpeg-assets.py'
-      - 'script/ffmpeg.ps1'
-      - 'script/ffmpeg.sh'
-      - 'script/tests/test_ffmpeg_assets.py'
   workflow_dispatch:
-    inputs:
-      update_ffmpeg_assets:
-        description: 'Run the FFmpeg mirror updater from the selected branch instead of the release build.'
-        required: false
-        default: false
-        type: boolean
-      bootstrap_ffmpeg_assets:
-        description: 'Import all six pinned RID sources during the first mirror run.'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
-  ffmpeg-tooling:
-    name: FFmpeg tooling / implementation gate
-    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
-    steps:
-      - name: Checkout
-        uses: $/.github/actions/checkout
-      - name: Install Python
-        uses: $/.github/actions/setup-python
-        with:
-          python-version-file: .python-version
-      - name: Validate GitHub Actions workflow syntax
-        uses: $/.github/actions/actionlint
-        with:
-          files: .github/workflows/build.yml,.github/workflows/update-ffmpeg-assets.yml
-          fail-on-error: true
-          pyflakes: true
-          shellcheck: true
-      - name: Run FFmpeg asset guards
-        run: python -m unittest script/tests/test_ffmpeg_assets.py -v
-
-  ffmpeg-asset-updater:
-    name: Update mirrored FFmpeg assets
-    needs: ffmpeg-tooling
-    if: ${{ inputs.update_ffmpeg_assets }}
-    permissions:
-      contents: write
-    uses: ./.github/workflows/update-ffmpeg-assets.yml
-    with:
-      bootstrap: ${{ inputs.bootstrap_ffmpeg_assets }}
-      manifest_base: ${{ github.ref_name }}
-    secrets: inherit
-
-  detect-production-manifest-change:
-    name: Detect production manifest change
-    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
-    outputs:
-      external_assets: ${{ steps.filter.outputs.external_assets }}
-    steps:
-      - name: Detect FFmpeg changes in the PR diff
-        id: filter
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v4
-        with:
-          filters: |
-            external_assets:
-              - 'script/assets/external-assets.json'
-
   external-assets-preflight:
     name: Production manifest preflight
-    needs:
-      - ffmpeg-tooling
-      - detect-production-manifest-change
-    if: ${{ always() && !inputs.update_ffmpeg_assets && needs.ffmpeg-tooling.result == 'success' && (github.event_name != 'pull_request' || needs.detect-production-manifest-change.outputs.external_assets == 'true') }}
     runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
     steps:
       - name: Checkout
@@ -108,31 +32,6 @@ jobs:
       - name: Verify mirrored appimagetool
         shell: pwsh
         run: ./script/install-appimagetool.ps1 -ToolPath '${{ runner.temp }}/appimagetool-preflight'
-
-  ffmpeg-required-gate:
-    name: FFmpeg manifest gate
-    needs:
-      - detect-production-manifest-change
-      - ffmpeg-tooling
-      - external-assets-preflight
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    runs-on: ${{ vars.UBUNTU_X64_RUNNER }}
-    steps:
-      - name: Report the FFmpeg validation result
-        env:
-          DETECTION_RESULT: ${{ needs.detect-production-manifest-change.result }}
-          TOOLING_RESULT: ${{ needs.ffmpeg-tooling.result }}
-          PREFLIGHT_RESULT: ${{ needs.external-assets-preflight.result }}
-          EXTERNAL_ASSETS: ${{ needs.detect-production-manifest-change.outputs.external_assets }}
-        run: |
-          set -e
-          test "$DETECTION_RESULT" = success
-          test "$TOOLING_RESULT" = success
-          if [ "$EXTERNAL_ASSETS" = true ]; then
-            test "$PREFLIGHT_RESULT" = success
-          else
-            test "$PREFLIGHT_RESULT" = skipped
-          fi
 
   release-gate:
     name: Release gate (${{ matrix.os }})
@@ -773,7 +672,7 @@ jobs:
   pre-release-validation:
     name: Pre-release artifacts (${{ matrix.scope }})
     needs: [changelog, release-plan, build-windows, build-linux, validate-linux-arm64, build-macos]
-    if: ${{ github.event_name != 'pull_request' && !inputs.update_ffmpeg_assets }}
+    if: ${{ github.event_name != 'pull_request' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.release-plan.outputs.validation_matrix) }}
