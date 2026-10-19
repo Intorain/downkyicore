@@ -62,9 +62,13 @@ internal static class VideoPagePlaybackMapper
                 quality.Quality == videoMatch.SelectedQuality),
             videoMatch);
 
-        page.Duration = playUrl.Dash.Duration > 0
-            ? Format.FormatDuration(playUrl.Dash.Duration)
-            : Format.FormatDuration(playUrl.Durl.Select(item => item.Length).Sum() / 1000);
+        var playbackDuration = playUrl.Dash.Duration > 0
+            ? playUrl.Dash.Duration
+            : playUrl.Durl.Select(item => item.Length).Sum() / 1000;
+        if (playbackDuration > 0)
+        {
+            page.Duration = VideoPageDuration.FromSeconds(playbackDuration);
+        }
     }
 
     internal static void ApplyPlayUrlPreservingSelection(

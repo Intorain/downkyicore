@@ -40,6 +40,30 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
     }
 
     [Fact]
+    public void PlaybackWithoutDurationKeepsDetailDuration()
+    {
+        var page = new VideoPage { Duration = "14m8s" };
+        var playUrl = new PlayUrl
+        {
+            Dash = new PlayUrlDash
+            {
+                Audio = [new PlayUrlDashVideo
+                {
+                    Id = 30280,
+                    BaseAddress = "https://media.invalid/audio.m4s"
+                }]
+            }
+        };
+
+        VideoPagePlaybackMapper.ApplyPlayUrl(
+            playUrl,
+            page,
+            CreateSettings(videoQuality: 80, isVip: true));
+
+        Assert.Equal("14m8s", page.Duration);
+    }
+
+    [Fact]
     public void ApplyPlayUrlFallsBackToHevcWhenAvcIsUnavailableAtHighestQuality()
     {
         Directory.CreateDirectory(_directory);

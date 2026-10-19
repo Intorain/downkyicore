@@ -15,6 +15,7 @@ using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Core.Settings;
 using DownKyi.Core.Utils;
 using DownKyi.Presentation;
+using DownKyi.Services.Video;
 using DownKyi.Utils;
 
 namespace DownKyi.Services;
@@ -139,7 +140,7 @@ internal class BangumiInfoService : IInfoService
                 FirstFrame = episode.Cover,
                 Order = order,
                 Name = name,
-                Duration = "N/A",
+                Duration = VideoPageDuration.FromMilliseconds(episode.Duration),
                 LoadTagsAsync = CreateLocalTagLoader(_bangumiSeason.Styles)
             };
 
@@ -235,7 +236,7 @@ internal class BangumiInfoService : IInfoService
                     FirstFrame = episode.Cover,
                     Order = order,
                     Name = name,
-                    Duration = "N/A",
+                    Duration = VideoPageDuration.FromMilliseconds(episode.Duration),
                     LoadTagsAsync = CreateLocalTagLoader(_bangumiSeason.Styles)
                 };
 
