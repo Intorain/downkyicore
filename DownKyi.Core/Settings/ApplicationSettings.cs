@@ -38,9 +38,6 @@ public sealed record BasicApplicationSettings(
     ThemeMode ThemeMode,
     AfterDownloadOperation AfterDownload,
     AllowStatus IsListenClipboard,
-    AllowStatus IsAutoParseVideo,
-    ParseScope ParseScope,
-    AllowStatus IsAutoDownloadAll,
     DownloadFinishedSort DownloadFinishedSort,
     bool RepeatFileAutoAddNumberSuffix);
 
@@ -136,9 +133,6 @@ internal static class ApplicationSettingsValidator
             ThemeMode = EnumValue(settings.Basic.ThemeMode, ThemeMode.Default, "Basic.ThemeMode", corrections),
             AfterDownload = EnumValue(settings.Basic.AfterDownload, AfterDownloadOperation.None, "Basic.AfterDownload", corrections),
             IsListenClipboard = AllowValue(settings.Basic.IsListenClipboard, AllowStatus.Yes, "Basic.IsListenClipboard", corrections),
-            IsAutoParseVideo = AllowValue(settings.Basic.IsAutoParseVideo, AllowStatus.No, "Basic.IsAutoParseVideo", corrections),
-            ParseScope = EnumValue(settings.Basic.ParseScope, ParseScope.None, "Basic.ParseScope", corrections),
-            IsAutoDownloadAll = AllowValue(settings.Basic.IsAutoDownloadAll, AllowStatus.No, "Basic.IsAutoDownloadAll", corrections),
             DownloadFinishedSort = EnumValue(settings.Basic.DownloadFinishedSort, DownloadFinishedSort.DownloadAsc, "Basic.DownloadFinishedSort", corrections)
         };
         var networkProxy = EnumValue(settings.Network.NetworkProxy, NetworkProxy.None, "Network.NetworkProxy", corrections);

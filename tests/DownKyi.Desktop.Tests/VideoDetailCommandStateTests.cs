@@ -350,16 +350,11 @@ public sealed class VideoDetailCommandStateTests
         var settingsPath = Path.Combine(
             Path.GetTempPath(),
             $"downkyi-video-detail-legacy-parsing-{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(
+            settingsPath,
+            """{"SchemaVersion":1,"Basic":{"IsAutoParseVideo":2,"IsAutoDownloadAll":2,"ParseScope":2}}""",
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
         using var settings = new SettingsStore(settingsPath);
-        settings.Update(current => current with
-        {
-            Basic = current.Basic with
-            {
-                IsAutoParseVideo = AllowStatus.Yes,
-                IsAutoDownloadAll = AllowStatus.Yes,
-                ParseScope = ParseScope.SelectedItem
-            }
-        });
         var section = new DownKyi.Presentation.VideoSection
         {
             IsSelected = true,
