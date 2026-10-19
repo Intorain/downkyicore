@@ -35,7 +35,7 @@
             </Grid>
             <Grid
                 Grid.Row="1"
-                MinWidth="620"
+                Width="620"
                 Margin="24,16,24,20"
                 RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
@@ -189,13 +189,106 @@
                     Grid.Row="3"
                     Margin="0,18,0,0"
                     ColumnDefinitions="72,*">
-                    <TextBlock
-                        x:Name="SubtitleSectionLabel"
+                    <StackPanel
                         Grid.Column="0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{DynamicResource DownloadSubtitle}" />
+                        Orientation="Horizontal"
+                        Spacing="4">
+                        <TextBlock
+                            x:Name="SubtitleSectionLabel"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            Text="{DynamicResource DownloadSubtitle}" />
+                        <Button
+                            x:Name="SubtitleTrackHelpButton"
+                            Width="22"
+                            Height="22"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{DynamicResource SubtitleTrackHelpTitle}"
+                            BorderBrush="{DynamicResource BrushPrimary}"
+                            BorderThickness="1"
+                            Content="?"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource BrushPrimary}"
+                            IsVisible="{Binding HasSubtitleTracks}"
+                            Theme="{StaticResource ImageBtnStyle}">
+                            <Button.Flyout>
+                                <Flyout Placement="Right">
+                                    <StackPanel Width="260" Spacing="5">
+                                        <TextBlock
+                                            FontSize="15"
+                                            FontWeight="SemiBold"
+                                            Text="{DynamicResource SubtitleTrackHelpTitle}" />
+                                        <TextBlock
+                                            Text="{DynamicResource SubtitleTrackHelpLead}"
+                                            TextWrapping="Wrap" />
+                                        <Border
+                                            Height="1"
+                                            Margin="0,1"
+                                            Background="{DynamicResource BrushControlStroke}" />
+                                        <Grid
+                                            Margin="0,2"
+                                            ColumnDefinitions="Auto,*"
+                                            RowDefinitions="Auto,Auto"
+                                            ColumnSpacing="10"
+                                            RowSpacing="8">
+                                            <TextBlock
+                                                Foreground="{DynamicResource BrushPrimary}"
+                                                FontWeight="SemiBold"
+                                                Text="{DynamicResource SubtitleTrackHelpTrackFile}" />
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                FontSize="12"
+                                                Foreground="{DynamicResource BrushTextDark}"
+                                                Text="{DynamicResource SubtitleTrackHelpTrackFilePurpose}"
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Foreground="{DynamicResource BrushPrimary}"
+                                                FontWeight="SemiBold"
+                                                Text="{DynamicResource SubtitleTrackHelpDefaultFile}" />
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Grid.Column="1"
+                                                FontSize="12"
+                                                Foreground="{DynamicResource BrushTextDark}"
+                                                Text="{DynamicResource SubtitleTrackHelpDefaultFilePurpose}"
+                                                TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Border
+                                            Padding="8,3,0,3"
+                                            BorderBrush="{DynamicResource BrushWarning}"
+                                            BorderThickness="3,0,0,0">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock
+                                                    x:Name="SubtitleDeletionWarning"
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource BrushWarning}"
+                                                    Text="{DynamicResource SubtitleTrackHelpWarningTitle}" />
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource BrushWarning}"
+                                                    Text="{DynamicResource SubtitleTrackHelpWarningDetail}"
+                                                    TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border
+                                            Padding="8,3,0,3"
+                                            BorderBrush="{DynamicResource BrushPrimary}"
+                                            BorderThickness="3,0,0,0">
+                                            <TextBlock
+                                                FontSize="13"
+                                                Foreground="{DynamicResource BrushTextDark}"
+                                                Text="{DynamicResource SubtitleTrackHelpType}" />
+                                        </Border>
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
                     <Border
                         x:Name="SubtitleTrackBorder"
                         Grid.Column="1"
@@ -207,7 +300,22 @@
                         CornerRadius="{DynamicResource DownKyiRadiusSmall}"
                         IsVisible="{Binding HasSubtitleTracks}">
                         <StackPanel Spacing="4">
-                            <ScrollViewer MaxHeight="144" VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer x:Name="SubtitleTrackScrollViewer" MaxHeight="144" VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer.Styles>
+                                    <!-- Keep the subtitle scrollbar as a thin line even while Avalonia considers it expanded. -->
+                                    <Style Selector="ScrollBar:vertical[IsExpanded=true] /template/ Grid#Root">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="ScrollBar:vertical[IsExpanded=true] /template/ Rectangle#TrackRect">
+                                        <Setter Property="Opacity" Value="0" />
+                                    </Style>
+                                    <Style Selector="ScrollBar:vertical[IsExpanded=true] /template/ Thumb">
+                                        <Setter Property="RenderTransform" Value="{DynamicResource VerticalSmallScrollThumbScaleTransform}" />
+                                    </Style>
+                                    <Style Selector="ScrollBar:vertical[IsExpanded=true] /template/ RepeatButton">
+                                        <Setter Property="Opacity" Value="0" />
+                                    </Style>
+                                </ScrollViewer.Styles>
                                 <ItemsControl
                                     x:Name="SubtitleTrackSelector"
                                     ItemsSource="{Binding SubtitleTracks}">
@@ -239,6 +347,7 @@
                                                     Text="{DynamicResource SubtitleTypeAi}" />
                                                 <RadioButton
                                                     Grid.Column="4"
+                                                    Margin="0,0,18,0"
                                                     VerticalAlignment="Center"
                                                     Content="{DynamicResource DefaultSubtitle}"
                                                     GroupName="DefaultSubtitle"
@@ -249,13 +358,6 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
-                            <TextBlock
-                                x:Name="SubtitleTrackSelectionTip"
-                                Margin="4,2,4,4"
-                                FontSize="11"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource SubtitleTrackSelectionTip}"
-                                TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                     <Border

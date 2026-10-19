@@ -1,5 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Media;
+using Avalonia.Controls.Primitives;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
@@ -17,7 +18,8 @@ public sealed class DownloadSettingsDialogLayoutTests
     [AvaloniaFact]
     public void AvailableSubtitleCheckboxRemainsClickableAndSectionsDoNotOverlap()
     {
-        var application = DesktopTestResources.EnsureProductThemeResources();
+        var application = DesktopTestResources.EnsureDownloadProjectionResources();
+        DesktopTestResources.EnsureProductThemeResources();
         var fluentTheme = new FluentTheme();
         application.Styles.Insert(0, fluentTheme);
         using var fixture = new ViewModelFixture(downloadSubtitle: false);
@@ -26,6 +28,7 @@ public sealed class DownloadSettingsDialogLayoutTests
         var view = new ViewDownloadSetter { DataContext = viewModel };
         var window = new DialogWindow
         {
+            Height = 500,
             Content = view,
             DataContext = viewModel
         };
@@ -56,11 +59,15 @@ public sealed class DownloadSettingsDialogLayoutTests
                 view.FindControl<TextBlock>("SubtitleSectionLabel"));
             var subtitleBorder = Assert.IsType<Border>(
                 view.FindControl<Border>("SubtitleTrackBorder"));
-            var subtitleTip = Assert.IsType<TextBlock>(
-                view.FindControl<TextBlock>("SubtitleTrackSelectionTip"));
+            var subtitleHelp = Assert.IsType<Button>(
+                view.FindControl<Button>("SubtitleTrackHelpButton"));
+            var subtitleHeading = Assert.Single(
+                subtitleLabel.GetVisualAncestors().OfType<StackPanel>(),
+                panel => panel.Children.Contains(subtitleHelp));
             var subtitleScrollViewer = Assert.Single(
                 selector.GetVisualAncestors().OfType<ScrollViewer>());
 
+            Assert.True(window.Bounds.Width <= 680);
             Assert.InRange(
                 Math.Abs(directory.Bounds.Left - subtitleBorder.Bounds.Left),
                 0,
@@ -70,12 +77,17 @@ public sealed class DownloadSettingsDialogLayoutTests
                 0,
                 0.5);
             Assert.InRange(
-                Math.Abs(subtitleLabel.Bounds.Center.Y - subtitleBorder.Bounds.Center.Y),
+                Math.Abs(subtitleHeading.Bounds.Center.Y - subtitleBorder.Bounds.Center.Y),
                 0,
                 0.5);
-            Assert.True(subtitleTip.IsVisible);
-            Assert.Equal(TextWrapping.Wrap, subtitleTip.TextWrapping);
-            Assert.True(subtitleScrollViewer.Bounds.Bottom <= subtitleTip.Bounds.Top);
+            Assert.InRange(
+                Math.Abs(subtitleLabel.Bounds.Center.Y - subtitleHelp.Bounds.Center.Y),
+                0,
+                0.5);
+            Assert.True(subtitleHelp.IsVisible);
+            Assert.IsType<Flyout>(subtitleHelp.Flyout);
+            Assert.True(subtitleHeading.Bounds.Right <= subtitleBorder.Bounds.Left);
+            Assert.True(subtitleScrollViewer.Bounds.Top >= subtitleBorder.Bounds.Top);
 
             AssertAppearsBelow(view, "TransferIllustration", "DirectorySection");
             AssertAppearsBelow(view, "DirectorySection", "DownloadContentSection");
@@ -119,6 +131,30 @@ public sealed class DownloadSettingsDialogLayoutTests
             Assert.Equal(10, selector.Items.Count);
             Assert.True(scrollViewer.Bounds.Height <= 144);
             Assert.True(scrollViewer.Extent.Height > scrollViewer.Viewport.Height);
+
+            var defaultOption = selector.GetVisualDescendants().OfType<RadioButton>().First();
+            var optionRight = Assert.NotNull(defaultOption.TranslatePoint(
+                new Point(defaultOption.Bounds.Width, 0), scrollViewer)).X;
+            Assert.True(
+                scrollViewer.Bounds.Width - optionRight >= 16,
+                "The default-subtitle option must leave room for the overlay scrollbar.");
+
+            scrollViewer.AllowAutoHide = false; // Force Avalonia's expanded scrollbar state.
+            window.UpdateLayout();
+            var scrollBar = Assert.Single(
+                scrollViewer.GetVisualDescendants().OfType<ScrollBar>(),
+                bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.True(scrollBar.IsExpanded);
+            var track = Assert.Single(
+                scrollBar.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Rectangle>(),
+                rectangle => rectangle.Name == "TrackRect");
+            Assert.Equal(0, track.Opacity);
+            var thumb = Assert.Single(scrollBar.GetVisualDescendants().OfType<Thumb>());
+            Assert.InRange(thumb.RenderTransform!.Value.M11, 0.124, 0.126);
+            Assert.All(
+                scrollBar.GetVisualDescendants().OfType<RepeatButton>()
+                    .Where(button => button.Name is "PART_LineUpButton" or "PART_LineDownButton"),
+                button => Assert.Equal(0, button.Opacity));
         }
         finally
         {

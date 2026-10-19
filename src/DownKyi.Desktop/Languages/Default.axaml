@@ -406,7 +406,15 @@
     <system:String x:Key="SubtitleTypeStandard">普通</system:String>
     <system:String x:Key="SubtitleTypeAi">AI</system:String>
     <system:String x:Key="DefaultSubtitle">默认</system:String>
-    <system:String x:Key="SubtitleTrackSelectionTip">“普通”表示非 AI 字幕；左侧可勾选多条。“默认”会另存为与影片同名的 .srt，方便播放器自动载入。</system:String>
+    <system:String x:Key="SubtitleTrackHelpTitle">为何有两份字幕？</system:String>
+    <system:String x:Key="SubtitleTrackHelpLead">勾选“默认”，会复制同一份字幕。</system:String>
+    <system:String x:Key="SubtitleTrackHelpType">普通＝非 AI，可选多条</system:String>
+    <system:String x:Key="SubtitleTrackHelpTrackFile">原字幕</system:String>
+    <system:String x:Key="SubtitleTrackHelpTrackFilePurpose">影片名_语言.srt · 手动选</system:String>
+    <system:String x:Key="SubtitleTrackHelpDefaultFile">默认副本</system:String>
+    <system:String x:Key="SubtitleTrackHelpDefaultFilePurpose">影片名.srt · 自动载入</system:String>
+    <system:String x:Key="SubtitleTrackHelpWarningTitle">删掉影片名.srt</system:String>
+    <system:String x:Key="SubtitleTrackHelpWarningDetail">部分播放器可能无法自动显示字幕</system:String>
     <system:String x:Key="PreferredSubtitleLanguage">字幕语言</system:String>
     <system:String x:Key="PreferredSubtitleType">字幕类型</system:String>
     <system:String x:Key="SubtitleLanguageChineseSimplified">简体中文</system:String>
