@@ -302,7 +302,7 @@ public sealed class ApplicationLogProviderTests : IDisposable
                 files.Length > 1,
                 string.Join(", ", files.Select(path => $"{path}:{new FileInfo(path).Length}")));
             var maxEntryBytes = files
-                .SelectMany(File.ReadAllLines)
+                .SelectMany(ReadAllLinesWithWriterSharing)
                 .Max(line => Encoding.UTF8.GetByteCount(line) + Encoding.UTF8.GetByteCount(Environment.NewLine));
             Assert.All(files, path => Assert.True(
                 new FileInfo(path).Length <= 420 + maxEntryBytes,
@@ -768,6 +768,22 @@ public sealed class ApplicationLogProviderTests : IDisposable
         return Directory.Exists(_directory)
             ? Directory.GetFiles(_directory, "events*.jsonl", SearchOption.AllDirectories)
             : [];
+    }
+
+    private static IEnumerable<string> ReadAllLinesWithWriterSharing(string path)
+    {
+        // Match the production exporter: a flushed sink may remain alive while persisted
+        // records are inspected, so the reader must not deny the writer's existing access.
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        while (reader.ReadLine() is { } line)
+        {
+            yield return line;
+        }
     }
 
     private async Task<string> ReadEventFilesAsync(CancellationToken cancellationToken)
