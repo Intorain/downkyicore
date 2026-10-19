@@ -178,7 +178,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
 
-        Assert.Equal([120, 112, 80, 64], page.VideoQualityList.Select(quality => quality.Quality));
+        Assert.Equal([120, 112, 80, 64], page.PlaybackAvailability!.Video.Select(video => video.Quality));
         Assert.Equal(64, page.VideoQuality!.Quality);
         Assert.Equal(PlaybackQualityMatchKind.Exact, page.VideoQualityMatch!.Kind);
     }
@@ -194,7 +194,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         Assert.Equal(
             [112, 64],
-            page.VideoQualityList.Select(quality => quality.Quality));
+            page.PlaybackAvailability!.Video.Select(video => video.Quality));
         Assert.Equal(64, page.VideoQuality!.Quality);
     }
 
@@ -206,7 +206,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(CreatePlayUrl(116, 112), page, settings);
 
-        Assert.Equal([116, 112], page.VideoQualityList.Select(quality => quality.Quality));
+        Assert.Equal([116, 112], page.PlaybackAvailability!.Video.Select(video => video.Quality));
         Assert.Equal(112, page.VideoQuality!.Quality);
         Assert.Equal(PlaybackQualityMatchKind.Higher, page.VideoQualityMatch!.Kind);
         Assert.False(page.VideoQualityMatch.RequiresLowerQualityConfirmation);
@@ -234,7 +234,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
 
-        Assert.Equal(112, Assert.Single(page.VideoQualityList).Quality);
+        Assert.Equal(112, Assert.Single(page.PlaybackAvailability!.Video).Quality);
         Assert.Equal(112, page.VideoQuality!.Quality);
         Assert.Equal("H.264/AVC", page.VideoQuality!.SelectedVideoCodec);
         Assert.True(page.VideoQuality!.IsDurl);
@@ -277,7 +277,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
 
-        Assert.Equal([112, 64], page.VideoQualityList.Select(quality => quality.Quality));
+        Assert.Equal([112, 64], page.PlaybackAvailability!.Video.Select(video => video.Quality));
         Assert.Equal(112, page.VideoQuality!.Quality);
         Assert.True(page.VideoQuality!.IsDurl);
         Assert.Empty(playUrl.Durl);
@@ -300,7 +300,8 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
 
-        Assert.Empty(page.VideoQualityList);
+        Assert.Null(page.VideoQuality);
+        Assert.Empty(page.PlaybackAvailability!.Video);
     }
 
     [Fact]
@@ -314,84 +315,6 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
         Assert.Equal(112, page.VideoQuality!.Quality);
         Assert.Equal(PlaybackQualityMatchKind.Lower, page.VideoQualityMatch!.Kind);
         Assert.True(page.VideoQualityMatch.RequiresLowerQualityConfirmation);
-    }
-
-    [Fact]
-    public void ManualVideoQualitySelectionClearsAutomaticMatch()
-    {
-        var settings = CreateSettings(videoQuality: 116, isVip: true);
-        var page = new VideoPage();
-
-        VideoPagePlaybackMapper.ApplyPlayUrl(CreatePlayUrl(112, 80), page, settings);
-        page.VideoQuality = page.VideoQualityList.Single(quality => quality.Quality == 80);
-
-        Assert.Equal(80, page.VideoQuality.Quality);
-        Assert.Null(page.VideoQualityMatch);
-    }
-
-    [Fact]
-    public void SupplementationPreservesSelectedCodecWhileAutomaticQualityAdvances()
-    {
-        var settings = CreateSettings(videoQuality: 80, isVip: true);
-        var initial = CreatePlayUrl(64);
-        initial.Dash.Video =
-        [
-            new PlayUrlDashVideo
-            {
-                Id = 64,
-                CodecId = 7,
-                BaseAddress = "https://media.invalid/video-64-avc"
-            },
-            new PlayUrlDashVideo
-            {
-                Id = 64,
-                CodecId = 12,
-                BaseAddress = "https://media.invalid/video-64-hevc"
-            }
-        ];
-        var supplemented = CreatePlayUrl(80, 64);
-        supplemented.Dash.Video =
-        [
-            new PlayUrlDashVideo
-            {
-                Id = 80,
-                CodecId = 7,
-                BaseAddress = "https://media.invalid/video-80-avc"
-            },
-            new PlayUrlDashVideo
-            {
-                Id = 80,
-                CodecId = 12,
-                BaseAddress = "https://media.invalid/video-80-hevc"
-            },
-            new PlayUrlDashVideo
-            {
-                Id = 64,
-                CodecId = 7,
-                BaseAddress = "https://media.invalid/video-64-avc"
-            },
-            new PlayUrlDashVideo
-            {
-                Id = 64,
-                CodecId = 12,
-                BaseAddress = "https://media.invalid/video-64-hevc"
-            }
-        ];
-        var page = new VideoPage();
-
-        VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
-        Assert.Equal(PlaybackQualityMatchKind.Lower, page.VideoQualityMatch!.Kind);
-        page.VideoQuality!.SelectedVideoCodec = "H.265/HEVC";
-        Assert.True(page.VideoQuality.HasManualVideoCodecSelection);
-
-        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
-            supplemented,
-            page,
-            settings);
-
-        Assert.Equal(80, page.VideoQuality!.Quality);
-        Assert.Equal("H.265/HEVC", page.VideoQuality.SelectedVideoCodec);
-        Assert.Equal(PlaybackQualityMatchKind.Exact, page.VideoQualityMatch!.Kind);
     }
 
     [Fact]
@@ -435,10 +358,8 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
         Assert.Equal("H.264/AVC", page.VideoQuality!.SelectedVideoCodec);
-        page.VideoQuality.SelectedVideoCodec = page.VideoQuality.SelectedVideoCodec;
-        Assert.False(page.VideoQuality.HasManualVideoCodecSelection);
 
-        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
+        VideoPagePlaybackMapper.ApplyPlayUrl(
             supplemented,
             page,
             settings);
@@ -481,69 +402,14 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(initial, page, settings);
         Assert.Equal("中质量", page.AudioQualityFormat);
-        page.AudioQualityFormat = page.AudioQualityFormat;
         Assert.NotNull(page.AudioQualityMatch);
 
-        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
+        VideoPagePlaybackMapper.ApplyPlayUrl(
             supplemented,
             page,
             settings);
 
         Assert.Equal("高质量", page.AudioQualityFormat);
-    }
-
-    [Fact]
-    public void ReparsePreservesManualAudioQualitySelection()
-    {
-        var settings = CreateSettings(videoQuality: 80, isVip: true);
-        var playUrl = CreatePlayUrl(80);
-        playUrl.Dash.Audio =
-        [
-            new PlayUrlDashVideo
-            {
-                Id = 30280,
-                BaseAddress = "https://media.invalid/audio-30280"
-            },
-            new PlayUrlDashVideo
-            {
-                Id = 30232,
-                BaseAddress = "https://media.invalid/audio-30232"
-            }
-        ];
-        var page = new VideoPage();
-
-        VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
-        page.AudioQualityFormat = "中质量";
-        Assert.Null(page.AudioQualityMatch);
-
-        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
-            playUrl,
-            page,
-            settings);
-
-        Assert.Equal("中质量", page.AudioQualityFormat);
-    }
-
-    [Fact]
-    public void ReparsePreservesManualStreamKindAndCodecForMatchingQualityIds()
-    {
-        var settings = CreateSettings(videoQuality: 80, isVip: true);
-        var page = new VideoPage();
-
-        VideoPagePlaybackMapper.ApplyPlayUrl(CreateSameQualityDashAndDurlPlayUrl(), page, settings);
-        page.VideoQuality = page.VideoQualityList.Single(candidate => candidate.IsDurl);
-        page.SelectedVideoCodec = "H.264/AVC";
-
-        VideoPagePlaybackMapper.ApplyPlayUrlPreservingSelection(
-            CreateSameQualityDashAndDurlPlayUrl(),
-            page,
-            settings);
-
-        Assert.NotNull(page.VideoQuality);
-        Assert.True(page.VideoQuality.IsDurl);
-        Assert.Equal(80, page.VideoQuality.Quality);
-        Assert.Equal("H.264/AVC", page.SelectedVideoCodec);
-        Assert.Contains(page.VideoQuality, page.VideoQualityList);
     }
 
     [Fact]
@@ -554,7 +420,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(CreatePlayUrl(112), page, settings);
 
-        Assert.Equal(112, Assert.Single(page.VideoQualityList).Quality);
+        Assert.Equal(112, Assert.Single(page.PlaybackAvailability!.Video).Quality);
         Assert.Equal(112, page.VideoQuality!.Quality);
     }
 
@@ -592,7 +458,7 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
 
         VideoPagePlaybackMapper.ApplyPlayUrl(playUrl, page, settings);
 
-        Assert.Equal(["高质量", "中质量", "低质量"], page.AudioQualityFormatList);
+        Assert.Equal([30280, 30232, 30216], page.PlaybackAvailability!.Audio);
         Assert.Equal("中质量", page.AudioQualityFormat);
         Assert.Equal(PlaybackQualityMatchKind.Exact, page.AudioQualityMatch!.Kind);
     }
@@ -771,46 +637,6 @@ public sealed class VideoPagePlaybackMapperTests : IDisposable
                 IsLogin = isVip,
                 IsVip = isVip
             }
-        };
-    }
-
-    private static PlayUrl CreateSameQualityDashAndDurlPlayUrl()
-    {
-        return new PlayUrl
-        {
-            Availability = new PlayUrlAvailability(
-            [
-                new PlayUrlVideoAvailability(
-                    80,
-                    12,
-                    PlayUrlStreamKind.Dash,
-                    "1080P DASH"),
-                new PlayUrlVideoAvailability(
-                    80,
-                    7,
-                    PlayUrlStreamKind.Durl,
-                    "1080P DURL")
-            ],
-            []),
-            Dash = new PlayUrlDash
-            {
-                Video =
-                [
-                    new PlayUrlDashVideo
-                    {
-                        Id = 80,
-                        CodecId = 12,
-                        BaseAddress = "https://media.invalid/video-80-hevc"
-                    }
-                ]
-            },
-            Durl =
-            [
-                new PlayUrlDurl
-                {
-                    SourceAddress = "https://media.invalid/video-80.mp4"
-                }
-            ]
         };
     }
 

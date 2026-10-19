@@ -111,6 +111,7 @@ public sealed class BangumiEpisodeIdentityTests
 
         await service.GetVideoStreamAsync(
             page,
+            new PlaybackDiscoveryRequest(80, 30280, RequireVideo: true, RequireAudio: false),
             TestContext.Current.CancellationToken);
 
         AssertEpisodeId(capturedRequest);

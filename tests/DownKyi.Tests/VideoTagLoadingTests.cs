@@ -1063,9 +1063,10 @@ public sealed class VideoTagLoadingTests : IDisposable
     }
 
     [Fact]
-    public async Task PreparationUsesRequestedMediaAndManualQualityForSupplementation()
+    public async Task PreparationUsesRequestedMediaAndSettingsQualityForSupplementation()
     {
         using var context = CreateContext(generateMetadata: false);
+        context.SetPreferredVideoQuality(112);
         var page = CreatePage(_ => Task.FromResult<IReadOnlyList<string>>([]));
         page.PlaybackAvailability = new PlayUrlAvailability(
         [
@@ -1080,12 +1081,11 @@ public sealed class VideoTagLoadingTests : IDisposable
         {
             Quality = 64,
             QualityFormat = "720P 高清",
-            VideoCodecList = ["H.265/HEVC"],
             SelectedVideoCodec = "H.265/HEVC"
         };
         page.AudioQualityFormat = string.Empty;
         var infoService = new PreparationInfoService(
-            new VideoInfoView { Title = "manual-selection" },
+            new VideoInfoView { Title = "settings-selection" },
             [new VideoSection { VideoPages = [page] }],
             new PlayUrl
             {
@@ -1126,11 +1126,12 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         Assert.NotNull(prepared);
         var request = Assert.IsType<PlaybackDiscoveryRequest>(infoService.LastDiscoveryRequest);
-        Assert.Equal(64, request.PreferredVideoQuality);
+        Assert.Equal(112, request.PreferredVideoQuality);
         Assert.Equal(30280, request.PreferredAudioQuality);
         Assert.True(request.RequireVideo);
         Assert.True(request.RequireAudio);
         Assert.Equal(64, page.VideoQuality!.Quality);
+        Assert.Equal(PlaybackQualityMatchKind.Lower, page.VideoQualityMatch!.Kind);
         Assert.Equal("H.265/HEVC", page.VideoQuality.SelectedVideoCodec);
         Assert.Equal("高质量", page.AudioQualityFormat);
     }
@@ -1339,6 +1340,7 @@ public sealed class VideoTagLoadingTests : IDisposable
             {
                 Video = settings.Video with
                 {
+                    Quality = 80,
                     Content = settings.Video.Content with
                     {
                         GenerateMovieMetadata = generateMetadata
@@ -1392,6 +1394,14 @@ public sealed class VideoTagLoadingTests : IDisposable
         public RecordingLogger<DownloadMovieMetadataBuilder> Logger { get; }
 
         public RecordingDialogService Dialogs { get; }
+
+        public void SetPreferredVideoQuality(int quality)
+        {
+            _settings.Update(settings => settings with
+            {
+                Video = settings.Video with { Quality = quality }
+            });
+        }
 
         public void UseContentIndependentFileName()
         {
@@ -1641,20 +1651,13 @@ public sealed class VideoTagLoadingTests : IDisposable
 
         public Task<PlayUrl?> GetVideoStreamAsync(
             VideoPage page,
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            StreamRequestCount++;
-            return Task.FromResult<PlayUrl?>(playUrl);
-        }
-
-        public Task<PlayUrl?> GetVideoStreamAsync(
-            VideoPage page,
             PlaybackDiscoveryRequest request,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             LastDiscoveryRequest = request;
-            return GetVideoStreamAsync(page, cancellationToken);
+            StreamRequestCount++;
+            return Task.FromResult<PlayUrl?>(playUrl);
         }
     }
 

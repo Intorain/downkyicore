@@ -328,26 +328,6 @@ internal class VideoInfoService : IInfoService
         return page;
     }
 
-    /// <summary>
-    /// 获取视频流的信息，从VideoPage返回
-    /// </summary>
-    /// <param name="page"></param>
-    public Task<PlayUrl?> GetVideoStreamAsync(
-        VideoPage page,
-        CancellationToken cancellationToken = default)
-    {
-        var video = _settingsStore.Current.Video;
-        var content = video.Content;
-        return GetVideoStreamAsync(
-            page,
-            new PlaybackDiscoveryRequest(
-                video.Quality,
-                video.AudioQuality,
-                content.DownloadVideo,
-                content.DownloadAudio),
-            cancellationToken);
-    }
-
     public async Task<PlayUrl?> GetVideoStreamAsync(
         VideoPage page,
         PlaybackDiscoveryRequest request,
