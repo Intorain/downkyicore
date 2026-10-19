@@ -161,15 +161,13 @@ internal class CheeseInfoService : IInfoService
         return null;
     }
 
-    /// <summary>
-    /// 获取视频流的信息，从VideoPage返回
-    /// </summary>
-    /// <param name="page"></param>
     public Task<PlayUrl?> GetVideoStreamAsync(
         VideoPage page,
+        PlaybackDiscoveryRequest request,
         System.Threading.CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         return _client.GetCheesePlayUrlAsync(
             page.Avid,
@@ -177,15 +175,6 @@ internal class CheeseInfoService : IInfoService
             page.Cid,
             page.EpisodeId,
             cancellationToken: cancellationToken);
-    }
-
-    public Task<PlayUrl?> GetVideoStreamAsync(
-        VideoPage page,
-        PlaybackDiscoveryRequest request,
-        System.Threading.CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return GetVideoStreamAsync(page, cancellationToken);
     }
 
     /// <summary>

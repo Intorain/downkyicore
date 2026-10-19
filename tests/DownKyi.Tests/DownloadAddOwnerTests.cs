@@ -294,13 +294,9 @@ public sealed class DownloadAddOwnerTests : IDisposable
             new PlayUrlVideoAvailability(80, 7, PlayUrlStreamKind.Durl, "1080P DURL")
         ],
         []);
-        var dash = CreateVideoQuality(isDurl: false);
-        dash.Quality = 80;
-        dash.SelectedVideoCodec = "H.265/HEVC";
         var durl = CreateVideoQuality(isDurl: true);
         durl.Quality = 80;
         durl.SelectedVideoCodec = "H.264/AVC";
-        page.VideoQualityList = [dash, durl];
         page.VideoQuality = durl;
         var video = new VideoInfoView { Title = "main", VideoZone = "Technology" };
         var section = new VideoSection { VideoPages = [page] };

@@ -126,13 +126,6 @@ public sealed class VideoParseCoordinatorTests
 
         public Task<PlayUrl?> GetVideoStreamAsync(
             VideoPage page,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromException<PlayUrl?>(new NotSupportedException());
-        }
-
-        public Task<PlayUrl?> GetVideoStreamAsync(
-            VideoPage page,
             PlaybackDiscoveryRequest request,
             CancellationToken cancellationToken = default)
         {

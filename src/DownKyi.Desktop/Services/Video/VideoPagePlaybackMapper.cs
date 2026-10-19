@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using DownKyi.Application.Diagnostics;
@@ -44,7 +43,6 @@ internal static class VideoPagePlaybackMapper
         var videoCodecs = settings.Video.VideoCodecs;
         var defaultAudioQuality = settings.Video.AudioQuality;
 
-        page.AudioQualityFormatList = GetAudioQualityFormatList(availability.Audio);
         var audioMatch = PlaybackQualityCatalog.SelectAudioQuality(
             availability.Audio,
             defaultAudioQuality);
@@ -53,12 +51,12 @@ internal static class VideoPagePlaybackMapper
             ?.Name ?? string.Empty;
         page.SetAutomaticAudioQuality(selectedAudioQuality, audioMatch);
 
-        page.VideoQualityList = GetVideoQualityList(availability.Video, videoCodecs);
+        var videoQualities = GetVideoQualityList(availability.Video, videoCodecs);
         var videoMatch = PlaybackQualityCatalog.SelectVideoQuality(
-            page.VideoQualityList.Select(quality => quality.Quality),
+            videoQualities.Select(quality => quality.Quality),
             defaultQuality);
         page.SetAutomaticVideoQuality(
-            page.VideoQualityList.FirstOrDefault(quality =>
+            videoQualities.FirstOrDefault(quality =>
                 quality.Quality == videoMatch.SelectedQuality),
             videoMatch);
 
@@ -71,84 +69,6 @@ internal static class VideoPagePlaybackMapper
         }
     }
 
-    internal static void ApplyPlayUrlPreservingSelection(
-        PlayUrl? playUrl,
-        VideoPage page,
-        ApplicationSettings settings,
-        ILogger? logger = null)
-    {
-        if (playUrl == null)
-        {
-            return;
-        }
-
-        ArgumentNullException.ThrowIfNull(page);
-        var manualVideo = page.VideoQualityMatch == null ? page.VideoQuality : null;
-        var selectedCodec = page.VideoQuality is { HasManualVideoCodecSelection: true } selectedVideo
-            ? selectedVideo.SelectedVideoCodec
-            : null;
-        var manualAudio = page.AudioQualityMatch == null ? page.AudioQualityFormat : null;
-
-        ApplyPlayUrl(playUrl, page, settings, logger);
-
-        if (manualVideo != null)
-        {
-            var matchingVideo = page.VideoQualityList.FirstOrDefault(candidate =>
-                candidate.Quality == manualVideo.Quality
-                && candidate.IsDurl == manualVideo.IsDurl);
-            if (matchingVideo != null)
-            {
-                page.VideoQuality = matchingVideo;
-            }
-        }
-
-        if (!string.IsNullOrEmpty(selectedCodec)
-            && page.VideoQuality?.VideoCodecList.Contains(selectedCodec) == true)
-        {
-            page.VideoQuality.SelectedVideoCodec = selectedCodec;
-        }
-
-        if (!string.IsNullOrEmpty(manualAudio)
-            && page.AudioQualityFormatList.Contains(manualAudio))
-        {
-            page.AudioQualityFormat = manualAudio;
-        }
-    }
-
-    /// <summary>
-    /// 设置音质
-    /// </summary>
-    /// <param name="playUrl"></param>
-    /// <returns></returns>
-    private static ObservableCollection<string> GetAudioQualityFormatList(
-        IEnumerable<int> availableAudioIds)
-    {
-        var audioQualityFormatList = new List<string>();
-        var sortList = new List<string>();
-        var audioQualities = PlaybackQualityCatalog.GetAudioQualities();
-
-        foreach (var audioId in availableAudioIds.Distinct())
-        {
-            var audioQuality = audioQualities.FirstOrDefault(quality => quality.Id == audioId);
-            if (audioQuality != null)
-            {
-                ListHelper.AddUnique(audioQualityFormatList, audioQuality.Name);
-            }
-        }
-
-        foreach (var item in audioQualities)
-        {
-            if (audioQualityFormatList.Contains(item.Name))
-            {
-                sortList.Add(item.Name);
-            }
-        }
-
-        sortList.Reverse();
-
-        return new ObservableCollection<string>(sortList);
-    }
-
     /// <summary>
     /// 设置画质 & 视频编码
     /// </summary>
@@ -159,96 +79,36 @@ internal static class VideoPagePlaybackMapper
         IEnumerable<PlayUrlVideoAvailability> availableVideo,
         int videoCodecs)
     {
-        var videoQualityList = new List<VideoQuality>();
         var codeIds = PlaybackQualityCatalog.GetCodecIds();
         var resolutions = PlaybackQualityCatalog.GetResolutions();
-
-        foreach (var video in availableVideo)
-        {
-            var qualityFormat = string.IsNullOrWhiteSpace(video.Description)
-                ? resolutions.FirstOrDefault(resolution => resolution.Id == video.Quality)?.Name
-                  ?? string.Empty
-                : video.Description;
-
-            // 寻找是否已存在这个画质
-            // 不存在则添加，存在则修改
-            var codecName = codeIds.FirstOrDefault(t => t.Id == video.CodecId)?.Name ?? string.Empty;
-            var isDurl = video.StreamKind == PlayUrlStreamKind.Durl;
-            var videoQualityExist = videoQualityList.FirstOrDefault(candidate =>
-                candidate.Quality == video.Quality && candidate.IsDurl == isDurl);
-            if (videoQualityExist == null)
+        return availableVideo
+            .GroupBy(video => (video.Quality, IsDurl: video.StreamKind == PlayUrlStreamKind.Durl))
+            .Select(group =>
             {
-                var videoCodecList = new List<string>();
-                if (!string.IsNullOrEmpty(codecName))
+                var first = group.First();
+                var codecNames = group
+                    .Select(video => codeIds.FirstOrDefault(codec => codec.Id == video.CodecId)?.Name)
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+                var preferredCodecName = codeIds.FirstOrDefault(codec => codec.Id == videoCodecs)?.Name;
+                var selectedCodecName = codecNames.Contains(preferredCodecName, StringComparer.Ordinal)
+                    ? preferredCodecName
+                    : codeIds.TakeWhile(codec => codec.Id != videoCodecs)
+                        .Where(codec => codecNames.Contains(codec.Name, StringComparer.Ordinal))
+                        .Select(codec => codec.Name)
+                        .LastOrDefault() ?? codecNames.FirstOrDefault();
+                return new VideoQuality
                 {
-                    ListHelper.AddUnique(videoCodecList, codecName);
-                }
-
-                var videoQuality = new VideoQuality
-                {
-                    Quality = video.Quality,
-                    QualityFormat = qualityFormat,
-                    IsDurl = isDurl,
-                    VideoCodecList = videoCodecList
+                    Quality = group.Key.Quality,
+                    IsDurl = group.Key.IsDurl,
+                    QualityFormat = string.IsNullOrWhiteSpace(first.Description)
+                        ? resolutions.FirstOrDefault(resolution => resolution.Id == first.Quality)?.Name
+                          ?? string.Empty
+                        : first.Description,
+                    SelectedVideoCodec = selectedCodecName ?? string.Empty
                 };
-                videoQualityList.Add(videoQuality);
-            }
-            else
-            {
-                if (!videoQualityExist.VideoCodecList.Any(t => t.Equals(codecName, System.StringComparison.Ordinal)))
-                {
-                    if (!string.IsNullOrEmpty(codecName))
-                    {
-                        videoQualityExist.VideoCodecList.Add(codecName);
-                    }
-                }
-            }
-
-            // 设置选中的视频编码
-            var selectedVideoQuality = videoQualityList.FirstOrDefault(candidate =>
-                candidate.Quality == video.Quality && candidate.IsDurl == isDurl);
-            if (selectedVideoQuality == null)
-            {
-                continue;
-            }
-
-            // 设置选中的视频编码
-            var videoCodecsName = codeIds.FirstOrDefault(t => t.Id == videoCodecs)?.Name ?? string.Empty;
-            if (videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].VideoCodecList.Contains(videoCodecsName))
-            {
-                videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)]
-                    .SetAutomaticVideoCodec(videoCodecsName);
-            }
-            else
-            {
-                // 当获取的视频没有设置的视频编码时
-                foreach (var codec in codeIds)
-                {
-                    if (videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)].VideoCodecList
-                        .Contains(codec.Name))
-                    {
-                        videoQualityList[videoQualityList.IndexOf(selectedVideoQuality)]
-                            .SetAutomaticVideoCodec(codec.Name);
-                    }
-
-                    if (codec.Id == videoCodecs)
-                    {
-                        break;
-                    }
-                }
-
-                // 若默认编码为AVC，但画质为杜比视界时，
-                // 上面的foreach不会选中HEVC编码，
-                // 而杜比视界只有HEVC编码，
-                // 因此这里再判断并设置一次
-                if (string.IsNullOrEmpty(selectedVideoQuality.SelectedVideoCodec) && selectedVideoQuality.VideoCodecList.Count > 0)
-                {
-                    selectedVideoQuality.SetAutomaticVideoCodec(selectedVideoQuality.VideoCodecList[0]);
-                }
-            }
-        }
-
-        return videoQualityList
+            })
             .OrderByDescending(quality => quality.Quality)
             .ToList();
     }

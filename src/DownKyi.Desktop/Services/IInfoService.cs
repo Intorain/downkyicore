@@ -16,10 +16,6 @@ internal interface IInfoService
 
     Task<PlayUrl?> GetVideoStreamAsync(
         VideoPage page,
-        System.Threading.CancellationToken cancellationToken = default);
-
-    Task<PlayUrl?> GetVideoStreamAsync(
-        VideoPage page,
         PlaybackDiscoveryRequest request,
         System.Threading.CancellationToken cancellationToken = default);
 }
