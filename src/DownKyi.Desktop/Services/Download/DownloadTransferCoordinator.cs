@@ -47,10 +47,7 @@ internal sealed class DownloadTransferCoordinator
         var attemptsForAddress = 0;
         var resumeCleanupRetryGrantedForAddress = false;
         var canRefreshAddresses = true;
-        var lastResult = DownloadTransferResult.Failed(
-            DownloadTransferFailureKind.Permanent,
-            "download.transfer.not-started");
-        for (var attempt = 1; attempt <= _retryPolicy.MaximumAttempts; attempt++)
+        while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             attemptsForAddress++;
@@ -60,7 +57,7 @@ internal sealed class DownloadTransferCoordinator
                 Urls = [currentAddress],
                 CancellationToken = cancellationToken
             };
-            lastResult = await _backend.TransferAsync(attemptRequest).ConfigureAwait(true);
+            var lastResult = await _backend.TransferAsync(attemptRequest).ConfigureAwait(true);
             if (lastResult.Outcome != DownloadTransferOutcome.Failed)
             {
                 return lastResult;
@@ -84,7 +81,7 @@ internal sealed class DownloadTransferCoordinator
             DownloadRetryDecision decision;
             if (lastResult.FailureKind == DownloadTransferFailureKind.ResumeRejected
                 && !resumeCleanupRetryGrantedForAddress
-                && attempt < _retryPolicy.MaximumAttempts)
+                && attemptsForAddress < _retryPolicy.MaximumAttempts)
             {
                 resumeCleanupRetryGrantedForAddress = true;
                 decision = new DownloadRetryDecision(
@@ -95,14 +92,13 @@ internal sealed class DownloadTransferCoordinator
             {
                 decision = _retryPolicy.Decide(
                     lastResult,
-                    attempt,
                     attemptsForAddress,
                     addressIndex + 1 < addresses.Length,
                     canRefreshAddresses);
             }
             _logger.LogWarningMessage(FormatFailureDiagnostic(
                 _backend.Name,
-                attempt,
+                attemptsForAddress,
                 _retryPolicy.MaximumAttempts,
                 lastResult.FailureKind,
                 lastResult.ErrorCode,
@@ -169,8 +165,6 @@ internal sealed class DownloadTransferCoordinator
                     return lastResult;
             }
         }
-
-        return lastResult;
     }
 
     internal static string FormatFailureDiagnostic(
