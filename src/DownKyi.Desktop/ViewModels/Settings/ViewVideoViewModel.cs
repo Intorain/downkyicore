@@ -8,6 +8,7 @@ using DownKyi.Commands;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.FileName;
 using DownKyi.Core.Settings;
+using DownKyi.Domain.Downloads;
 using DownKyi.Models;
 using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
@@ -98,6 +99,9 @@ internal partial class ViewVideoViewModel : ViewModelBase
 
         FfmpegMaxParallelJobs = new List<int> { 1, 2, 3, 4 };
 
+        SubtitleLanguagePreferences = SubtitlePreferenceOptions.CreateLanguages();
+        SubtitleTypePreferences = SubtitlePreferenceOptions.CreateTypes();
+
         #endregion
     }
 
@@ -148,7 +152,14 @@ internal partial class ViewVideoViewModel : ViewModelBase
         DownloadAudio = videoContent.DownloadAudio;
         DownloadVideo = videoContent.DownloadVideo;
         DownloadDanmaku = videoContent.DownloadDanmaku;
-        DownloadSubtitle = videoContent.DownloadSubtitle;
+        var hasSubtitlePreference =
+            videoContent.PreferredSubtitleLanguage != SubtitleLanguagePreference.Unspecified;
+        SelectedSubtitleLanguagePreference = SubtitleLanguagePreferences.First(item =>
+            item.Value == SubtitlePreferenceOptions.EffectiveLanguage(
+                videoContent.PreferredSubtitleLanguage));
+        SelectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
+            item.Value == videoContent.PreferredSubtitleType);
+        DownloadSubtitle = hasSubtitlePreference && videoContent.DownloadSubtitle;
         DownloadCover = videoContent.DownloadCover;
         GenerateMovieMetadata = videoContent.GenerateMovieMetadata;
         if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
@@ -336,7 +347,9 @@ internal partial class ViewVideoViewModel : ViewModelBase
                 DownloadDanmaku = DownloadDanmaku,
                 DownloadSubtitle = DownloadSubtitle,
                 DownloadCover = DownloadCover,
-                GenerateMovieMetadata = GenerateMovieMetadata
+                GenerateMovieMetadata = GenerateMovieMetadata,
+                PreferredSubtitleLanguage = SelectedSubtitleLanguagePreference.Value,
+                PreferredSubtitleType = SelectedSubtitleTypePreference.Value
             }
         });
         var isSucceed = updated.Content == new VideoContentApplicationSettings(
@@ -345,7 +358,9 @@ internal partial class ViewVideoViewModel : ViewModelBase
             DownloadDanmaku,
             DownloadSubtitle,
             DownloadCover,
-            GenerateMovieMetadata);
+            GenerateMovieMetadata,
+            SelectedSubtitleLanguagePreference.Value,
+            SelectedSubtitleTypePreference.Value);
         PublishTip(isSucceed);
     }
 

@@ -281,7 +281,10 @@ internal sealed partial class DownloadArtifactWriter
                     metadata.Media.Cid,
                     e => parseFailure ??= e,
                     cancellationToken,
-                    content.SelectedSubtitleTrackIds is { } selectedIds ? selectedIds : null),
+                    content.SelectedSubtitleTrackIds is { } selectedIds ? selectedIds : null,
+                    new SubtitleTrackPreference(
+                        content.PreferredSubtitleLanguage,
+                        content.PreferredSubtitleType)),
                 TimeProvider.System,
                 cancellationToken).ConfigureAwait(false);
         }

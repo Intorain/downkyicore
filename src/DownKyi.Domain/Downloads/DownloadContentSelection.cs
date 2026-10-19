@@ -38,6 +38,10 @@ public sealed record DownloadContentSelection(
 
     public long? DefaultSubtitleTrackId { get; init; }
 
+    public SubtitleLanguagePreference PreferredSubtitleLanguage { get; init; }
+
+    public SubtitleTypePreference PreferredSubtitleType { get; init; }
+
     public DownloadDanmakuOutputFormat? DanmakuOutputFormat { get; init; }
 
     public bool HasMedia => Audio || Video;

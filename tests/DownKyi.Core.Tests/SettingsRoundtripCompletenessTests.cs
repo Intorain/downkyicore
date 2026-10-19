@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using DownKyi.Core.FileName;
 using DownKyi.Core.Settings;
+using DownKyi.Domain.Downloads;
 
 namespace DownKyi.Core.Tests;
 
@@ -261,6 +262,8 @@ public sealed class SettingsRoundtripCompletenessTests
                 "Network.NetworkProxy" => NetworkProxy.System,
                 "Video.FfmpegHardwareAcceleration" => FfmpegHardwareAcceleration.Disabled,
                 "Video.OrderFormat" => OrderFormat.LeadingZeros,
+                "Video.Content.PreferredSubtitleLanguage" => SubtitleLanguagePreference.English,
+                "Video.Content.PreferredSubtitleType" => SubtitleTypePreference.Ai,
                 "Danmaku.OutputFormat" => DanmakuOutputFormat.AssAndXml,
                 "Danmaku.LayoutAlgorithm" => DanmakuLayoutAlgorithm.Async,
                 _ => throw UnsupportedLeaf(path, valueType)

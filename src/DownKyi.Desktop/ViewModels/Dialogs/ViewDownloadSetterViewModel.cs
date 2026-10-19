@@ -54,6 +54,26 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
     public ObservableCollection<SubtitleTrackItem> SubtitleTracks { get; } = [];
 
+    public IReadOnlyList<SubtitleLanguagePreferenceItem> SubtitleLanguagePreferences { get; }
+
+    public IReadOnlyList<SubtitleTypePreferenceItem> SubtitleTypePreferences { get; }
+
+    private SubtitleLanguagePreferenceItem _selectedSubtitleLanguagePreference = null!;
+
+    public SubtitleLanguagePreferenceItem SelectedSubtitleLanguagePreference
+    {
+        get => _selectedSubtitleLanguagePreference;
+        set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
+    }
+
+    private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
+
+    public SubtitleTypePreferenceItem SelectedSubtitleTypePreference
+    {
+        get => _selectedSubtitleTypePreference;
+        set => SetProperty(ref _selectedSubtitleTypePreference, value);
+    }
+
     public DownloadSettingsDialog.SubtitleTrackDiscoveryStatus SubtitleTrackDiscoveryStatus
     {
         get;
@@ -179,10 +199,20 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         var videoSettings = _settingsStore.Current.Video;
         var videoContent = videoSettings.Content;
 
+        SubtitleLanguagePreferences = SubtitlePreferenceOptions.CreateLanguages();
+        SubtitleTypePreferences = SubtitlePreferenceOptions.CreateTypes();
+        var hasSubtitlePreference =
+            videoContent.PreferredSubtitleLanguage != SubtitleLanguagePreference.Unspecified;
+        SelectedSubtitleLanguagePreference = SubtitleLanguagePreferences.First(item =>
+            item.Value == SubtitlePreferenceOptions.EffectiveLanguage(
+                videoContent.PreferredSubtitleLanguage));
+        SelectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
+            item.Value == videoContent.PreferredSubtitleType);
+
         DownloadAudio = videoContent.DownloadAudio;
         DownloadVideo = videoContent.DownloadVideo;
         DownloadDanmaku = videoContent.DownloadDanmaku;
-        DownloadSubtitle = videoContent.DownloadSubtitle;
+        DownloadSubtitle = hasSubtitlePreference && videoContent.DownloadSubtitle;
         DownloadCover = videoContent.DownloadCover;
 
         UpdateDownloadAll();
@@ -206,16 +236,18 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SubtitleTrackDiscoveryStatus = discovery.Status;
         var tracks = discovery.Tracks;
 
-        for (var index = 0; index < tracks.Count; index++)
+        foreach (var track in tracks)
         {
             SubtitleTracks.Add(new SubtitleTrackItem(
-                tracks[index],
-                DownloadSubtitle,
-                DownloadSubtitle && index == 0,
+                track,
+                isSelected: false,
+                isDefault: false,
                 OnSubtitleTrackSelectionChanged));
         }
 
         OnPropertyChanged(nameof(HasSubtitleTracks));
+        SynchronizeSubtitleTracksFromDownloadOption();
+        UpdateDownloadAll();
     }
 
     #region 命令申明
@@ -276,6 +308,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         }
 
         SynchronizeSubtitleTracksFromDownloadOption();
+        UpdateDownloadAll();
         SetVideoContent();
     }
 
@@ -321,6 +354,18 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SetVideoContent();
     }
 
+    private RelayCommand? _downloadSubtitleCommand;
+
+    public RelayCommand DownloadSubtitleCommand =>
+        _downloadSubtitleCommand ??= new RelayCommand(ExecuteDownloadSubtitleCommand);
+
+    private void ExecuteDownloadSubtitleCommand()
+    {
+        SynchronizeSubtitleTracksFromDownloadOption();
+        UpdateDownloadAll();
+        SetVideoContent();
+    }
+
     private void SynchronizeSubtitleTracksFromDownloadOption()
     {
         if (!HasSubtitleTracks)
@@ -333,12 +378,28 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         {
             foreach (var track in SubtitleTracks)
             {
-                track.IsSelected = DownloadSubtitle;
+                track.IsSelected = false;
             }
 
             if (DownloadSubtitle)
             {
-                SubtitleTracks[0].IsDefault = true;
+                var preferredTrackId = SubtitleTrackSelector.SelectPreferredTrack(
+                    SubtitleTracks.Select(track => new SubtitleTrackCandidate(
+                        track.TrackId,
+                        track.Language,
+                        track.IsAi ? 1 : 0)),
+                    CurrentSubtitlePreference);
+                var preferredTrack = SubtitleTracks.FirstOrDefault(track =>
+                    track.TrackId == preferredTrackId);
+                if (preferredTrack == null)
+                {
+                    DownloadSubtitle = false;
+                }
+                else
+                {
+                    preferredTrack.IsSelected = true;
+                    preferredTrack.IsDefault = true;
+                }
             }
         }
         finally
@@ -436,7 +497,13 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             DownloadVideo,
             DownloadDanmaku,
             DownloadSubtitle,
-            DownloadCover);
+            DownloadCover)
+        {
+            PreferredSubtitleLanguage = HasSubtitleTracks
+                ? SubtitleLanguagePreference.Unspecified
+                : SelectedSubtitleLanguagePreference.Value,
+            PreferredSubtitleType = SelectedSubtitleTypePreference.Value
+        };
         var selectedIds = HasSubtitleTracks
             ? SubtitleTracks.Where(track => track.IsSelected).Select(track => track.TrackId).ToArray()
             : null;
@@ -444,6 +511,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         CloseDialog(AppDialogOutcome.Accepted, DownloadSettingsDialog.EncodeResult(
             Directory, requestedContent, selectedIds, defaultTrackId));
     }
+
+    private SubtitleTrackPreference CurrentSubtitlePreference => new(
+        SelectedSubtitleLanguagePreference.Value,
+        SelectedSubtitleTypePreference.Value);
 
     #endregion
 

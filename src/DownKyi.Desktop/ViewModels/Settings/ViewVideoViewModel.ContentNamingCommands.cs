@@ -165,6 +165,19 @@ internal partial class ViewVideoViewModel
         SetVideoContent();
     }
 
+    private RelayCommand? _subtitlePreferenceCommand;
+
+    public RelayCommand SubtitlePreferenceCommand =>
+        _subtitlePreferenceCommand ??= new RelayCommand(ExecuteSubtitlePreferenceCommand);
+
+    private void ExecuteSubtitlePreferenceCommand()
+    {
+        if (!_isOnNavigatedTo)
+        {
+            SetVideoContent();
+        }
+    }
+
     // 封面选择事件
     private RelayCommand? _downloadCoverCommand;
 

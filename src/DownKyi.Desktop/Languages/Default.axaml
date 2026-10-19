@@ -405,6 +405,17 @@
     <system:String x:Key="SubtitleTypeStandard">普通</system:String>
     <system:String x:Key="SubtitleTypeAi">AI</system:String>
     <system:String x:Key="DefaultSubtitle">默认</system:String>
+    <system:String x:Key="PreferredSubtitleLanguage">字幕语言</system:String>
+    <system:String x:Key="PreferredSubtitleType">字幕类型</system:String>
+    <system:String x:Key="SubtitleLanguageChineseSimplified">简体中文</system:String>
+    <system:String x:Key="SubtitleLanguageChineseTraditional">繁体中文</system:String>
+    <system:String x:Key="SubtitleLanguageEnglish">英语</system:String>
+    <system:String x:Key="SubtitleLanguageJapanese">日语</system:String>
+    <system:String x:Key="SubtitleLanguageKorean">韩语</system:String>
+    <system:String x:Key="SubtitlePreferenceStandardFirst">普通字幕优先</system:String>
+    <system:String x:Key="SubtitlePreferenceAiFirst">AI 字幕优先</system:String>
+    <system:String x:Key="SubtitlePreferenceTip">同一种语言中优先选择指定类型；没有时改用另一种类型，不会自动切换语言。</system:String>
+    <system:String x:Key="SubtitleFallbackTip">尚未取得字幕清单。下载时会依照语言与类型偏好，每部影片最多选择一条字幕。</system:String>
     <system:String x:Key="DownloadCover">封面</system:String>
     <system:String x:Key="Download">下载</system:String>
     <system:String x:Key="WarningNullDirectory">文件夹路径不能为空</system:String>

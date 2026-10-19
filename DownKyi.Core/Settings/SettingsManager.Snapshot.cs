@@ -79,7 +79,9 @@ public partial class SettingsManager
                     content.DownloadDanmaku,
                     content.DownloadSubtitle,
                     content.DownloadCover,
-                    content.GenerateMovieMetadata),
+                    content.GenerateMovieMetadata,
+                    content.PreferredSubtitleLanguage,
+                    content.PreferredSubtitleType),
                 GetFileNameParts().ToImmutableArray(),
                 GetFileNamePartTimeFormat(),
                 GetOrderFormat()),
@@ -162,7 +164,9 @@ public partial class SettingsManager
                     DownloadDanmaku = validated.Video.Content.DownloadDanmaku,
                     DownloadSubtitle = validated.Video.Content.DownloadSubtitle,
                     DownloadCover = validated.Video.Content.DownloadCover,
-                    GenerateMovieMetadata = validated.Video.Content.GenerateMovieMetadata
+                    GenerateMovieMetadata = validated.Video.Content.GenerateMovieMetadata,
+                    PreferredSubtitleLanguage = validated.Video.Content.PreferredSubtitleLanguage,
+                    PreferredSubtitleType = validated.Video.Content.PreferredSubtitleType
                 });
                 SetFileNameParts(validated.Video.FileNameParts);
                 SetFileNamePartTimeFormat(validated.Video.FileNamePartTimeFormat);

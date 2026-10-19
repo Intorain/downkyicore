@@ -156,6 +156,40 @@ internal partial class ViewVideoViewModel
         set => SetProperty(ref _downloadSubtitle, value);
     }
 
+    private IReadOnlyList<SubtitleLanguagePreferenceItem> _subtitleLanguagePreferences =
+        Array.Empty<SubtitleLanguagePreferenceItem>();
+
+    public IReadOnlyList<SubtitleLanguagePreferenceItem> SubtitleLanguagePreferences
+    {
+        get => _subtitleLanguagePreferences;
+        set => SetProperty(ref _subtitleLanguagePreferences, value);
+    }
+
+    private SubtitleLanguagePreferenceItem _selectedSubtitleLanguagePreference = null!;
+
+    public SubtitleLanguagePreferenceItem SelectedSubtitleLanguagePreference
+    {
+        get => _selectedSubtitleLanguagePreference;
+        set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
+    }
+
+    private IReadOnlyList<SubtitleTypePreferenceItem> _subtitleTypePreferences =
+        Array.Empty<SubtitleTypePreferenceItem>();
+
+    public IReadOnlyList<SubtitleTypePreferenceItem> SubtitleTypePreferences
+    {
+        get => _subtitleTypePreferences;
+        set => SetProperty(ref _subtitleTypePreferences, value);
+    }
+
+    private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
+
+    public SubtitleTypePreferenceItem SelectedSubtitleTypePreference
+    {
+        get => _selectedSubtitleTypePreference;
+        set => SetProperty(ref _selectedSubtitleTypePreference, value);
+    }
+
     private bool _downloadCover;
 
     public bool DownloadCover

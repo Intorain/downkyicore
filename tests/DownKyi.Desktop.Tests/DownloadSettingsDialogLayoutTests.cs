@@ -119,6 +119,37 @@ public sealed class DownloadSettingsDialogLayoutTests
         }
     }
 
+    [AvaloniaFact]
+    public void MissingTrackListKeepsFallbackSubtitleControlsVisible()
+    {
+        var application = DesktopTestResources.EnsureProductThemeResources();
+        var fluentTheme = new FluentTheme();
+        application.Styles.Insert(0, fluentTheme);
+        using var fixture = new ViewModelFixture(downloadSubtitle: false);
+        var viewModel = fixture.CreateViewModel();
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
+        var view = new ViewDownloadSetter { DataContext = viewModel };
+        var window = new DialogWindow { Content = view, DataContext = viewModel };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+
+            var fallback = Assert.IsType<Border>(
+                view.FindControl<Border>("SubtitleFallbackPanel"));
+            Assert.True(fallback.IsVisible);
+            Assert.Single(fallback.GetVisualDescendants().OfType<CheckBox>());
+            Assert.Equal(2, fallback.GetVisualDescendants().OfType<ComboBox>().Count());
+            AssertAppearsBelow(view, "DownloadContentSection", "SubtitleSection");
+        }
+        finally
+        {
+            window.Close();
+            application.Styles.Remove(fluentTheme);
+        }
+    }
+
     private static void AssertAppearsBelow(Control view, string upperName, string lowerName)
     {
         var upper = Assert.IsAssignableFrom<Control>(view.FindControl<Control>(upperName));
@@ -170,7 +201,10 @@ public sealed class DownloadSettingsDialogLayoutTests
                     HistoryVideoRootPaths = [_directory],
                     Content = settings.Video.Content with
                     {
-                        DownloadSubtitle = downloadSubtitle
+                        DownloadSubtitle = downloadSubtitle,
+                        PreferredSubtitleLanguage = downloadSubtitle
+                            ? Domain.Downloads.SubtitleLanguagePreference.ChineseSimplified
+                            : Domain.Downloads.SubtitleLanguagePreference.Unspecified
                     }
                 }
             });

@@ -2,6 +2,7 @@ using DownKyi.Application.Bilibili;
 using DownKyi.Core.BiliApi.Models.Json;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.VideoStream.Models;
+using DownKyi.Domain.Downloads;
 using Newtonsoft.Json;
 
 namespace DownKyi.Core.BiliApi.VideoStream;
@@ -81,7 +82,8 @@ public static partial class VideoStreamApi
         long cid,
         Action<Exception>? reportParseFailure,
         CancellationToken cancellationToken,
-        IReadOnlyCollection<long>? selectedTrackIds = null)
+        IReadOnlyCollection<long>? selectedTrackIds = null,
+        SubtitleTrackPreference? preference = null)
     {
         ArgumentNullException.ThrowIfNull(keys);
         var subRipTexts = new List<SubRipText>();
@@ -97,10 +99,22 @@ public static partial class VideoStreamApi
             return subRipTexts;
         }
 
+        var effectiveTrackIds = selectedTrackIds;
+        if (effectiveTrackIds == null && preference is { IsConfigured: true } configuredPreference)
+        {
+            var preferredTrackId = SubtitleTrackSelector.SelectPreferredTrack(
+                player.Subtitle.Subtitles.Select(subtitle => new SubtitleTrackCandidate(
+                    subtitle.Id,
+                    subtitle.Lan,
+                    subtitle.Type)),
+                configuredPreference);
+            effectiveTrackIds = preferredTrackId is { } trackId ? [trackId] : [];
+        }
+
         foreach (var subtitle in player.Subtitle.Subtitles)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (selectedTrackIds != null && !selectedTrackIds.Contains(subtitle.Id))
+            if (effectiveTrackIds != null && !effectiveTrackIds.Contains(subtitle.Id))
             {
                 continue;
             }

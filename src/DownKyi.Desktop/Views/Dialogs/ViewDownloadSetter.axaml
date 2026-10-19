@@ -188,8 +188,7 @@
                     x:Name="SubtitleSection"
                     Grid.Row="3"
                     Margin="0,18,0,0"
-                    ColumnDefinitions="72,*"
-                    IsVisible="{Binding HasSubtitleTracks}">
+                    ColumnDefinitions="72,*">
                     <TextBlock
                         x:Name="SubtitleSectionLabel"
                         Grid.Column="0"
@@ -205,7 +204,8 @@
                         Background="{DynamicResource BrushSurfaceSunken}"
                         BorderBrush="{DynamicResource BrushControlStroke}"
                         BorderThickness="1"
-                        CornerRadius="{DynamicResource DownKyiRadiusSmall}">
+                        CornerRadius="{DynamicResource DownKyiRadiusSmall}"
+                        IsVisible="{Binding HasSubtitleTracks}">
                         <ScrollViewer MaxHeight="144" VerticalScrollBarVisibility="Auto">
                             <ItemsControl
                                 x:Name="SubtitleTrackSelector"
@@ -248,6 +248,50 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                    </Border>
+                    <Border
+                        x:Name="SubtitleFallbackPanel"
+                        Grid.Column="1"
+                        Margin="12,0,0,0"
+                        Padding="12,10"
+                        Background="{DynamicResource BrushSurfaceSunken}"
+                        BorderBrush="{DynamicResource BrushControlStroke}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource DownKyiRadiusSmall}"
+                        IsVisible="{Binding !HasSubtitleTracks}">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,140,Auto,150">
+                                <CheckBox
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DownloadSubtitleCommand}"
+                                    Content="{DynamicResource DownloadSubtitle}"
+                                    IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="16,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Text="{DynamicResource PreferredSubtitleLanguage}" />
+                                <ComboBox
+                                    Grid.Column="2"
+                                    DisplayMemberBinding="{Binding Name}"
+                                    ItemsSource="{Binding SubtitleLanguagePreferences}"
+                                    SelectedItem="{Binding SelectedSubtitleLanguagePreference}" />
+                                <TextBlock
+                                    Grid.Column="3"
+                                    Margin="16,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Text="{DynamicResource PreferredSubtitleType}" />
+                                <ComboBox
+                                    Grid.Column="4"
+                                    DisplayMemberBinding="{Binding Name}"
+                                    ItemsSource="{Binding SubtitleTypePreferences}"
+                                    SelectedItem="{Binding SelectedSubtitleTypePreference}" />
+                            </Grid>
+                            <TextBlock
+                                Foreground="{DynamicResource BrushTextGrey}"
+                                Text="{DynamicResource SubtitleFallbackTip}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
                     </Border>
                 </Grid>
 

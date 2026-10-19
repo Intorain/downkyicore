@@ -252,43 +252,89 @@
                 Foreground="{DynamicResource BrushTextDark}"
                 CornerRadius="10"
                 FontSize="{DynamicResource DownKyiFontSizeBody}">
-                <StackPanel Margin="10" Orientation="Horizontal">
-                    <CheckBox
-                        Margin="0,0,0,0"
-                        Command="{Binding DownloadAllCommand}"
-                        Content="{DynamicResource DownloadAll}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
-                    <CheckBox
-                        Margin="40,0,0,0"
-                        Command="{Binding DownloadAudioCommand}"
-                        Content="{DynamicResource DownloadAudio}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
-                    <CheckBox
-                        Margin="40,0,0,0"
-                        Command="{Binding DownloadVideoCommand}"
-                        Content="{DynamicResource DownloadVideo}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
-                    <CheckBox
-                        Margin="40,0,0,0"
-                        Command="{Binding DownloadDanmakuCommand}"
-                        Content="{DynamicResource DownloadDanmaku}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
-                    <CheckBox
-                        Margin="40,0,0,0"
-                        Command="{Binding DownloadSubtitleCommand}"
-                        Content="{DynamicResource DownloadSubtitle}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
-                    <CheckBox
-                        Margin="40,0,0,0"
-                        Command="{Binding DownloadCoverCommand}"
-                        Content="{DynamicResource DownloadCover}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
+                <StackPanel Margin="10" Spacing="12">
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox
+                            Command="{Binding DownloadAllCommand}"
+                            Content="{DynamicResource DownloadAll}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="40,0,0,0"
+                            Command="{Binding DownloadAudioCommand}"
+                            Content="{DynamicResource DownloadAudio}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="40,0,0,0"
+                            Command="{Binding DownloadVideoCommand}"
+                            Content="{DynamicResource DownloadVideo}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="40,0,0,0"
+                            Command="{Binding DownloadDanmakuCommand}"
+                            Content="{DynamicResource DownloadDanmaku}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="40,0,0,0"
+                            Command="{Binding DownloadSubtitleCommand}"
+                            Content="{DynamicResource DownloadSubtitle}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="40,0,0,0"
+                            Command="{Binding DownloadCoverCommand}"
+                            Content="{DynamicResource DownloadCover}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
+                    </StackPanel>
+                    <Grid
+                        Margin="24,0,0,0"
+                        ColumnDefinitions="Auto,180,24,Auto,180"
+                        IsEnabled="{Binding DownloadSubtitle}">
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            Text="{DynamicResource PreferredSubtitleLanguage}" />
+                        <ComboBox
+                            x:Name="PreferredSubtitleLanguageSelector"
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            DisplayMemberBinding="{Binding Name}"
+                            ItemsSource="{Binding SubtitleLanguagePreferences}"
+                            SelectedItem="{Binding SelectedSubtitleLanguagePreference}">
+                            <Interaction.Behaviors>
+                                <EventTriggerBehavior EventName="SelectionChanged">
+                                    <InvokeCommandAction Command="{Binding SubtitlePreferenceCommand}" />
+                                </EventTriggerBehavior>
+                            </Interaction.Behaviors>
+                        </ComboBox>
+                        <TextBlock
+                            Grid.Column="3"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            Text="{DynamicResource PreferredSubtitleType}" />
+                        <ComboBox
+                            x:Name="PreferredSubtitleTypeSelector"
+                            Grid.Column="4"
+                            Margin="12,0,0,0"
+                            DisplayMemberBinding="{Binding Name}"
+                            ItemsSource="{Binding SubtitleTypePreferences}"
+                            SelectedItem="{Binding SelectedSubtitleTypePreference}">
+                            <Interaction.Behaviors>
+                                <EventTriggerBehavior EventName="SelectionChanged">
+                                    <InvokeCommandAction Command="{Binding SubtitlePreferenceCommand}" />
+                                </EventTriggerBehavior>
+                            </Interaction.Behaviors>
+                        </ComboBox>
+                    </Grid>
+                    <TextBlock
+                        Margin="24,0,0,0"
+                        Foreground="{DynamicResource BrushTextGrey}"
+                        Text="{DynamicResource SubtitlePreferenceTip}"
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </HeaderedContentControl>
 
