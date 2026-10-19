@@ -43,7 +43,8 @@ public sealed class ViewDownloadSetterSelectionTests
         Assert.Equal(22L, selection.Value.RequestedContent.DefaultSubtitleTrackId);
         Assert.Equal("en", viewModel.SubtitleTracks[1].Language);
         Assert.Equal("English", viewModel.SubtitleTracks[1].DisplayLanguage);
-        Assert.Equal(1, viewModel.SubtitleTracks[1].Type);
+        Assert.False(viewModel.SubtitleTracks[0].IsAi);
+        Assert.True(viewModel.SubtitleTracks[1].IsAi);
         Assert.Equal("//en", viewModel.SubtitleTracks[1].Url);
     }
 
@@ -88,7 +89,7 @@ public sealed class ViewDownloadSetterSelectionTests
     }
 
     [Fact]
-    public void DownloadAllDoesNotSelectSubtitleTracksOrDefault()
+    public void DownloadAllSelectsSubtitleTracksAndDefault()
     {
         using var settings = new TestSettingsStore();
         var interaction = new TestDesktopInteractionContext();
@@ -109,12 +110,13 @@ public sealed class ViewDownloadSetterSelectionTests
 
         viewModel.DownloadAllCommand.Execute(null);
 
-        Assert.All(viewModel.SubtitleTracks, track => Assert.False(track.IsSelected));
-        Assert.DoesNotContain(viewModel.SubtitleTracks, track => track.IsDefault);
+        Assert.All(viewModel.SubtitleTracks, track => Assert.True(track.IsSelected));
+        Assert.True(viewModel.SubtitleTracks[0].IsDefault);
+        Assert.False(viewModel.SubtitleTracks[1].IsDefault);
     }
 
     [Fact]
-    public void DerivedDownloadAllDoesNotSelectSubtitleTracksOrDefault()
+    public void SelectingSubtitleTrackCanDeriveDownloadAll()
     {
         using var settings = new TestSettingsStore();
         var interaction = new TestDesktopInteractionContext();
@@ -142,14 +144,53 @@ public sealed class ViewDownloadSetterSelectionTests
         viewModel.DownloadVideoCommand.Execute(null);
         viewModel.DownloadDanmaku = true;
         viewModel.DownloadDanmakuCommand.Execute(null);
-        viewModel.DownloadSubtitle = true;
-        viewModel.DownloadSubtitleCommand.Execute(null);
+        viewModel.SubtitleTracks[0].IsSelected = true;
         viewModel.DownloadCover = true;
         viewModel.DownloadCoverCommand.Execute(null);
 
         Assert.True(viewModel.DownloadAll);
-        Assert.All(viewModel.SubtitleTracks, track => Assert.False(track.IsSelected));
-        Assert.DoesNotContain(viewModel.SubtitleTracks, track => track.IsDefault);
+        Assert.True(viewModel.SubtitleTracks[0].IsSelected);
+        Assert.True(viewModel.SubtitleTracks[0].IsDefault);
+        Assert.False(viewModel.SubtitleTracks[1].IsSelected);
+    }
+
+    [Fact]
+    public void SelectingAvailableTrackDirectlyEnablesSubtitleDownload()
+    {
+        using var settings = new TestSettingsStore();
+        var interaction = new TestDesktopInteractionContext();
+        settings.Store.Update(current => current with
+        {
+            Video = current.Video with
+            {
+                Content = current.Video.Content with
+                {
+                    DownloadSubtitle = false
+                }
+            }
+        });
+        var viewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance);
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest(
+        [
+            new(11, "zh", "中文", 0, "//zh")
+        ]));
+
+        var track = Assert.Single(viewModel.SubtitleTracks);
+        track.IsSelected = true;
+
+        Assert.True(viewModel.DownloadSubtitle);
+        Assert.True(track.IsDefault);
+        Assert.True(settings.Store.Current.Video.Content.DownloadSubtitle);
+
+        track.IsSelected = false;
+
+        Assert.False(viewModel.DownloadSubtitle);
+        Assert.False(track.IsDefault);
+        Assert.False(settings.Store.Current.Video.Content.DownloadSubtitle);
     }
 
     [Fact]

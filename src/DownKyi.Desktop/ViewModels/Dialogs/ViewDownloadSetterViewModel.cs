@@ -27,6 +27,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private readonly IFilePickerService _filePickerService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<ViewDownloadSetterViewModel> _logger;
+    private bool _synchronizingSubtitleTracks;
 
     // 历史文件夹的数量
     private const int MaxDirectoryListCount = 20;
@@ -208,7 +209,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         for (var index = 0; index < tracks.Count; index++)
         {
             SubtitleTracks.Add(new SubtitleTrackItem(
-                tracks[index], DownloadSubtitle, DownloadSubtitle && index == 0));
+                tracks[index],
+                DownloadSubtitle,
+                DownloadSubtitle && index == 0,
+                OnSubtitleTrackSelectionChanged));
         }
 
         OnPropertyChanged(nameof(HasSubtitleTracks));
@@ -271,6 +275,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             DownloadCover = false;
         }
 
+        SynchronizeSubtitleTracksFromDownloadOption();
         SetVideoContent();
     }
 
@@ -316,16 +321,60 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SetVideoContent();
     }
 
-    // 字幕选择事件
-    private RelayCommand? _downloadSubtitleCommand;
-
-    public RelayCommand DownloadSubtitleCommand => _downloadSubtitleCommand ??= new RelayCommand(ExecuteDownloadSubtitleCommand);
-
-    /// <summary>
-    /// 字幕选择事件
-    /// </summary>
-    private void ExecuteDownloadSubtitleCommand()
+    private void SynchronizeSubtitleTracksFromDownloadOption()
     {
+        if (!HasSubtitleTracks)
+        {
+            return;
+        }
+
+        _synchronizingSubtitleTracks = true;
+        try
+        {
+            foreach (var track in SubtitleTracks)
+            {
+                track.IsSelected = DownloadSubtitle;
+            }
+
+            if (DownloadSubtitle)
+            {
+                SubtitleTracks[0].IsDefault = true;
+            }
+        }
+        finally
+        {
+            _synchronizingSubtitleTracks = false;
+        }
+    }
+
+    private void OnSubtitleTrackSelectionChanged(SubtitleTrackItem changedTrack)
+    {
+        if (_synchronizingSubtitleTracks)
+        {
+            return;
+        }
+
+        _synchronizingSubtitleTracks = true;
+        try
+        {
+            if (changedTrack.IsSelected)
+            {
+                DownloadSubtitle = true;
+                if (!SubtitleTracks.Any(track => track.IsDefault))
+                {
+                    changedTrack.IsDefault = true;
+                }
+            }
+            else if (!SubtitleTracks.Any(track => track.IsSelected))
+            {
+                DownloadSubtitle = false;
+            }
+        }
+        finally
+        {
+            _synchronizingSubtitleTracks = false;
+        }
+
         UpdateDownloadAll();
         SetVideoContent();
     }
@@ -432,7 +481,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 }
 
 internal sealed partial class SubtitleTrackItem(
-    DownloadSettingsDialog.SubtitleTrack track, bool isSelected, bool isDefault) : ObservableObject
+    DownloadSettingsDialog.SubtitleTrack track,
+    bool isSelected,
+    bool isDefault,
+    Action<SubtitleTrackItem>? selectionChanged = null) : ObservableObject
 {
     [ObservableProperty]
     private bool _isSelected = isSelected;
@@ -446,11 +498,13 @@ internal sealed partial class SubtitleTrackItem(
         {
             IsDefault = false;
         }
+
+        selectionChanged?.Invoke(this);
     }
 
     public long TrackId { get; } = track.TrackId;
     public string Language { get; } = track.Language;
     public string DisplayLanguage { get; } = track.DisplayLanguage;
-    public int Type { get; } = track.Type;
+    public bool IsAi { get; } = track.Type == 1;
     public string Url { get; } = track.Url;
 }

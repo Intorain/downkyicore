@@ -402,6 +402,9 @@
     <system:String x:Key="DownloadVideo">视频</system:String>
     <system:String x:Key="DownloadDanmaku">弹幕</system:String>
     <system:String x:Key="DownloadSubtitle">字幕</system:String>
+    <system:String x:Key="SubtitleTypeStandard">普通</system:String>
+    <system:String x:Key="SubtitleTypeAi">AI</system:String>
+    <system:String x:Key="DefaultSubtitle">默认</system:String>
     <system:String x:Key="DownloadCover">封面</system:String>
     <system:String x:Key="Download">下载</system:String>
     <system:String x:Key="WarningNullDirectory">文件夹路径不能为空</system:String>
