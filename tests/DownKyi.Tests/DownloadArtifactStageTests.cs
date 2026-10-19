@@ -1119,6 +1119,62 @@ public sealed class DownloadArtifactStageTests
     }
 
     [Fact]
+    public async Task UnmatchedAutomaticSubtitlePreferenceSkipsWithoutDownloadingAnotherLanguage()
+    {
+        var requests = 0;
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (_, _) =>
+            {
+                requests++;
+                return Task.FromResult(
+                    """
+                    {"code":0,"data":{"aid":1,"bvid":"BV1test","cid":2,"subtitle":{"subtitles":[{"id":22,"lan":"en","lan_doc":"English","subtitle_url":"//example.test/en.json","type":0}]}}}
+                    """);
+            }
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client, subtitle: true,
+            preferredSubtitleLanguage: SubtitleLanguagePreference.ChineseSimplified).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        Assert.Equal(1, requests);
+        Assert.Empty(context.GetPhysicalArtifactFiles());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SelectedSubtitleWithEmptyBodyFailsForManualAndAutomaticSelection(bool automatic)
+    {
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (request, _) => Task.FromResult(
+                request.RequestAddress.Contains("/x/player/wbi/v2", StringComparison.Ordinal)
+                    ? """
+                      {"code":0,"data":{"aid":1,"bvid":"BV1test","cid":2,"subtitle":{"subtitles":[{"id":11,"lan":"zh","lan_doc":"Chinese","subtitle_url":"//example.test/zh.json","type":0}]}}}
+                      """
+                    : """{"body":[]}""")
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client, subtitle: true,
+            selectedSubtitleTrackIds: automatic ? null : [11],
+            preferredSubtitleLanguage: automatic
+                ? SubtitleLanguagePreference.ChineseSimplified
+                : SubtitleLanguagePreference.Unspecified).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.artifact.subtitle.missing-tracks", result.Error?.Code);
+        Assert.Empty(context.GetPhysicalArtifactFiles());
+    }
+
+    [Fact]
     public async Task SelectedDefaultSubtitleIsCopiedToTheDefaultArtifact()
     {
         var client = new TestBilibiliApiClient
@@ -1182,6 +1238,37 @@ public sealed class DownloadArtifactStageTests
                 .Keys
                 .Order()
                 .ToArray());
+    }
+
+    [Fact]
+    public async Task SelectedTracksWithSameLanguageDescriptionKeepSeparateFiles()
+    {
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (request, _) => Task.FromResult(
+                request.RequestAddress.Contains("/x/player/wbi/v2", StringComparison.Ordinal)
+                    ? """
+                      {"code":0,"data":{"aid":1,"bvid":"BV1test","cid":2,"subtitle":{"subtitles":[{"id":11,"lan":"zh","lan_doc":"中文","subtitle_url":"//example.test/zh.json","type":0},{"id":22,"lan":"ai-zh","lan_doc":"中文","subtitle_url":"//example.test/ai-zh.json","type":1}]}}}
+                      """
+                    : request.RequestAddress.EndsWith("/ai-zh.json", StringComparison.Ordinal)
+                        ? """{"body":[{"from":0,"to":1,"content":"AI"}]}"""
+                        : """{"body":[{"from":0,"to":1,"content":"standard"}]}""")
+        };
+        using var context = await ArtifactTestContext.CreateAsync(
+            client, subtitle: true,
+            selectedSubtitleTrackIds: [11, 22]).ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.True(result.IsSuccess, result.Error?.Message);
+        var files = Assert.IsAssignableFrom<IReadOnlyDictionary<long, string>>(
+            context.Execution.SubtitleTrackFiles);
+        Assert.Equal(2, files.Values.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Contains("standard", await File.ReadAllTextAsync(
+            files[11], TestContext.Current.CancellationToken), StringComparison.Ordinal);
+        Assert.Contains("AI", await File.ReadAllTextAsync(
+            files[22], TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1640,7 +1727,8 @@ public sealed class DownloadArtifactStageTests
             PlayStreamType streamType = PlayStreamType.Video,
             long[]? selectedSubtitleTrackIds = null,
             long? defaultSubtitleTrackId = null,
-            Func<DanmakuApplicationSettings, DanmakuApplicationSettings>? configureDanmaku = null)
+            Func<DanmakuApplicationSettings, DanmakuApplicationSettings>? configureDanmaku = null,
+            SubtitleLanguagePreference preferredSubtitleLanguage = SubtitleLanguagePreference.Unspecified)
         {
             var directory = Path.Combine(
                 Path.GetTempPath(),
@@ -1700,7 +1788,8 @@ public sealed class DownloadArtifactStageTests
                 SelectedSubtitleTrackIds = selectedSubtitleTrackIds == null
                     ? null
                     : ImmutableArray.CreateRange(selectedSubtitleTrackIds),
-                DefaultSubtitleTrackId = defaultSubtitleTrackId
+                DefaultSubtitleTrackId = defaultSubtitleTrackId,
+                PreferredSubtitleLanguage = preferredSubtitleLanguage
             };
             var downloading = new DownloadingItem
             {

@@ -186,6 +186,8 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
             MediaKind = DownloadMediaKind.Dash,
             SelectedSubtitleTrackIds = ImmutableArray.Create(11L, 22L),
             DefaultSubtitleTrackId = 22,
+            PreferredSubtitleLanguage = SubtitleLanguagePreference.ChineseTraditional,
+            PreferredSubtitleType = SubtitleTypePreference.Ai,
             DanmakuOutputFormat = DownloadDanmakuOutputFormat.Ass |
                                   DownloadDanmakuOutputFormat.Xml
         };
@@ -213,6 +215,8 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
             expected.SelectedSubtitleTrackIds.GetValueOrDefault().ToArray(),
             actual.SelectedSubtitleTrackIds.GetValueOrDefault().ToArray());
         Assert.Equal(expected.DefaultSubtitleTrackId, actual.DefaultSubtitleTrackId);
+        Assert.Equal(expected.PreferredSubtitleLanguage, actual.PreferredSubtitleLanguage);
+        Assert.Equal(expected.PreferredSubtitleType, actual.PreferredSubtitleType);
         Assert.Equal(expected.DanmakuOutputFormat, actual.DanmakuOutputFormat);
         using var connection = await _fixture.OpenReadOnlyConnectionAsync().ConfigureAwait(true);
         using var command = connection.CreateCommand();
@@ -220,7 +224,7 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
         var json = Assert.IsType<string>(
             await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         using var payload = System.Text.Json.JsonDocument.Parse(json);
-        Assert.Equal(9, payload.RootElement.EnumerateObject().Count());
+        Assert.Equal(11, payload.RootElement.EnumerateObject().Count());
         Assert.Equal("dash", payload.RootElement.GetProperty("mediaKind").GetString());
         Assert.Equal(3, payload.RootElement.GetProperty("danmakuOutputFormat").GetInt32());
         Assert.True(payload.RootElement.GetProperty("downloadAudio").GetBoolean());
@@ -231,6 +235,8 @@ public sealed class SqliteDownloadStoreStateTests : IDisposable
         Assert.Equal([11L, 22L], payload.RootElement.GetProperty("selectedSubtitleTrackIds")
             .EnumerateArray().Select(item => item.GetInt64()));
         Assert.Equal(22, payload.RootElement.GetProperty("defaultSubtitleTrackId").GetInt64());
+        Assert.Equal(2, payload.RootElement.GetProperty("preferredSubtitleLanguage").GetInt32());
+        Assert.Equal(1, payload.RootElement.GetProperty("preferredSubtitleType").GetInt32());
     }
 
     [Fact]

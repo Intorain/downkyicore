@@ -268,12 +268,12 @@ internal sealed partial class DownloadArtifactWriter
         var trackFiles = new Dictionary<long, string>();
         string? defaultSubtitleSource = null;
         Exception? parseFailure = null;
-        IReadOnlyList<SubRipText> subRipTexts;
+        SubtitleFetchResult fetchResult;
         try
         {
-            subRipTexts = await WbiRequestExecutor.ExecuteAsync(
+            fetchResult = await WbiRequestExecutor.ExecuteAsync(
                 _wbiKeyProvider,
-                (keys, unixTimeSeconds) => _client.GetSubtitleAsync(
+                (keys, unixTimeSeconds) => _client.GetSubtitleSelectionAsync(
                     keys,
                     unixTimeSeconds,
                     metadata.Media.Avid,
@@ -281,7 +281,10 @@ internal sealed partial class DownloadArtifactWriter
                     metadata.Media.Cid,
                     e => parseFailure ??= e,
                     cancellationToken,
-                    content.SelectedSubtitleTrackIds is { } selectedIds ? selectedIds : null),
+                    content.SelectedSubtitleTrackIds is { } selectedIds ? selectedIds : null,
+                    new SubtitleTrackPreference(
+                        content.PreferredSubtitleLanguage,
+                        content.PreferredSubtitleType)),
                 TimeProvider.System,
                 cancellationToken).ConfigureAwait(false);
         }
@@ -312,6 +315,7 @@ internal sealed partial class DownloadArtifactWriter
                 "The requested subtitle response was invalid.");
         }
 
+        var subRipTexts = fetchResult.Subtitles;
         var returnedTrackIds = subRipTexts.Select(static subtitle => subtitle.TrackId).ToHashSet();
         if (returnedTrackIds.Count != subRipTexts.Count)
         {
@@ -320,8 +324,7 @@ internal sealed partial class DownloadArtifactWriter
                 "The subtitle response contained duplicate track identifiers.");
         }
 
-        var hasMissingSelectedTrack = content.SelectedSubtitleTrackIds is { } selectedTrackIds
-                                      && !returnedTrackIds.SetEquals(selectedTrackIds);
+        var hasMissingSelectedTrack = !returnedTrackIds.SetEquals(fetchResult.ExpectedTrackIds);
         var hasMissingDefaultTrack = content.DefaultSubtitleTrackId is { } defaultTrackId
                                      && !returnedTrackIds.Contains(defaultTrackId);
         if (hasMissingSelectedTrack || hasMissingDefaultTrack)
@@ -338,11 +341,30 @@ internal sealed partial class DownloadArtifactWriter
             return OperationResult.Success(DownloadSubtitleWriteResult.NotAvailable());
         }
 
+        var duplicateLanguageDescriptions = subRipTexts
+            .GroupBy(subtitle => subtitle.LanDoc, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var outputFiles = subRipTexts.ToDictionary(
+            subtitle => subtitle.TrackId,
+            subtitle =>
+            {
+                var fileLabel = duplicateLanguageDescriptions.Contains(subtitle.LanDoc)
+                    ? $"{subtitle.LanDoc}_{subtitle.TrackId}"
+                    : subtitle.LanDoc;
+                return DownloadOutputLayout.GetSubtitleTrackPath(outputBasePath, fileLabel);
+            });
+        if (outputFiles.Values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != outputFiles.Count)
+        {
+            return SubtitleArtifactFailure(
+                "download.artifact.subtitle.duplicate-output",
+                "Selected subtitle tracks would overwrite the same output file.");
+        }
+
         foreach (var subRip in subRipTexts)
         {
-            var srtFile = DownloadOutputLayout.GetSubtitleTrackPath(
-                outputBasePath,
-                subRip.LanDoc);
+            var srtFile = outputFiles[subRip.TrackId];
             try
             {
                 await _stateWriter.ClaimTransferFileAsync(

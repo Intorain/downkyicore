@@ -35,15 +35,21 @@
             </Grid>
             <Grid
                 Grid.Row="1"
-                MinWidth="600"
-                Margin="15,10" RowDefinitions="*,*,*,Auto,*">
+                MinWidth="620"
+                Margin="24,16,24,20"
+                RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
-                <Grid Grid.Row="0" Margin="0,30,0,0" ColumnDefinitions="*,*,*,*,*">
+                <Grid
+                    x:Name="TransferIllustration"
+                    Grid.Row="0"
+                    Height="48"
+                    Margin="72,0"
+                    ColumnDefinitions="*,Auto,*">
 
                     <ContentControl
-                        Grid.Column="1"
+                        Grid.Column="0"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom">
+                        VerticalAlignment="Center">
                         <Path
                             Width="{Binding CloudDownloadIcon.Width}"
                             Height="{Binding CloudDownloadIcon.Height}"
@@ -53,16 +59,17 @@
                     </ContentControl>
 
                     <TextBlock
-                        Grid.Column="2"
+                        Grid.Column="1"
+                        Margin="36,0"
                         VerticalAlignment="Center"
-                        FontSize="18"
+                        FontSize="24"
                         Foreground="{DynamicResource BrushPrimary}"
-                        Text="&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;" />
+                        Text="→" />
 
                     <ContentControl
-                        Grid.Column="3"
+                        Grid.Column="2"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom">
+                        VerticalAlignment="Center">
                         <Path
                             Width="{Binding FolderIcon.Width}"
                             Height="{Binding FolderIcon.Height}"
@@ -72,19 +79,27 @@
                     </ContentControl>
                 </Grid>
 
-                <Grid Grid.Row="1" Margin="0,30,0,0" RowDefinitions="*,*" ColumnDefinitions="auto,*,auto">
+                <Grid
+                    x:Name="DirectorySection"
+                    Grid.Row="1"
+                    Margin="0,16,0,0"
+                    RowDefinitions="Auto,Auto"
+                    ColumnDefinitions="72,*,Auto">
                     <TextBlock
                         Grid.Row="0"
                         Grid.Column="0"
-                        HorizontalAlignment="Left"
+                        HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{DynamicResource BrushTextDark}"
                         Text="{DynamicResource Location}" />
                     <ComboBox
+                        x:Name="DirectoryComboBox"
                         Grid.Row="0"
                         Grid.Column="1"
-                        Margin="10,0"
+                        MinWidth="360"
+                        Margin="12,0"
+                        HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
                         VerticalContentAlignment="Center"
                         ItemsSource="{Binding DirectoryList, Mode=TwoWay}"
@@ -103,7 +118,7 @@
                     <StackPanel
                         Grid.Row="1"
                         Grid.Column="1"
-                        Margin="10,10,10,0"
+                        Margin="12,8,12,0"
                         Orientation="Horizontal">
                         <TextBlock
                             FontSize="12"
@@ -116,116 +131,198 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="2" Margin="0,30,0,0" ColumnDefinitions="auto,75,75,75,75,75,75">
+                <Grid
+                    x:Name="DownloadContentSection"
+                    Grid.Row="2"
+                    Margin="0,18,0,0"
+                    ColumnDefinitions="72,*">
 
                     <TextBlock
                         Grid.Column="0"
+                        HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{DynamicResource BrushTextDark}"
                         Text="{DynamicResource DownloadContent}" />
 
-                    <CheckBox
+                    <Grid
+                        x:Name="DownloadContentOptions"
                         Grid.Column="1"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadAllCommand}"
-                        Content="{DynamicResource DownloadAll}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
-
-                    <CheckBox
-                        Grid.Column="2"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadAudioCommand}"
-                        Content="{DynamicResource DownloadAudio}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
-                    <CheckBox
-                        Grid.Column="3"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadVideoCommand}"
-                        Content="{DynamicResource DownloadVideo}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
-                    <CheckBox
-                        Grid.Column="4"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadDanmakuCommand}"
-                        Content="{DynamicResource DownloadDanmaku}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
-                    <CheckBox
-                        Grid.Column="5"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadSubtitleCommand}"
-                        Content="{DynamicResource DownloadSubtitle}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
-                    <CheckBox
-                        Grid.Column="6"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Command="{Binding DownloadCoverCommand}"
-                        Content="{DynamicResource DownloadCover}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
-                </Grid>
-
-                <Grid Grid.Row="3" Margin="0,20,0,0" ColumnDefinitions="auto,*"
-                      IsVisible="{Binding HasSubtitleTracks}">
-                    <TextBlock
-                        Grid.Column="0"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{DynamicResource DownloadSubtitle}" />
-                    <Grid Grid.Column="1" Margin="20,0,0,0">
-                        <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SubtitleTracks}"
-                                          IsEnabled="{Binding DownloadSubtitle}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vmd:SubtitleTrackItem">
-                                        <Grid ColumnDefinitions="30,2*,*,60,90">
-                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding DisplayLanguage}" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Language}" />
-                                            <TextBlock Grid.Column="3" Text="{Binding Type}" />
-                                            <RadioButton Grid.Column="4" GroupName="DefaultSubtitle"
-                                                         Content="默认"
-                                                         IsEnabled="{Binding IsSelected}"
-                                                         IsChecked="{Binding IsDefault, Mode=TwoWay}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                        Margin="12,0,0,0"
+                        ColumnDefinitions="Auto,Auto,Auto,Auto,Auto"
+                        ColumnSpacing="20">
+                        <CheckBox
+                            Grid.Column="0"
+                            Command="{Binding DownloadAllCommand}"
+                            Content="{DynamicResource DownloadAll}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
+                        <CheckBox
+                            Grid.Column="1"
+                            Command="{Binding ContentSelectionChangedCommand}"
+                            Content="{DynamicResource DownloadAudio}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
+                        <CheckBox
+                            Grid.Column="2"
+                            Command="{Binding ContentSelectionChangedCommand}"
+                            Content="{DynamicResource DownloadVideo}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
+                        <CheckBox
+                            Grid.Column="3"
+                            Command="{Binding ContentSelectionChangedCommand}"
+                            Content="{DynamicResource DownloadDanmaku}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
+                        <CheckBox
+                            Grid.Column="4"
+                            Command="{Binding ContentSelectionChangedCommand}"
+                            Content="{DynamicResource DownloadCover}"
+                            Foreground="{DynamicResource BrushTextDark}"
+                            IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
                     </Grid>
                 </Grid>
 
-                <Grid Grid.Row="4" Margin="0,30,0,0" ColumnDefinitions="*,100,100">
-                    <Button
-                        Grid.Column="1"
-                        Width="75"
+                <Grid
+                    x:Name="SubtitleSection"
+                    Grid.Row="3"
+                    Margin="0,18,0,0"
+                    ColumnDefinitions="72,*">
+                    <TextBlock
+                        x:Name="SubtitleSectionLabel"
+                        Grid.Column="0"
                         HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource BrushTextDark}"
+                        Text="{DynamicResource DownloadSubtitle}" />
+                    <Border
+                        x:Name="SubtitleTrackBorder"
+                        Grid.Column="1"
+                        Margin="12,0,0,0"
+                        Padding="12,4"
+                        Background="{DynamicResource BrushSurfaceSunken}"
+                        BorderBrush="{DynamicResource BrushControlStroke}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource DownKyiRadiusSmall}"
+                        IsVisible="{Binding HasSubtitleTracks}">
+                        <StackPanel Spacing="4">
+                            <ScrollViewer MaxHeight="144" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl
+                                    x:Name="SubtitleTrackSelector"
+                                    ItemsSource="{Binding SubtitleTracks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vmd:SubtitleTrackItem">
+                                            <Grid
+                                                MinHeight="36"
+                                                ColumnDefinitions="32,2*,*,48,Auto">
+                                                <CheckBox
+                                                    VerticalAlignment="Center"
+                                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding DisplayLanguage}" />
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding Language}" />
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding !IsAi}"
+                                                    Text="{DynamicResource SubtitleTypeStandard}" />
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsAi}"
+                                                    Text="{DynamicResource SubtitleTypeAi}" />
+                                                <RadioButton
+                                                    Grid.Column="4"
+                                                    VerticalAlignment="Center"
+                                                    Content="{DynamicResource DefaultSubtitle}"
+                                                    GroupName="DefaultSubtitle"
+                                                    IsChecked="{Binding IsDefault, Mode=TwoWay}"
+                                                    IsEnabled="{Binding IsSelected}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock
+                                x:Name="SubtitleTrackSelectionTip"
+                                Margin="4,2,4,4"
+                                FontSize="11"
+                                Foreground="{DynamicResource BrushTextGrey}"
+                                Text="{DynamicResource SubtitleTrackSelectionTip}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border
+                        x:Name="SubtitleFallbackPanel"
+                        Grid.Column="1"
+                        Margin="12,0,0,0"
+                        Padding="12,10"
+                        Background="{DynamicResource BrushSurfaceSunken}"
+                        BorderBrush="{DynamicResource BrushControlStroke}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource DownKyiRadiusSmall}"
+                        IsVisible="{Binding !HasSubtitleTracks}">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,140,Auto,150">
+                                <CheckBox
+                                    VerticalAlignment="Center"
+                                    Command="{Binding ContentSelectionChangedCommand}"
+                                    Content="{DynamicResource DownloadSubtitle}"
+                                    IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="16,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Text="{DynamicResource PreferredSubtitleLanguage}" />
+                                <ComboBox
+                                    Grid.Column="2"
+                                    DisplayMemberBinding="{Binding Name}"
+                                    ItemsSource="{Binding SubtitleLanguagePreferences}"
+                                    SelectedItem="{Binding SelectedSubtitleLanguagePreference}" />
+                                <TextBlock
+                                    Grid.Column="3"
+                                    Margin="16,0,8,0"
+                                    VerticalAlignment="Center"
+                                    Text="{DynamicResource PreferredSubtitleType}" />
+                                <ComboBox
+                                    Grid.Column="4"
+                                    DisplayMemberBinding="{Binding Name}"
+                                    ItemsSource="{Binding SubtitleTypePreferences}"
+                                    SelectedItem="{Binding SelectedSubtitleTypePreference}" />
+                            </Grid>
+                            <TextBlock
+                                Foreground="{DynamicResource BrushTextGrey}"
+                                Text="{DynamicResource SubtitleFallbackTip}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <StackPanel
+                    Grid.Row="4"
+                    Margin="0,20,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Spacing="12">
+                    <Button
+                        Width="84"
                         Command="{Binding DownloadCommand}"
                         Content="{DynamicResource Download}"
                         FontSize="12"
                         Theme="{StaticResource BtnStyle}" />
                     <Button
-                        Grid.Column="2"
-                        Width="75"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
+                        Width="84"
                         Command="{Binding CloseCommand}"
                         Content="{DynamicResource Cancel}"
                         FontSize="12"
                         Theme="{StaticResource BtnStyle}" />
-                </Grid>
+                </StackPanel>
             </Grid>
         </Grid>
     </Border>

@@ -27,6 +27,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private readonly IFilePickerService _filePickerService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<ViewDownloadSetterViewModel> _logger;
+    private readonly bool _initialDownloadSubtitle;
+    private readonly SubtitleLanguagePreference _initialSubtitleLanguagePreference;
+    private readonly SubtitleTypePreference _initialSubtitleTypePreference;
+    private bool _synchronizingSubtitleTracks;
 
     // 历史文件夹的数量
     private const int MaxDirectoryListCount = 20;
@@ -53,10 +57,24 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
     public ObservableCollection<SubtitleTrackItem> SubtitleTracks { get; } = [];
 
-    public DownloadSettingsDialog.SubtitleTrackDiscoveryStatus SubtitleTrackDiscoveryStatus
+    public IReadOnlyList<SubtitleLanguagePreferenceItem> SubtitleLanguagePreferences { get; }
+
+    public IReadOnlyList<SubtitleTypePreferenceItem> SubtitleTypePreferences { get; }
+
+    private SubtitleLanguagePreferenceItem _selectedSubtitleLanguagePreference = null!;
+
+    public SubtitleLanguagePreferenceItem SelectedSubtitleLanguagePreference
     {
-        get;
-        private set;
+        get => _selectedSubtitleLanguagePreference;
+        set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
+    }
+
+    private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
+
+    public SubtitleTypePreferenceItem SelectedSubtitleTypePreference
+    {
+        get => _selectedSubtitleTypePreference;
+        set => SetProperty(ref _selectedSubtitleTypePreference, value);
     }
 
     public bool HasSubtitleTracks => SubtitleTracks.Count > 0;
@@ -178,10 +196,23 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         var videoSettings = _settingsStore.Current.Video;
         var videoContent = videoSettings.Content;
 
+        SubtitleLanguagePreferences = SubtitlePreferenceOptions.CreateLanguages();
+        SubtitleTypePreferences = SubtitlePreferenceOptions.CreateTypes();
+        var hasSubtitlePreference =
+            videoContent.PreferredSubtitleLanguage != SubtitleLanguagePreference.Unspecified;
+        _selectedSubtitleLanguagePreference = SubtitleLanguagePreferences.First(item =>
+            item.Value == SubtitlePreferenceOptions.EffectiveLanguage(
+                videoContent.PreferredSubtitleLanguage));
+        _selectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
+            item.Value == videoContent.PreferredSubtitleType);
+        _initialSubtitleLanguagePreference = _selectedSubtitleLanguagePreference.Value;
+        _initialSubtitleTypePreference = _selectedSubtitleTypePreference.Value;
+
         DownloadAudio = videoContent.DownloadAudio;
         DownloadVideo = videoContent.DownloadVideo;
         DownloadDanmaku = videoContent.DownloadDanmaku;
-        DownloadSubtitle = videoContent.DownloadSubtitle;
+        DownloadSubtitle = hasSubtitlePreference && videoContent.DownloadSubtitle;
+        _initialDownloadSubtitle = DownloadSubtitle;
         DownloadCover = videoContent.DownloadCover;
 
         UpdateDownloadAll();
@@ -201,17 +232,18 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
     public override void OnDialogOpened(AppDialogRequest request)
     {
-        var discovery = DownloadSettingsDialog.ReadSubtitleDiscovery(request);
-        SubtitleTrackDiscoveryStatus = discovery.Status;
-        var tracks = discovery.Tracks;
-
-        for (var index = 0; index < tracks.Count; index++)
+        foreach (var track in DownloadSettingsDialog.ReadSubtitleTracks(request))
         {
             SubtitleTracks.Add(new SubtitleTrackItem(
-                tracks[index], DownloadSubtitle, DownloadSubtitle && index == 0));
+                track,
+                isSelected: false,
+                isDefault: false,
+                OnSubtitleTrackSelectionChanged));
         }
 
         OnPropertyChanged(nameof(HasSubtitleTracks));
+        SynchronizeSubtitleTracksFromDownloadOption();
+        UpdateDownloadAll();
     }
 
     #region 命令申明
@@ -271,82 +303,94 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             DownloadCover = false;
         }
 
-        SetVideoContent();
+        SynchronizeSubtitleTracksFromDownloadOption();
+        UpdateDownloadAll();
     }
 
-    // 音频选择事件
-    private RelayCommand? _downloadAudioCommand;
+    private RelayCommand? _contentSelectionChangedCommand;
 
-    public RelayCommand DownloadAudioCommand => _downloadAudioCommand ??= new RelayCommand(ExecuteDownloadAudioCommand);
+    public RelayCommand ContentSelectionChangedCommand =>
+        _contentSelectionChangedCommand ??= new RelayCommand(ExecuteContentSelectionChangedCommand);
 
-    /// <summary>
-    /// 音频选择事件
-    /// </summary>
-    private void ExecuteDownloadAudioCommand()
+    private void ExecuteContentSelectionChangedCommand()
     {
         UpdateDownloadAll();
-        SetVideoContent();
     }
 
-    // 视频选择事件
-    private RelayCommand? _downloadVideoCommand;
-
-    public RelayCommand DownloadVideoCommand => _downloadVideoCommand ??= new RelayCommand(ExecuteDownloadVideoCommand);
-
-    /// <summary>
-    /// 视频选择事件
-    /// </summary>
-    private void ExecuteDownloadVideoCommand()
+    private void SynchronizeSubtitleTracksFromDownloadOption()
     {
-        UpdateDownloadAll();
-        SetVideoContent();
+        if (!HasSubtitleTracks)
+        {
+            return;
+        }
+
+        _synchronizingSubtitleTracks = true;
+        try
+        {
+            foreach (var track in SubtitleTracks)
+            {
+                track.IsSelected = false;
+            }
+
+            if (DownloadSubtitle)
+            {
+                var preferredTrackId = SubtitleTrackSelector.SelectPreferredTrack(
+                    SubtitleTracks.Select(track => new SubtitleTrackCandidate(
+                        track.TrackId,
+                        track.Language,
+                        track.IsAi ? 1 : 0)),
+                    CurrentSubtitlePreference);
+                var preferredTrack = SubtitleTracks.FirstOrDefault(track =>
+                    track.TrackId == preferredTrackId);
+                if (preferredTrack != null)
+                {
+                    preferredTrack.IsSelected = true;
+                    preferredTrack.IsDefault = true;
+                }
+            }
+        }
+        finally
+        {
+            _synchronizingSubtitleTracks = false;
+        }
     }
 
-    // 弹幕选择事件
-    private RelayCommand? _downloadDanmakuCommand;
-
-    public RelayCommand DownloadDanmakuCommand => _downloadDanmakuCommand ??= new RelayCommand(ExecuteDownloadDanmakuCommand);
-
-    /// <summary>
-    /// 弹幕选择事件
-    /// </summary>
-    private void ExecuteDownloadDanmakuCommand()
+    private void OnSubtitleTrackSelectionChanged(SubtitleTrackItem changedTrack)
     {
+        if (_synchronizingSubtitleTracks)
+        {
+            return;
+        }
+
+        _synchronizingSubtitleTracks = true;
+        try
+        {
+            if (changedTrack.IsSelected)
+            {
+                DownloadSubtitle = true;
+                if (!SubtitleTracks.Any(track => track.IsDefault))
+                {
+                    changedTrack.IsDefault = true;
+                }
+            }
+            else if (!SubtitleTracks.Any(track => track.IsSelected))
+            {
+                DownloadSubtitle = false;
+            }
+        }
+        finally
+        {
+            _synchronizingSubtitleTracks = false;
+        }
+
         UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    // 字幕选择事件
-    private RelayCommand? _downloadSubtitleCommand;
-
-    public RelayCommand DownloadSubtitleCommand => _downloadSubtitleCommand ??= new RelayCommand(ExecuteDownloadSubtitleCommand);
-
-    /// <summary>
-    /// 字幕选择事件
-    /// </summary>
-    private void ExecuteDownloadSubtitleCommand()
-    {
-        UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    // 封面选择事件
-    private RelayCommand? _downloadCoverCommand;
-
-    public RelayCommand DownloadCoverCommand => _downloadCoverCommand ??= new RelayCommand(ExecuteDownloadCoverCommand);
-
-    /// <summary>
-    /// 封面选择事件
-    /// </summary>
-    private void ExecuteDownloadCoverCommand()
-    {
-        UpdateDownloadAll();
-        SetVideoContent();
     }
 
     private void UpdateDownloadAll()
     {
-        DownloadAll = DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover;
+        DownloadAll = DownloadAudio && DownloadVideo && DownloadDanmaku &&
+                      (HasSubtitleTracks ? SubtitleTracks.Any(track => track.IsSelected) : DownloadSubtitle) &&
+                      DownloadCover;
     }
 
     // 确认下载事件
@@ -371,53 +415,65 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         ListHelper.InsertUnique(DirectoryList, selectedDirectory, 0);
         Directory = selectedDirectory;
 
-        // 将更新后的目录设置一次写入，避免其他消费者看到半套状态
-        _settingsStore.Update(settings => settings with
-        {
-            Video = settings.Video with
-            {
-                SaveVideoRootPath = Directory,
-                HistoryVideoRootPaths = DirectoryList.ToImmutableArray()
-            }
-        });
-
         // 返回数据
         var requestedContent = new DownloadContentSelection(
             DownloadAudio,
             DownloadVideo,
             DownloadDanmaku,
-            DownloadSubtitle,
-            DownloadCover);
+            HasSubtitleTracks ? SubtitleTracks.Any(track => track.IsSelected) : DownloadSubtitle,
+            DownloadCover)
+        {
+            PreferredSubtitleLanguage = HasSubtitleTracks
+                ? SubtitleLanguagePreference.Unspecified
+                : SelectedSubtitleLanguagePreference.Value,
+            PreferredSubtitleType = SelectedSubtitleTypePreference.Value
+        };
         var selectedIds = HasSubtitleTracks
             ? SubtitleTracks.Where(track => track.IsSelected).Select(track => track.TrackId).ToArray()
             : null;
         var defaultTrackId = SubtitleTracks.FirstOrDefault(track => track.IsDefault)?.TrackId;
+        var enabledSubtitlesInDialog = DownloadSubtitle && !_initialDownloadSubtitle;
+        var changedSubtitleLanguage =
+            SelectedSubtitleLanguagePreference.Value != _initialSubtitleLanguagePreference;
+        _settingsStore.Update(settings =>
+        {
+            var content = settings.Video.Content;
+            return settings with
+            {
+                Video = settings.Video with
+                {
+                    SaveVideoRootPath = Directory,
+                    HistoryVideoRootPaths = DirectoryList.ToImmutableArray(),
+                    Content = content with
+                    {
+                        DownloadAudio = DownloadAudio,
+                        DownloadVideo = DownloadVideo,
+                        DownloadDanmaku = DownloadDanmaku,
+                        DownloadSubtitle = DownloadSubtitle == _initialDownloadSubtitle
+                            ? content.DownloadSubtitle
+                            : DownloadSubtitle,
+                        DownloadCover = DownloadCover,
+                        PreferredSubtitleLanguage = HasSubtitleTracks
+                            || (!changedSubtitleLanguage && !enabledSubtitlesInDialog)
+                            ? content.PreferredSubtitleLanguage
+                            : SelectedSubtitleLanguagePreference.Value,
+                        PreferredSubtitleType = HasSubtitleTracks
+                            || SelectedSubtitleTypePreference.Value == _initialSubtitleTypePreference
+                            ? content.PreferredSubtitleType
+                            : SelectedSubtitleTypePreference.Value
+                    }
+                }
+            };
+        });
         CloseDialog(AppDialogOutcome.Accepted, DownloadSettingsDialog.EncodeResult(
             Directory, requestedContent, selectedIds, defaultTrackId));
     }
 
-    #endregion
+    private SubtitleTrackPreference CurrentSubtitlePreference => new(
+        SelectedSubtitleLanguagePreference.Value,
+        SelectedSubtitleTypePreference.Value);
 
-    /// <summary>
-    /// 保存下载视频内容到设置
-    /// </summary>
-    private void SetVideoContent()
-    {
-        _settingsStore.Update(settings => settings with
-        {
-            Video = settings.Video with
-            {
-                Content = settings.Video.Content with
-                {
-                    DownloadAudio = DownloadAudio,
-                    DownloadVideo = DownloadVideo,
-                    DownloadDanmaku = DownloadDanmaku,
-                    DownloadSubtitle = DownloadSubtitle,
-                    DownloadCover = DownloadCover
-                }
-            }
-        });
-    }
+    #endregion
 
     /// <summary>
     /// 设置下载路径
@@ -432,7 +488,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 }
 
 internal sealed partial class SubtitleTrackItem(
-    DownloadSettingsDialog.SubtitleTrack track, bool isSelected, bool isDefault) : ObservableObject
+    DownloadSettingsDialog.SubtitleTrack track,
+    bool isSelected,
+    bool isDefault,
+    Action<SubtitleTrackItem>? selectionChanged = null) : ObservableObject
 {
     [ObservableProperty]
     private bool _isSelected = isSelected;
@@ -446,11 +505,12 @@ internal sealed partial class SubtitleTrackItem(
         {
             IsDefault = false;
         }
+
+        selectionChanged?.Invoke(this);
     }
 
     public long TrackId { get; } = track.TrackId;
     public string Language { get; } = track.Language;
     public string DisplayLanguage { get; } = track.DisplayLanguage;
-    public int Type { get; } = track.Type;
-    public string Url { get; } = track.Url;
+    public bool IsAi { get; } = track.Type == 1;
 }

@@ -9,6 +9,8 @@ internal static class DownloadStoreJson
 {
     private const string SelectedSubtitleTrackIds = "selectedSubtitleTrackIds";
     private const string DefaultSubtitleTrackId = "defaultSubtitleTrackId";
+    private const string PreferredSubtitleLanguage = "preferredSubtitleLanguage";
+    private const string PreferredSubtitleType = "preferredSubtitleType";
     private const string MediaKind = "mediaKind";
     private const string DanmakuOutputFormat = "danmakuOutputFormat";
 
@@ -25,6 +27,12 @@ internal static class DownloadStoreJson
         if (value.DefaultSubtitleTrackId is { } defaultId)
         {
             payload[DefaultSubtitleTrackId] = defaultId;
+        }
+
+        if (value.PreferredSubtitleLanguage != SubtitleLanguagePreference.Unspecified)
+        {
+            payload[PreferredSubtitleLanguage] = (int)value.PreferredSubtitleLanguage;
+            payload[PreferredSubtitleType] = (int)value.PreferredSubtitleType;
         }
 
         if (value.MediaKind is { } mediaKind)
@@ -126,6 +134,8 @@ internal static class DownloadStoreJson
             {
                 if (property.NameEquals(SelectedSubtitleTrackIds) ||
                     property.NameEquals(DefaultSubtitleTrackId) ||
+                    property.NameEquals(PreferredSubtitleLanguage) ||
+                    property.NameEquals(PreferredSubtitleType) ||
                     property.NameEquals(MediaKind) ||
                     property.NameEquals(DanmakuOutputFormat))
                 {
@@ -156,6 +166,14 @@ internal static class DownloadStoreJson
             var defaultId = root.TryGetProperty(DefaultSubtitleTrackId, out var defaultTrack)
                 ? defaultTrack.Deserialize<long>()
                 : (long?)null;
+            var preferredLanguage = root.TryGetProperty(
+                PreferredSubtitleLanguage,
+                out var storedPreferredLanguage)
+                ? ReadEnum<SubtitleLanguagePreference>(storedPreferredLanguage, fieldName)
+                : SubtitleLanguagePreference.Unspecified;
+            var preferredType = root.TryGetProperty(PreferredSubtitleType, out var storedPreferredType)
+                ? ReadEnum<SubtitleTypePreference>(storedPreferredType, fieldName)
+                : SubtitleTypePreference.Standard;
             var mediaKind = root.TryGetProperty(MediaKind, out var storedMediaKind)
                 ? ReadMediaKind(storedMediaKind, fieldName)
                 : (DownloadMediaKind?)null;
@@ -176,9 +194,25 @@ internal static class DownloadStoreJson
                 MediaKind = mediaKind,
                 SelectedSubtitleTrackIds = selectedIds,
                 DefaultSubtitleTrackId = defaultId,
+                PreferredSubtitleLanguage = preferredLanguage,
+                PreferredSubtitleType = preferredType,
                 DanmakuOutputFormat = danmakuOutputFormat
             };
         });
+    }
+
+    private static T ReadEnum<T>(JsonElement value, string fieldName)
+        where T : struct, Enum
+    {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var storedValue))
+        {
+            throw Corrupt(fieldName, $"{typeof(T).Name} is not an integer.");
+        }
+
+        var result = (T)Enum.ToObject(typeof(T), storedValue);
+        return Enum.IsDefined(result)
+            ? result
+            : throw Corrupt(fieldName, $"{typeof(T).Name} is unsupported.");
     }
 
     private static DownloadDanmakuOutputFormat ReadDanmakuOutputFormat(

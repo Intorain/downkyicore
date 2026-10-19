@@ -71,104 +71,29 @@ internal partial class ViewVideoViewModel
         SetVideoContent();
     }
 
-    // 音频选择事件
-    private RelayCommand? _downloadAudioCommand;
+    private RelayCommand? _contentSelectionChangedCommand;
 
-    public RelayCommand DownloadAudioCommand => _downloadAudioCommand ??= new RelayCommand(ExecuteDownloadAudioCommand);
+    public RelayCommand ContentSelectionChangedCommand =>
+        _contentSelectionChangedCommand ??= new RelayCommand(ExecuteContentSelectionChangedCommand);
 
-    /// <summary>
-    /// 音频选择事件
-    /// </summary>
-    private void ExecuteDownloadAudioCommand()
+    private void ExecuteContentSelectionChangedCommand()
     {
-        if (!DownloadAudio)
-        {
-            DownloadAll = false;
-        }
-
-        if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
-        {
-            DownloadAll = true;
-        }
-
+        DownloadAll = DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover;
         SetVideoContent();
     }
 
-    // 视频选择事件
-    private RelayCommand? _downloadVideoCommand;
+    private RelayCommand? _subtitlePreferenceCommand;
 
-    public RelayCommand DownloadVideoCommand => _downloadVideoCommand ??= new RelayCommand(ExecuteDownloadVideoCommand);
+    public RelayCommand SubtitlePreferenceCommand =>
+        _subtitlePreferenceCommand ??= new RelayCommand(ExecuteSubtitlePreferenceCommand);
 
-    /// <summary>
-    /// 视频选择事件
-    /// </summary>
-    private void ExecuteDownloadVideoCommand()
+    private void ExecuteSubtitlePreferenceCommand()
     {
-        if (!DownloadVideo)
+        if (!_isOnNavigatedTo)
         {
-            DownloadAll = false;
+            SetVideoContent();
         }
-
-        if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
-        {
-            DownloadAll = true;
-        }
-
-        SetVideoContent();
     }
-
-    // 弹幕选择事件
-    private RelayCommand? _downloadDanmakuCommand;
-
-    public RelayCommand DownloadDanmakuCommand =>
-        _downloadDanmakuCommand ??= new RelayCommand(ExecuteDownloadDanmakuCommand);
-
-    /// <summary>
-    /// 弹幕选择事件
-    /// </summary>
-    private void ExecuteDownloadDanmakuCommand()
-    {
-        if (!DownloadDanmaku)
-        {
-            DownloadAll = false;
-        }
-
-        if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
-        {
-            DownloadAll = true;
-        }
-
-        SetVideoContent();
-    }
-
-    // 字幕选择事件
-    private RelayCommand? _downloadSubtitleCommand;
-
-    public RelayCommand DownloadSubtitleCommand =>
-        _downloadSubtitleCommand ??= new RelayCommand(ExecuteDownloadSubtitleCommand);
-
-    /// <summary>
-    /// 字幕选择事件
-    /// </summary>
-    private void ExecuteDownloadSubtitleCommand()
-    {
-        if (!DownloadSubtitle)
-        {
-            DownloadAll = false;
-        }
-
-        if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
-        {
-            DownloadAll = true;
-        }
-
-        SetVideoContent();
-    }
-
-    // 封面选择事件
-    private RelayCommand? _downloadCoverCommand;
-
-    public RelayCommand DownloadCoverCommand => _downloadCoverCommand ??= new RelayCommand(ExecuteDownloadCoverCommand);
 
     private RelayCommand? _generateMovieMetadataCommand;
 
@@ -177,24 +102,6 @@ internal partial class ViewVideoViewModel
 
     private void ExecuteGenerateMovieMetadataCommand()
     {
-        SetVideoContent();
-    }
-
-    /// <summary>
-    /// 封面选择事件
-    /// </summary>
-    private void ExecuteDownloadCoverCommand()
-    {
-        if (!DownloadCover)
-        {
-            DownloadAll = false;
-        }
-
-        if (DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover)
-        {
-            DownloadAll = true;
-        }
-
         SetVideoContent();
     }
 

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using DownKyi.Core.FileName;
 using DownKyi.Core.Versioning;
+using DownKyi.Domain.Downloads;
 
 namespace DownKyi.Core.Settings;
 
@@ -77,7 +78,9 @@ public sealed record VideoContentApplicationSettings(
     bool DownloadDanmaku,
     bool DownloadSubtitle,
     bool DownloadCover,
-    bool GenerateMovieMetadata);
+    bool GenerateMovieMetadata,
+    SubtitleLanguagePreference PreferredSubtitleLanguage,
+    SubtitleTypePreference PreferredSubtitleType);
 
 public sealed record DanmakuApplicationSettings(
     DanmakuOutputFormat OutputFormat,
@@ -161,6 +164,19 @@ internal static class ApplicationSettingsValidator
             HttpProxy = settings.Network.HttpProxy ?? string.Empty,
             HttpProxyListenPort = Range(settings.Network.HttpProxyListenPort, 0, 65535, 0, "Network.HttpProxyListenPort", corrections)
         };
+        var videoContent = settings.Video.Content with
+        {
+            PreferredSubtitleLanguage = EnumValue(
+                settings.Video.Content.PreferredSubtitleLanguage,
+                SubtitleLanguagePreference.Unspecified,
+                "Video.Content.PreferredSubtitleLanguage",
+                corrections),
+            PreferredSubtitleType = EnumValue(
+                settings.Video.Content.PreferredSubtitleType,
+                SubtitleTypePreference.Standard,
+                "Video.Content.PreferredSubtitleType",
+                corrections)
+        };
         var video = settings.Video with
         {
             VideoCodecs = settings.Video.VideoCodecs < 0 ? Corrected("Video.VideoCodecs", 7, corrections) : settings.Video.VideoCodecs,
@@ -174,7 +190,8 @@ internal static class ApplicationSettingsValidator
                 ? Corrected("Video.FileNameParts", ApplicationSettingsDefaults.FileNameParts, corrections)
                 : settings.Video.FileNameParts,
             FileNamePartTimeFormat = TextValue(settings.Video.FileNamePartTimeFormat, "yyyy-MM-dd", "Video.FileNamePartTimeFormat", corrections),
-            OrderFormat = EnumValue(settings.Video.OrderFormat, OrderFormat.Natural, "Video.OrderFormat", corrections)
+            OrderFormat = EnumValue(settings.Video.OrderFormat, OrderFormat.Natural, "Video.OrderFormat", corrections),
+            Content = videoContent
         };
         var danmaku = settings.Danmaku with
         {
