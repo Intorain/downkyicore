@@ -257,7 +257,6 @@ public sealed class SettingsRoundtripCompletenessTests
             {
                 "Basic.ThemeMode" => ThemeMode.Dark,
                 "Basic.AfterDownload" => AfterDownloadOperation.OpenFolder,
-                "Basic.ParseScope" => ParseScope.CurrentSection,
                 "Basic.DownloadFinishedSort" => DownloadFinishedSort.DownloadDesc,
                 "Network.NetworkProxy" => NetworkProxy.System,
                 "Video.FfmpegHardwareAcceleration" => FfmpegHardwareAcceleration.Disabled,

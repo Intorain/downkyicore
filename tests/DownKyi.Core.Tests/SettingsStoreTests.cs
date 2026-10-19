@@ -8,6 +8,46 @@ namespace DownKyi.Core.Tests;
 public sealed class SettingsStoreTests
 {
     [Fact]
+    public async Task RemovedParsingSettingsAreIgnoredWhenLegacyJsonIsSaved()
+    {
+        var directory = CreateTestDirectory();
+        var settingsPath = Path.Combine(directory, "settings.json");
+        const string source =
+            """
+            {"SchemaVersion":1,"Basic":{"IsAutoParseVideo":2,"IsAutoDownloadAll":2,"ParseScope":2,"IsListenClipboard":2}}
+            """;
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                settingsPath,
+                source,
+                TestContext.Current.CancellationToken);
+            using var store = new SettingsStore(settingsPath);
+            Assert.Equal(AllowStatus.Yes, store.Current.Basic.IsListenClipboard);
+
+            store.Update(current => current with
+            {
+                Basic = current.Basic with { IsListenClipboard = AllowStatus.No }
+            });
+            await store.FlushAsync(TestContext.Current.CancellationToken);
+
+            using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
+                settingsPath,
+                TestContext.Current.CancellationToken));
+            var basic = document.RootElement.GetProperty("Basic");
+            Assert.False(basic.TryGetProperty("IsAutoParseVideo", out _));
+            Assert.False(basic.TryGetProperty("IsAutoDownloadAll", out _));
+            Assert.False(basic.TryGetProperty("ParseScope", out _));
+            Assert.Equal((int)AllowStatus.No, basic.GetProperty("IsListenClipboard").GetInt32());
+        }
+        finally
+        {
+            DeleteDirectory(directory);
+        }
+    }
+
+    [Fact]
     public async Task LegacyDanmakuSettingsWithoutOutputFormatDefaultToAss()
     {
         var directory = CreateTestDirectory();

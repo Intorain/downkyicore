@@ -47,9 +47,6 @@ public partial class SettingsManager
                 GetThemeMode(),
                 GetAfterDownloadOperation(),
                 GetIsListenClipboard(),
-                GetIsAutoParseVideo(),
-                GetParseScope(),
-                GetIsAutoDownloadAll(),
                 GetDownloadFinishedSort(),
                 IsRepeatFileAutoAddNumberSuffix()),
             new NetworkApplicationSettings(
@@ -129,9 +126,6 @@ public partial class SettingsManager
                 SetThemeMode(validated.Basic.ThemeMode);
                 SetAfterDownloadOperation(validated.Basic.AfterDownload);
                 SetIsListenClipboard(validated.Basic.IsListenClipboard);
-                SetIsAutoParseVideo(validated.Basic.IsAutoParseVideo);
-                SetParseScope(validated.Basic.ParseScope);
-                SetIsAutoDownloadAll(validated.Basic.IsAutoDownloadAll);
                 SetDownloadFinishedSort(validated.Basic.DownloadFinishedSort);
                 IsRepeatFileAutoAddNumberSuffix(validated.Basic.RepeatFileAutoAddNumberSuffix);
 

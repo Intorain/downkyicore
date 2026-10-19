@@ -8,15 +8,6 @@ public partial class SettingsManager
     // 是否监听剪贴板
     private const AllowStatus IsListenClipboard = AllowStatus.Yes;
 
-    // 视频详情页面是否自动解析
-    private const AllowStatus IsAutoParseVideo = AllowStatus.No;
-
-    // 默认的视频解析项
-    private const ParseScope ParseScope = Settings.ParseScope.None;
-
-    // 解析后自动下载解析视频
-    private const AllowStatus IsAutoDownloadAll = AllowStatus.No;
-
     // 下载完成列表排序
     private const DownloadFinishedSort FinishedSort = DownloadFinishedSort.DownloadAsc;
 
@@ -99,93 +90,6 @@ public partial class SettingsManager
             _appSettings.Basic.IsListenClipboard,
             isListen,
             v => _appSettings.Basic.IsListenClipboard = v);
-    }
-
-    /// <summary>
-    /// 视频详情页面是否自动解析
-    /// </summary>
-    /// <returns></returns>
-    public AllowStatus GetIsAutoParseVideo()
-    {
-        if (_appSettings.Basic.IsAutoParseVideo == AllowStatus.None)
-        {
-            // 第一次获取，先设置默认值
-            SetIsAutoParseVideo(IsAutoParseVideo);
-            return IsAutoParseVideo;
-        }
-
-        return _appSettings.Basic.IsAutoParseVideo;
-    }
-
-    /// <summary>
-    /// 视频详情页面是否自动解析
-    /// </summary>
-    /// <param name="isAuto"></param>
-    /// <returns></returns>
-    public bool SetIsAutoParseVideo(AllowStatus isAuto)
-    {
-        return SetProperty(
-            _appSettings.Basic.IsAutoParseVideo,
-            isAuto,
-            v => _appSettings.Basic.IsAutoParseVideo = v);
-    }
-
-    /// <summary>
-    /// 获取视频解析项
-    /// </summary>
-    /// <returns></returns>
-    public ParseScope GetParseScope()
-    {
-        if (_appSettings.Basic.ParseScope == ParseScope.NotSet)
-        {
-            // 第一次获取，先设置默认值
-            SetParseScope(ParseScope);
-            return ParseScope;
-        }
-
-        return _appSettings.Basic.ParseScope;
-    }
-
-    /// <summary>
-    /// 设置视频解析项
-    /// </summary>
-    /// <param name="parseScope"></param>
-    /// <returns></returns>
-    public bool SetParseScope(ParseScope parseScope)
-    {
-        return SetProperty(
-            _appSettings.Basic.ParseScope,
-            parseScope,
-            v => _appSettings.Basic.ParseScope = v);
-    }
-
-    /// <summary>
-    /// 解析后是否自动下载解析视频
-    /// </summary>
-    /// <returns></returns>
-    public AllowStatus GetIsAutoDownloadAll()
-    {
-        if (_appSettings.Basic.IsAutoDownloadAll == AllowStatus.None)
-        {
-            // 第一次获取，先设置默认值
-            SetIsAutoDownloadAll(IsAutoDownloadAll);
-            return IsAutoDownloadAll;
-        }
-
-        return _appSettings.Basic.IsAutoDownloadAll;
-    }
-
-    /// <summary>
-    /// 解析后是否自动下载解析视频
-    /// </summary>
-    /// <param name="isAutoDownloadAll"></param>
-    /// <returns></returns>
-    public bool SetIsAutoDownloadAll(AllowStatus isAutoDownloadAll)
-    {
-        return SetProperty(
-            _appSettings.Basic.IsAutoDownloadAll,
-            isAutoDownloadAll,
-            v => _appSettings.Basic.IsAutoDownloadAll = v);
     }
 
     /// <summary>
