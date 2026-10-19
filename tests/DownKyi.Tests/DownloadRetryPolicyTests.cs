@@ -39,28 +39,38 @@ public sealed class DownloadRetryPolicyTests
     }
 
     [Fact]
-    public async Task CoordinatorCapsOneGlobalBudgetAcrossPrimaryAndBackupAddresses()
+    public async Task CoordinatorRetriesEachTransientSourceBeforeStopping()
     {
+        var directory = CreateTemporaryDirectory("transient-sources");
         var backend = new RecordingBackend(
             DownloadTransferResult.Failed(
-                DownloadTransferFailureKind.InvalidMedia,
-                "invalid-media"));
-        var coordinator = CreateCoordinator(backend, maximumAttempts: 3);
+                DownloadTransferFailureKind.TransientNetwork,
+                "download.transfer.network"));
+        try
+        {
+            var result = await CreateCoordinator(backend, maximumAttempts: 5).TransferAsync(
+                CreateRequestAt(
+                    directory,
+                    "media.tmp",
+                    "https://primary.invalid/media",
+                    "https://backup-1.invalid/media",
+                    "https://backup-2.invalid/media"),
+                static _ => Task.FromResult<IReadOnlyList<string>>([]),
+                TestContext.Current.CancellationToken);
 
-        var result = await coordinator.TransferAsync(
-            CreateRequest(
-                "https://primary.invalid/media",
-                "https://backup-1.invalid/media",
-                "https://backup-2.invalid/media",
-                "https://backup-3.invalid/media"),
-            static _ => Task.FromResult<IReadOnlyList<string>>([]),
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
-        Assert.Equal(3, backend.Requests.Count);
-        Assert.Equal(
-            3,
-            backend.Requests.SelectMany(request => request.Urls).Distinct().Count());
+            Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
+            Assert.Equal(6, backend.Requests.Count);
+            Assert.Equal(backend.Requests[0].Urls, backend.Requests[1].Urls);
+            Assert.Equal(backend.Requests[2].Urls, backend.Requests[3].Urls);
+            Assert.Equal(backend.Requests[4].Urls, backend.Requests[5].Urls);
+            Assert.Equal(
+                3,
+                backend.Requests.SelectMany(request => request.Urls).Distinct().Count());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]
@@ -651,7 +661,6 @@ public sealed class DownloadRetryPolicyTests
                 DownloadTransferFailureKind.RateLimited,
                 "http-429",
                 TimeSpan.FromMinutes(5)),
-            attempt: 1,
             attemptsForAddress: 1,
             hasNextAddress: true,
             canRefreshAddresses: true);
@@ -781,7 +790,6 @@ public sealed class DownloadRetryPolicyTests
         Assert.Equal("download.transfer.tls.untrusted", result.ErrorCode);
         var decision = new DownloadRetryPolicy().Decide(
             result,
-            attempt: 1,
             attemptsForAddress: 1,
             hasNextAddress: true,
             canRefreshAddresses: true);
@@ -805,7 +813,6 @@ public sealed class DownloadRetryPolicyTests
         Assert.Equal(DownloadTransferFailureKind.TransientNetwork, result.FailureKind);
         var decision = new DownloadRetryPolicy().Decide(
             result,
-            attempt: 1,
             attemptsForAddress: 1,
             hasNextAddress: true,
             canRefreshAddresses: true);

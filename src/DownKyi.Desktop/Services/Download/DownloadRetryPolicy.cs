@@ -33,27 +33,34 @@ internal sealed class DownloadRetryPolicy
 
     public DownloadRetryDecision Decide(
         DownloadTransferResult result,
-        int attempt,
         int attemptsForAddress,
         bool hasNextAddress,
         bool canRefreshAddresses)
     {
         ArgumentNullException.ThrowIfNull(result);
-        ArgumentOutOfRangeException.ThrowIfLessThan(attempt, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(attemptsForAddress, 1);
-        if (result.Outcome != DownloadTransferOutcome.Failed ||
-            attempt >= MaximumAttempts)
+        if (result.Outcome != DownloadTransferOutcome.Failed)
         {
             return Stop();
+        }
+
+        if (attemptsForAddress >= MaximumAttempts
+            && (result.FailureKind is DownloadTransferFailureKind.TransientNetwork
+                or DownloadTransferFailureKind.RateLimited
+                or DownloadTransferFailureKind.ResumeRejected))
+        {
+            return hasNextAddress
+                ? new DownloadRetryDecision(DownloadRetryAction.TryNextAddress, TimeSpan.Zero)
+                : Stop();
         }
 
         return result.FailureKind switch
         {
             DownloadTransferFailureKind.TransientNetwork =>
-                DecideTransient(attempt, attemptsForAddress, hasNextAddress),
+                DecideTransient(attemptsForAddress, hasNextAddress),
             DownloadTransferFailureKind.RateLimited => new DownloadRetryDecision(
                 DownloadRetryAction.RetrySameAddress,
-                ClampServerDelay(result.RetryAfter ?? GetBackoff(attempt))),
+                ClampServerDelay(result.RetryAfter ?? GetBackoff(attemptsForAddress))),
             DownloadTransferFailureKind.ExpiredAddress =>
                 MoveOrRefresh(hasNextAddress, canRefreshAddresses),
             DownloadTransferFailureKind.ResumeRejected =>
@@ -80,7 +87,6 @@ internal sealed class DownloadRetryPolicy
     }
 
     private DownloadRetryDecision DecideTransient(
-        int attempt,
         int attemptsForAddress,
         bool hasNextAddress)
     {
@@ -88,7 +94,7 @@ internal sealed class DownloadRetryPolicy
         {
             return new DownloadRetryDecision(
                 DownloadRetryAction.RetrySameAddress,
-                GetBackoff(attempt));
+                GetBackoff(attemptsForAddress));
         }
 
         return hasNextAddress
