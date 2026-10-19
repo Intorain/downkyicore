@@ -28,6 +28,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<ViewDownloadSetterViewModel> _logger;
     private bool _synchronizingSubtitleTracks;
+    private bool _settingsInitialized;
 
     // 历史文件夹的数量
     private const int MaxDirectoryListCount = 20;
@@ -63,7 +64,13 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     public SubtitleLanguagePreferenceItem SelectedSubtitleLanguagePreference
     {
         get => _selectedSubtitleLanguagePreference;
-        set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
+        set
+        {
+            if (SetProperty(ref _selectedSubtitleLanguagePreference, value) && _settingsInitialized)
+            {
+                SetVideoContent();
+            }
+        }
     }
 
     private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
@@ -71,7 +78,13 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     public SubtitleTypePreferenceItem SelectedSubtitleTypePreference
     {
         get => _selectedSubtitleTypePreference;
-        set => SetProperty(ref _selectedSubtitleTypePreference, value);
+        set
+        {
+            if (SetProperty(ref _selectedSubtitleTypePreference, value) && _settingsInitialized)
+            {
+                SetVideoContent();
+            }
+        }
     }
 
     public DownloadSettingsDialog.SubtitleTrackDiscoveryStatus SubtitleTrackDiscoveryStatus
@@ -226,6 +239,8 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         }
 
         Directory = directory;
+
+        _settingsInitialized = true;
 
         #endregion
     }
@@ -523,19 +538,29 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     /// </summary>
     private void SetVideoContent()
     {
-        _settingsStore.Update(settings => settings with
+        _settingsStore.Update(settings =>
         {
-            Video = settings.Video with
+            var content = settings.Video.Content;
+            return settings with
             {
-                Content = settings.Video.Content with
+                Video = settings.Video with
                 {
-                    DownloadAudio = DownloadAudio,
-                    DownloadVideo = DownloadVideo,
-                    DownloadDanmaku = DownloadDanmaku,
-                    DownloadSubtitle = DownloadSubtitle,
-                    DownloadCover = DownloadCover
+                    Content = content with
+                    {
+                        DownloadAudio = DownloadAudio,
+                        DownloadVideo = DownloadVideo,
+                        DownloadDanmaku = DownloadDanmaku,
+                        DownloadSubtitle = DownloadSubtitle,
+                        DownloadCover = DownloadCover,
+                        PreferredSubtitleLanguage = HasSubtitleTracks
+                            ? content.PreferredSubtitleLanguage
+                            : SelectedSubtitleLanguagePreference.Value,
+                        PreferredSubtitleType = HasSubtitleTracks
+                            ? content.PreferredSubtitleType
+                            : SelectedSubtitleTypePreference.Value
+                    }
                 }
-            }
+            };
         });
     }
 

@@ -326,6 +326,44 @@ public sealed class ViewDownloadSetterSelectionTests
     }
 
     [Fact]
+    public void UndiscoveredTrackPreferenceChangesPersistForNextDialog()
+    {
+        using var settings = new TestSettingsStore();
+        var interaction = new TestDesktopInteractionContext();
+        var viewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance);
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
+
+        viewModel.DownloadSubtitle = true;
+        viewModel.DownloadSubtitleCommand.Execute(null);
+        viewModel.SelectedSubtitleLanguagePreference = viewModel.SubtitleLanguagePreferences.Single(item =>
+            item.Value == SubtitleLanguagePreference.English);
+        viewModel.SelectedSubtitleTypePreference = viewModel.SubtitleTypePreferences.Single(item =>
+            item.Value == SubtitleTypePreference.Ai);
+
+        var persistedContent = settings.Store.Current.Video.Content;
+        Assert.True(persistedContent.DownloadSubtitle);
+        Assert.Equal(SubtitleLanguagePreference.English, persistedContent.PreferredSubtitleLanguage);
+        Assert.Equal(SubtitleTypePreference.Ai, persistedContent.PreferredSubtitleType);
+
+        var nextViewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance);
+        nextViewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
+
+        Assert.True(nextViewModel.DownloadSubtitle);
+        Assert.Equal(
+            SubtitleLanguagePreference.English,
+            nextViewModel.SelectedSubtitleLanguagePreference.Value);
+        Assert.Equal(SubtitleTypePreference.Ai, nextViewModel.SelectedSubtitleTypePreference.Value);
+    }
+
+    [Fact]
     public void SubtitleTrackSelectionRaisesBindingNotification()
     {
         var track = new SubtitleTrackItem(
