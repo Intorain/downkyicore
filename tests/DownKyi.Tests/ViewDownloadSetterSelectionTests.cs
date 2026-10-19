@@ -185,7 +185,7 @@ public sealed class ViewDownloadSetterSelectionTests
 
         Assert.True(viewModel.DownloadSubtitle);
         Assert.True(track.IsDefault);
-        Assert.True(settings.Store.Current.Video.Content.DownloadSubtitle);
+        Assert.False(settings.Store.Current.Video.Content.DownloadSubtitle);
 
         track.IsSelected = false;
 
@@ -343,6 +343,13 @@ public sealed class ViewDownloadSetterSelectionTests
         viewModel.SelectedSubtitleTypePreference = viewModel.SubtitleTypePreferences.Single(item =>
             item.Value == SubtitleTypePreference.Ai);
 
+        Assert.False(settings.Store.Current.Video.Content.DownloadSubtitle);
+        Assert.NotEqual(SubtitleLanguagePreference.English,
+            settings.Store.Current.Video.Content.PreferredSubtitleLanguage);
+
+        viewModel.Directory = Path.GetTempPath();
+        viewModel.DownloadCommand.Execute(null);
+
         var persistedContent = settings.Store.Current.Video.Content;
         Assert.True(persistedContent.DownloadSubtitle);
         Assert.Equal(SubtitleLanguagePreference.English, persistedContent.PreferredSubtitleLanguage);
@@ -360,6 +367,126 @@ public sealed class ViewDownloadSetterSelectionTests
             SubtitleLanguagePreference.English,
             nextViewModel.SelectedSubtitleLanguagePreference.Value);
         Assert.Equal(SubtitleTypePreference.Ai, nextViewModel.SelectedSubtitleTypePreference.Value);
+    }
+
+    [Fact]
+    public void CancelDiscardsStagedContentAndSubtitlePreferences()
+    {
+        using var settings = new TestSettingsStore();
+        var original = settings.Store.Current.Video;
+        var interaction = new TestDesktopInteractionContext();
+        var viewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance);
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
+
+        viewModel.DownloadSubtitle = true;
+        viewModel.DownloadCover = !original.Content.DownloadCover;
+        viewModel.ContentSelectionChangedCommand.Execute(null);
+        viewModel.SelectedSubtitleLanguagePreference = viewModel.SubtitleLanguagePreferences.Single(item =>
+            item.Value == SubtitleLanguagePreference.English);
+        viewModel.SelectedSubtitleTypePreference = viewModel.SubtitleTypePreferences.Single(item =>
+            item.Value == SubtitleTypePreference.Ai);
+        viewModel.CloseCommand.Execute(null);
+
+        Assert.Equal(original, settings.Store.Current.Video);
+    }
+
+    [Fact]
+    public void CoverOnlyChangeDoesNotSaveDisplayedFallbackSubtitleDefaults()
+    {
+        using var settings = new TestSettingsStore();
+        settings.Store.Update(current => current with
+        {
+            Video = current.Video with
+            {
+                Content = current.Video.Content with
+                {
+                    DownloadSubtitle = true,
+                    PreferredSubtitleLanguage = SubtitleLanguagePreference.Unspecified,
+                    PreferredSubtitleType = SubtitleTypePreference.Ai
+                }
+            }
+        });
+        var originalContent = settings.Store.Current.Video.Content;
+        var interaction = new TestDesktopInteractionContext();
+        var viewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance)
+        {
+            Directory = Path.GetTempPath()
+        };
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
+        viewModel.DownloadCover = !viewModel.DownloadCover;
+        viewModel.ContentSelectionChangedCommand.Execute(null);
+
+        viewModel.DownloadCommand.Execute(null);
+
+        var savedContent = settings.Store.Current.Video.Content;
+        Assert.Equal(originalContent.DownloadSubtitle, savedContent.DownloadSubtitle);
+        Assert.Equal(originalContent.PreferredSubtitleLanguage, savedContent.PreferredSubtitleLanguage);
+        Assert.Equal(originalContent.PreferredSubtitleType, savedContent.PreferredSubtitleType);
+        Assert.NotEqual(originalContent.DownloadCover, savedContent.DownloadCover);
+    }
+
+    [Fact]
+    public void UnmatchedSubtitlePreferenceSkipsThisVideoWithoutChangingFuturePreference()
+    {
+        using var settings = new TestSettingsStore();
+        settings.Store.Update(current => current with
+        {
+            Video = current.Video with
+            {
+                Content = current.Video.Content with
+                {
+                    DownloadSubtitle = true,
+                    PreferredSubtitleLanguage = SubtitleLanguagePreference.ChineseSimplified
+                }
+            }
+        });
+        var interaction = new TestDesktopInteractionContext();
+        var viewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance)
+        {
+            Directory = Path.GetTempPath()
+        };
+        viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest(
+        [
+            new(22, "en", "English", 0, "//en")
+        ]));
+
+        Assert.True(viewModel.DownloadSubtitle);
+        Assert.DoesNotContain(viewModel.SubtitleTracks, track => track.IsSelected);
+        viewModel.DownloadCover = !viewModel.DownloadCover;
+        viewModel.ContentSelectionChangedCommand.Execute(null);
+        AppDialogResult? result = null;
+        viewModel.CloseRequested += (_, value) => result = value;
+        viewModel.DownloadCommand.Execute(null);
+
+        var selection = DownloadSettingsDialog.DecodeResult(Assert.IsType<AppDialogResult>(result));
+        Assert.True(selection.HasValue);
+        Assert.False(selection.Value.RequestedContent.Subtitle);
+        Assert.True(settings.Store.Current.Video.Content.DownloadSubtitle);
+        Assert.Equal(SubtitleLanguagePreference.ChineseSimplified,
+            settings.Store.Current.Video.Content.PreferredSubtitleLanguage);
+
+        var nextViewModel = new ViewDownloadSetterViewModel(
+            interaction.Notifications,
+            new StubFilePickerService(),
+            settings.Store,
+            NullLogger<ViewDownloadSetterViewModel>.Instance);
+        nextViewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest(
+        [
+            new(11, "zh", "中文", 0, "//zh")
+        ]));
+        Assert.True(Assert.Single(nextViewModel.SubtitleTracks).IsSelected);
     }
 
     [Fact]

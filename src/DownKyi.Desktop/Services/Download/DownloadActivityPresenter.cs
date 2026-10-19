@@ -114,6 +114,14 @@ internal sealed class DownloadActivityPresenter
                 false);
         }
 
+        if (error.Code.StartsWith("download.artifact.subtitle.", StringComparison.Ordinal))
+        {
+            return new DownloadFailure(
+                error.Code,
+                DictionaryResource.GetString("SubtitleDownloadFailed"),
+                true);
+        }
+
         if (!TlsFailureClassifier.IsTlsErrorCode(error.Code))
         {
             return CreateRetryableFailure();

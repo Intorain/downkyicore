@@ -172,6 +172,7 @@
     <system:String x:Key="Paused">已暂停</system:String>
     <system:String x:Key="Waiting">等待中……</system:String>
     <system:String x:Key="DownloadFailed">下载失败</system:String>
+    <system:String x:Key="SubtitleDownloadFailed">字幕下载失败</system:String>
     <system:String x:Key="DownloadRuntimeUnavailable">下载服务启动失败，请重新启动应用并查看日志。</system:String>
     <system:String x:Key="TotalDownloading1">正在下载</system:String>
     <system:String x:Key="TotalDownloading2">个视频！</system:String>

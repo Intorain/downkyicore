@@ -85,6 +85,24 @@ public static partial class VideoStreamApi
         IReadOnlyCollection<long>? selectedTrackIds = null,
         SubtitleTrackPreference? preference = null)
     {
+        var result = await client.GetSubtitleSelectionAsync(
+            keys, unixTimeSeconds, avid, bvid, cid, reportParseFailure,
+            cancellationToken, selectedTrackIds, preference).ConfigureAwait(false);
+        return result.Subtitles;
+    }
+
+    public static async Task<SubtitleFetchResult> GetSubtitleSelectionAsync(
+        this IBilibiliApiClient client,
+        WbiKeys keys,
+        long unixTimeSeconds,
+        long avid,
+        string? bvid,
+        long cid,
+        Action<Exception>? reportParseFailure,
+        CancellationToken cancellationToken,
+        IReadOnlyCollection<long>? selectedTrackIds = null,
+        SubtitleTrackPreference? preference = null)
+    {
         ArgumentNullException.ThrowIfNull(keys);
         var subRipTexts = new List<SubRipText>();
         var player = await client.PlayerV2Async(
@@ -94,16 +112,13 @@ public static partial class VideoStreamApi
             bvid,
             cid,
             cancellationToken).ConfigureAwait(false);
-        if (player?.Subtitle?.Subtitles == null || player.Subtitle.Subtitles.Count == 0)
-        {
-            return subRipTexts;
-        }
-
+        var availableSubtitles = player?.Subtitle?.Subtitles;
         var effectiveTrackIds = selectedTrackIds;
-        if (effectiveTrackIds == null && preference is { IsConfigured: true } configuredPreference)
+        if (effectiveTrackIds == null && availableSubtitles != null &&
+            preference is { IsConfigured: true } configuredPreference)
         {
             var preferredTrackId = SubtitleTrackSelector.SelectPreferredTrack(
-                player.Subtitle.Subtitles.Select(subtitle => new SubtitleTrackCandidate(
+                availableSubtitles.Select(subtitle => new SubtitleTrackCandidate(
                     subtitle.Id,
                     subtitle.Lan,
                     subtitle.Type)),
@@ -111,7 +126,15 @@ public static partial class VideoStreamApi
             effectiveTrackIds = preferredTrackId is { } trackId ? [trackId] : [];
         }
 
-        foreach (var subtitle in player.Subtitle.Subtitles)
+        var expectedTrackIds = effectiveTrackIds ??
+                               (IReadOnlyCollection<long>)(availableSubtitles?
+                                   .Select(subtitle => subtitle.Id).ToArray() ?? []);
+        if (availableSubtitles == null || availableSubtitles.Count == 0)
+        {
+            return new SubtitleFetchResult(subRipTexts, expectedTrackIds);
+        }
+
+        foreach (var subtitle in availableSubtitles)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (effectiveTrackIds != null && !effectiveTrackIds.Contains(subtitle.Id))
@@ -171,7 +194,7 @@ public static partial class VideoStreamApi
             }
         }
 
-        return subRipTexts;
+        return new SubtitleFetchResult(subRipTexts, expectedTrackIds);
     }
 
     private static string? NormalizeSubtitleUrl(string? subtitleUrl)
@@ -208,3 +231,7 @@ public static partial class VideoStreamApi
                    || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase));
     }
 }
+
+public sealed record SubtitleFetchResult(
+    IReadOnlyList<SubRipText> Subtitles,
+    IReadOnlyCollection<long> ExpectedTrackIds);

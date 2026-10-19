@@ -27,6 +27,9 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private readonly IFilePickerService _filePickerService;
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<ViewDownloadSetterViewModel> _logger;
+    private readonly bool _initialDownloadSubtitle;
+    private readonly SubtitleLanguagePreference _initialSubtitleLanguagePreference;
+    private readonly SubtitleTypePreference _initialSubtitleTypePreference;
     private bool _synchronizingSubtitleTracks;
 
     // 历史文件夹的数量
@@ -63,13 +66,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     public SubtitleLanguagePreferenceItem SelectedSubtitleLanguagePreference
     {
         get => _selectedSubtitleLanguagePreference;
-        set
-        {
-            if (SetProperty(ref _selectedSubtitleLanguagePreference, value))
-            {
-                SetVideoContent();
-            }
-        }
+        set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
     }
 
     private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
@@ -77,13 +74,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     public SubtitleTypePreferenceItem SelectedSubtitleTypePreference
     {
         get => _selectedSubtitleTypePreference;
-        set
-        {
-            if (SetProperty(ref _selectedSubtitleTypePreference, value))
-            {
-                SetVideoContent();
-            }
-        }
+        set => SetProperty(ref _selectedSubtitleTypePreference, value);
     }
 
     public bool HasSubtitleTracks => SubtitleTracks.Count > 0;
@@ -214,11 +205,14 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
                 videoContent.PreferredSubtitleLanguage));
         _selectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
             item.Value == videoContent.PreferredSubtitleType);
+        _initialSubtitleLanguagePreference = _selectedSubtitleLanguagePreference.Value;
+        _initialSubtitleTypePreference = _selectedSubtitleTypePreference.Value;
 
         DownloadAudio = videoContent.DownloadAudio;
         DownloadVideo = videoContent.DownloadVideo;
         DownloadDanmaku = videoContent.DownloadDanmaku;
         DownloadSubtitle = hasSubtitlePreference && videoContent.DownloadSubtitle;
+        _initialDownloadSubtitle = DownloadSubtitle;
         DownloadCover = videoContent.DownloadCover;
 
         UpdateDownloadAll();
@@ -311,7 +305,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
         SynchronizeSubtitleTracksFromDownloadOption();
         UpdateDownloadAll();
-        SetVideoContent();
     }
 
     private RelayCommand? _contentSelectionChangedCommand;
@@ -322,7 +315,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private void ExecuteContentSelectionChangedCommand()
     {
         UpdateDownloadAll();
-        SetVideoContent();
     }
 
     private void SynchronizeSubtitleTracksFromDownloadOption()
@@ -350,11 +342,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
                     CurrentSubtitlePreference);
                 var preferredTrack = SubtitleTracks.FirstOrDefault(track =>
                     track.TrackId == preferredTrackId);
-                if (preferredTrack == null)
-                {
-                    DownloadSubtitle = false;
-                }
-                else
+                if (preferredTrack != null)
                 {
                     preferredTrack.IsSelected = true;
                     preferredTrack.IsDefault = true;
@@ -396,12 +384,13 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         }
 
         UpdateDownloadAll();
-        SetVideoContent();
     }
 
     private void UpdateDownloadAll()
     {
-        DownloadAll = DownloadAudio && DownloadVideo && DownloadDanmaku && DownloadSubtitle && DownloadCover;
+        DownloadAll = DownloadAudio && DownloadVideo && DownloadDanmaku &&
+                      (HasSubtitleTracks ? SubtitleTracks.Any(track => track.IsSelected) : DownloadSubtitle) &&
+                      DownloadCover;
     }
 
     // 确认下载事件
@@ -426,22 +415,12 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         ListHelper.InsertUnique(DirectoryList, selectedDirectory, 0);
         Directory = selectedDirectory;
 
-        // 将更新后的目录设置一次写入，避免其他消费者看到半套状态
-        _settingsStore.Update(settings => settings with
-        {
-            Video = settings.Video with
-            {
-                SaveVideoRootPath = Directory,
-                HistoryVideoRootPaths = DirectoryList.ToImmutableArray()
-            }
-        });
-
         // 返回数据
         var requestedContent = new DownloadContentSelection(
             DownloadAudio,
             DownloadVideo,
             DownloadDanmaku,
-            DownloadSubtitle,
+            HasSubtitleTracks ? SubtitleTracks.Any(track => track.IsSelected) : DownloadSubtitle,
             DownloadCover)
         {
             PreferredSubtitleLanguage = HasSubtitleTracks
@@ -453,6 +432,39 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             ? SubtitleTracks.Where(track => track.IsSelected).Select(track => track.TrackId).ToArray()
             : null;
         var defaultTrackId = SubtitleTracks.FirstOrDefault(track => track.IsDefault)?.TrackId;
+        var enabledSubtitlesInDialog = DownloadSubtitle && !_initialDownloadSubtitle;
+        var changedSubtitleLanguage =
+            SelectedSubtitleLanguagePreference.Value != _initialSubtitleLanguagePreference;
+        _settingsStore.Update(settings =>
+        {
+            var content = settings.Video.Content;
+            return settings with
+            {
+                Video = settings.Video with
+                {
+                    SaveVideoRootPath = Directory,
+                    HistoryVideoRootPaths = DirectoryList.ToImmutableArray(),
+                    Content = content with
+                    {
+                        DownloadAudio = DownloadAudio,
+                        DownloadVideo = DownloadVideo,
+                        DownloadDanmaku = DownloadDanmaku,
+                        DownloadSubtitle = DownloadSubtitle == _initialDownloadSubtitle
+                            ? content.DownloadSubtitle
+                            : DownloadSubtitle,
+                        DownloadCover = DownloadCover,
+                        PreferredSubtitleLanguage = HasSubtitleTracks
+                            || (!changedSubtitleLanguage && !enabledSubtitlesInDialog)
+                            ? content.PreferredSubtitleLanguage
+                            : SelectedSubtitleLanguagePreference.Value,
+                        PreferredSubtitleType = HasSubtitleTracks
+                            || SelectedSubtitleTypePreference.Value == _initialSubtitleTypePreference
+                            ? content.PreferredSubtitleType
+                            : SelectedSubtitleTypePreference.Value
+                    }
+                }
+            };
+        });
         CloseDialog(AppDialogOutcome.Accepted, DownloadSettingsDialog.EncodeResult(
             Directory, requestedContent, selectedIds, defaultTrackId));
     }
@@ -462,37 +474,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SelectedSubtitleTypePreference.Value);
 
     #endregion
-
-    /// <summary>
-    /// 保存下载视频内容到设置
-    /// </summary>
-    private void SetVideoContent()
-    {
-        _settingsStore.Update(settings =>
-        {
-            var content = settings.Video.Content;
-            return settings with
-            {
-                Video = settings.Video with
-                {
-                    Content = content with
-                    {
-                        DownloadAudio = DownloadAudio,
-                        DownloadVideo = DownloadVideo,
-                        DownloadDanmaku = DownloadDanmaku,
-                        DownloadSubtitle = DownloadSubtitle,
-                        DownloadCover = DownloadCover,
-                        PreferredSubtitleLanguage = HasSubtitleTracks
-                            ? content.PreferredSubtitleLanguage
-                            : SelectedSubtitleLanguagePreference.Value,
-                        PreferredSubtitleType = HasSubtitleTracks
-                            ? content.PreferredSubtitleType
-                            : SelectedSubtitleTypePreference.Value
-                    }
-                }
-            };
-        });
-    }
 
     /// <summary>
     /// 设置下载路径
