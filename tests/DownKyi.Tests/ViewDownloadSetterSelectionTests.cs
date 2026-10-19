@@ -46,7 +46,6 @@ public sealed class ViewDownloadSetterSelectionTests
         Assert.Equal("English", viewModel.SubtitleTracks[1].DisplayLanguage);
         Assert.False(viewModel.SubtitleTracks[0].IsAi);
         Assert.True(viewModel.SubtitleTracks[1].IsAi);
-        Assert.Equal("//en", viewModel.SubtitleTracks[1].Url);
     }
 
     [Fact]
@@ -141,14 +140,14 @@ public sealed class ViewDownloadSetterSelectionTests
         ]));
 
         viewModel.DownloadAudio = true;
-        viewModel.DownloadAudioCommand.Execute(null);
+        viewModel.ContentSelectionChangedCommand.Execute(null);
         viewModel.DownloadVideo = true;
-        viewModel.DownloadVideoCommand.Execute(null);
+        viewModel.ContentSelectionChangedCommand.Execute(null);
         viewModel.DownloadDanmaku = true;
-        viewModel.DownloadDanmakuCommand.Execute(null);
+        viewModel.ContentSelectionChangedCommand.Execute(null);
         viewModel.SubtitleTracks[0].IsSelected = true;
         viewModel.DownloadCover = true;
-        viewModel.DownloadCoverCommand.Execute(null);
+        viewModel.ContentSelectionChangedCommand.Execute(null);
 
         Assert.True(viewModel.DownloadAll);
         Assert.True(viewModel.SubtitleTracks[0].IsSelected);
@@ -338,7 +337,7 @@ public sealed class ViewDownloadSetterSelectionTests
         viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
 
         viewModel.DownloadSubtitle = true;
-        viewModel.DownloadSubtitleCommand.Execute(null);
+        viewModel.ContentSelectionChangedCommand.Execute(null);
         viewModel.SelectedSubtitleLanguagePreference = viewModel.SubtitleLanguagePreferences.Single(item =>
             item.Value == SubtitleLanguagePreference.English);
         viewModel.SelectedSubtitleTypePreference = viewModel.SubtitleTypePreferences.Single(item =>

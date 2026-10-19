@@ -159,25 +159,25 @@
                             IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
                         <CheckBox
                             Grid.Column="1"
-                            Command="{Binding DownloadAudioCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadAudio}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
                         <CheckBox
                             Grid.Column="2"
-                            Command="{Binding DownloadVideoCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadVideo}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
                         <CheckBox
                             Grid.Column="3"
-                            Command="{Binding DownloadDanmakuCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadDanmaku}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
                         <CheckBox
                             Grid.Column="4"
-                            Command="{Binding DownloadCoverCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadCover}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
@@ -272,7 +272,7 @@
                             <Grid ColumnDefinitions="Auto,Auto,140,Auto,150">
                                 <CheckBox
                                     VerticalAlignment="Center"
-                                    Command="{Binding DownloadSubtitleCommand}"
+                                    Command="{Binding ContentSelectionChangedCommand}"
                                     Content="{DynamicResource DownloadSubtitle}"
                                     IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
                                 <TextBlock

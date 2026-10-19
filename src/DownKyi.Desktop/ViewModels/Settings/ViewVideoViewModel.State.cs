@@ -156,14 +156,7 @@ internal partial class ViewVideoViewModel
         set => SetProperty(ref _downloadSubtitle, value);
     }
 
-    private IReadOnlyList<SubtitleLanguagePreferenceItem> _subtitleLanguagePreferences =
-        Array.Empty<SubtitleLanguagePreferenceItem>();
-
-    public IReadOnlyList<SubtitleLanguagePreferenceItem> SubtitleLanguagePreferences
-    {
-        get => _subtitleLanguagePreferences;
-        set => SetProperty(ref _subtitleLanguagePreferences, value);
-    }
+    public IReadOnlyList<SubtitleLanguagePreferenceItem> SubtitleLanguagePreferences { get; }
 
     private SubtitleLanguagePreferenceItem _selectedSubtitleLanguagePreference = null!;
 
@@ -173,14 +166,7 @@ internal partial class ViewVideoViewModel
         set => SetProperty(ref _selectedSubtitleLanguagePreference, value);
     }
 
-    private IReadOnlyList<SubtitleTypePreferenceItem> _subtitleTypePreferences =
-        Array.Empty<SubtitleTypePreferenceItem>();
-
-    public IReadOnlyList<SubtitleTypePreferenceItem> SubtitleTypePreferences
-    {
-        get => _subtitleTypePreferences;
-        set => SetProperty(ref _subtitleTypePreferences, value);
-    }
+    public IReadOnlyList<SubtitleTypePreferenceItem> SubtitleTypePreferences { get; }
 
     private SubtitleTypePreferenceItem _selectedSubtitleTypePreference = null!;
 

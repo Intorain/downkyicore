@@ -261,31 +261,31 @@
                             IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
                         <CheckBox
                             Margin="40,0,0,0"
-                            Command="{Binding DownloadAudioCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadAudio}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
                         <CheckBox
                             Margin="40,0,0,0"
-                            Command="{Binding DownloadVideoCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadVideo}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
                         <CheckBox
                             Margin="40,0,0,0"
-                            Command="{Binding DownloadDanmakuCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadDanmaku}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
                         <CheckBox
                             Margin="40,0,0,0"
-                            Command="{Binding DownloadSubtitleCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadSubtitle}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
                         <CheckBox
                             Margin="40,0,0,0"
-                            Command="{Binding DownloadCoverCommand}"
+                            Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadCover}"
                             Foreground="{DynamicResource BrushTextDark}"
                             IsChecked="{Binding DownloadCover, Mode=TwoWay}" />

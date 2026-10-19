@@ -28,7 +28,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
     private readonly ISettingsStore _settingsStore;
     private readonly ILogger<ViewDownloadSetterViewModel> _logger;
     private bool _synchronizingSubtitleTracks;
-    private bool _settingsInitialized;
 
     // 历史文件夹的数量
     private const int MaxDirectoryListCount = 20;
@@ -66,7 +65,7 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         get => _selectedSubtitleLanguagePreference;
         set
         {
-            if (SetProperty(ref _selectedSubtitleLanguagePreference, value) && _settingsInitialized)
+            if (SetProperty(ref _selectedSubtitleLanguagePreference, value))
             {
                 SetVideoContent();
             }
@@ -80,17 +79,11 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         get => _selectedSubtitleTypePreference;
         set
         {
-            if (SetProperty(ref _selectedSubtitleTypePreference, value) && _settingsInitialized)
+            if (SetProperty(ref _selectedSubtitleTypePreference, value))
             {
                 SetVideoContent();
             }
         }
-    }
-
-    public DownloadSettingsDialog.SubtitleTrackDiscoveryStatus SubtitleTrackDiscoveryStatus
-    {
-        get;
-        private set;
     }
 
     public bool HasSubtitleTracks => SubtitleTracks.Count > 0;
@@ -216,10 +209,10 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SubtitleTypePreferences = SubtitlePreferenceOptions.CreateTypes();
         var hasSubtitlePreference =
             videoContent.PreferredSubtitleLanguage != SubtitleLanguagePreference.Unspecified;
-        SelectedSubtitleLanguagePreference = SubtitleLanguagePreferences.First(item =>
+        _selectedSubtitleLanguagePreference = SubtitleLanguagePreferences.First(item =>
             item.Value == SubtitlePreferenceOptions.EffectiveLanguage(
                 videoContent.PreferredSubtitleLanguage));
-        SelectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
+        _selectedSubtitleTypePreference = SubtitleTypePreferences.First(item =>
             item.Value == videoContent.PreferredSubtitleType);
 
         DownloadAudio = videoContent.DownloadAudio;
@@ -240,18 +233,12 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
 
         Directory = directory;
 
-        _settingsInitialized = true;
-
         #endregion
     }
 
     public override void OnDialogOpened(AppDialogRequest request)
     {
-        var discovery = DownloadSettingsDialog.ReadSubtitleDiscovery(request);
-        SubtitleTrackDiscoveryStatus = discovery.Status;
-        var tracks = discovery.Tracks;
-
-        foreach (var track in tracks)
+        foreach (var track in DownloadSettingsDialog.ReadSubtitleTracks(request))
         {
             SubtitleTracks.Add(new SubtitleTrackItem(
                 track,
@@ -327,56 +314,13 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
         SetVideoContent();
     }
 
-    // 音频选择事件
-    private RelayCommand? _downloadAudioCommand;
+    private RelayCommand? _contentSelectionChangedCommand;
 
-    public RelayCommand DownloadAudioCommand => _downloadAudioCommand ??= new RelayCommand(ExecuteDownloadAudioCommand);
+    public RelayCommand ContentSelectionChangedCommand =>
+        _contentSelectionChangedCommand ??= new RelayCommand(ExecuteContentSelectionChangedCommand);
 
-    /// <summary>
-    /// 音频选择事件
-    /// </summary>
-    private void ExecuteDownloadAudioCommand()
+    private void ExecuteContentSelectionChangedCommand()
     {
-        UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    // 视频选择事件
-    private RelayCommand? _downloadVideoCommand;
-
-    public RelayCommand DownloadVideoCommand => _downloadVideoCommand ??= new RelayCommand(ExecuteDownloadVideoCommand);
-
-    /// <summary>
-    /// 视频选择事件
-    /// </summary>
-    private void ExecuteDownloadVideoCommand()
-    {
-        UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    // 弹幕选择事件
-    private RelayCommand? _downloadDanmakuCommand;
-
-    public RelayCommand DownloadDanmakuCommand => _downloadDanmakuCommand ??= new RelayCommand(ExecuteDownloadDanmakuCommand);
-
-    /// <summary>
-    /// 弹幕选择事件
-    /// </summary>
-    private void ExecuteDownloadDanmakuCommand()
-    {
-        UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    private RelayCommand? _downloadSubtitleCommand;
-
-    public RelayCommand DownloadSubtitleCommand =>
-        _downloadSubtitleCommand ??= new RelayCommand(ExecuteDownloadSubtitleCommand);
-
-    private void ExecuteDownloadSubtitleCommand()
-    {
-        SynchronizeSubtitleTracksFromDownloadOption();
         UpdateDownloadAll();
         SetVideoContent();
     }
@@ -451,20 +395,6 @@ internal class ViewDownloadSetterViewModel : BaseDialogViewModel
             _synchronizingSubtitleTracks = false;
         }
 
-        UpdateDownloadAll();
-        SetVideoContent();
-    }
-
-    // 封面选择事件
-    private RelayCommand? _downloadCoverCommand;
-
-    public RelayCommand DownloadCoverCommand => _downloadCoverCommand ??= new RelayCommand(ExecuteDownloadCoverCommand);
-
-    /// <summary>
-    /// 封面选择事件
-    /// </summary>
-    private void ExecuteDownloadCoverCommand()
-    {
         UpdateDownloadAll();
         SetVideoContent();
     }
@@ -602,5 +532,4 @@ internal sealed partial class SubtitleTrackItem(
     public string Language { get; } = track.Language;
     public string DisplayLanguage { get; } = track.DisplayLanguage;
     public bool IsAi { get; } = track.Type == 1;
-    public string Url { get; } = track.Url;
 }
