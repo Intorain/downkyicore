@@ -170,7 +170,7 @@ internal class VideoInfoService : IInfoService
                 FirstFrame = page.FirstFrame,
                 Order = order,
                 Name = name,
-                Duration = "N/A",
+                Duration = VideoPageDuration.FromSeconds(page.Duration),
                 Page = page.Page,
                 LoadTagsAsync = currentToken =>
                     _tagProvider.GetTagsAsync(_videoView.Bvid, page.Cid, currentToken)
@@ -292,7 +292,7 @@ internal class VideoInfoService : IInfoService
                 FirstFrame = episode.Arc.Pic,
                 Order = order++,
                 Name = p.Part,
-                Duration = "N/A",
+                Duration = VideoPageDuration.FromSeconds(p.Duration),
                 Owner = owner,
                 Page = p.Page,
                 PublishTime = dateTime.ToString(timeFormat, CultureInfo.CurrentCulture),
@@ -316,7 +316,7 @@ internal class VideoInfoService : IInfoService
             FirstFrame = episode.Arc.Pic,
             Order = order,
             Name = episode.Title,
-            Duration = "N/A",
+            Duration = VideoPageDuration.FromSeconds(episode.Page.Duration),
             Owner = _videoView?.Owner ?? new VideoOwner { Name = "", Face = "", Mid = -1 },
             Page = episode.Page.Page,
             LoadTagsAsync = currentToken =>

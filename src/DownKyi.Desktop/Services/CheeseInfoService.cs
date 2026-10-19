@@ -13,6 +13,7 @@ using DownKyi.Core.Settings;
 using DownKyi.Core.Storage;
 using DownKyi.Core.Utils;
 using DownKyi.Presentation;
+using DownKyi.Services.Video;
 using DownKyi.Utils;
 
 namespace DownKyi.Services;
@@ -107,8 +108,6 @@ internal class CheeseInfoService : IInfoService
             order++;
             var name = episode.Title;
 
-            var duration = Format.FormatDuration(episode.Duration - 1);
-
             var page = new VideoPage
             {
                 Avid = episode.Aid,
@@ -118,7 +117,7 @@ internal class CheeseInfoService : IInfoService
                 FirstFrame = episode.Cover,
                 Order = order,
                 Name = name,
-                Duration = "N/A"
+                Duration = VideoPageDuration.FromSeconds(episode.Duration)
             };
 
             // UP主信息

@@ -26,7 +26,8 @@ public sealed class BangumiEpisodeIdentityTests
                 "cid": 2,
                 "id": 2584321,
                 "ep_id": 0,
-                "share_copy": "Episode"
+                "share_copy": "Episode",
+                "duration": 848000
               }
             ],
             "positive": {
@@ -44,7 +45,8 @@ public sealed class BangumiEpisodeIdentityTests
                     "cid": 2,
                     "id": 2584321,
                     "ep_id": 0,
-                    "title": "Extra"
+                    "title": "Extra",
+                    "duration": 61000
                   },
                   {
                     "aid": 1,
@@ -93,10 +95,19 @@ public sealed class BangumiEpisodeIdentityTests
             service.GetVideoSections(cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal(EpisodeId, page.EpisodeId);
+        Assert.Equal("14m8s", page.Duration);
         Assert.Collection(
             sections[1].VideoPages,
-            sectionPage => Assert.Equal(EpisodeId, sectionPage.EpisodeId),
-            sectionPage => Assert.Equal(2584322, sectionPage.EpisodeId));
+            sectionPage =>
+            {
+                Assert.Equal(EpisodeId, sectionPage.EpisodeId);
+                Assert.Equal("1m1s", sectionPage.Duration);
+            },
+            sectionPage =>
+            {
+                Assert.Equal(2584322, sectionPage.EpisodeId);
+                Assert.Equal("N/A", sectionPage.Duration);
+            });
 
         await service.GetVideoStreamAsync(
             page,
