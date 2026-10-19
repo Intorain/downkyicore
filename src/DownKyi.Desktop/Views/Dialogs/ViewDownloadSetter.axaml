@@ -206,48 +206,57 @@
                         BorderThickness="1"
                         CornerRadius="{DynamicResource DownKyiRadiusSmall}"
                         IsVisible="{Binding HasSubtitleTracks}">
-                        <ScrollViewer MaxHeight="144" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl
-                                x:Name="SubtitleTrackSelector"
-                                ItemsSource="{Binding SubtitleTracks}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vmd:SubtitleTrackItem">
-                                        <Grid
-                                            MinHeight="36"
-                                            ColumnDefinitions="32,2*,*,48,Auto">
-                                            <CheckBox
-                                                VerticalAlignment="Center"
-                                                IsChecked="{Binding IsSelected, Mode=TwoWay}" />
-                                            <TextBlock
-                                                Grid.Column="1"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding DisplayLanguage}" />
-                                            <TextBlock
-                                                Grid.Column="2"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding Language}" />
-                                            <TextBlock
-                                                Grid.Column="3"
-                                                VerticalAlignment="Center"
-                                                IsVisible="{Binding !IsAi}"
-                                                Text="{DynamicResource SubtitleTypeStandard}" />
-                                            <TextBlock
-                                                Grid.Column="3"
-                                                VerticalAlignment="Center"
-                                                IsVisible="{Binding IsAi}"
-                                                Text="{DynamicResource SubtitleTypeAi}" />
-                                            <RadioButton
-                                                Grid.Column="4"
-                                                VerticalAlignment="Center"
-                                                Content="{DynamicResource DefaultSubtitle}"
-                                                GroupName="DefaultSubtitle"
-                                                IsChecked="{Binding IsDefault, Mode=TwoWay}"
-                                                IsEnabled="{Binding IsSelected}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                        <StackPanel Spacing="4">
+                            <ScrollViewer MaxHeight="144" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl
+                                    x:Name="SubtitleTrackSelector"
+                                    ItemsSource="{Binding SubtitleTracks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vmd:SubtitleTrackItem">
+                                            <Grid
+                                                MinHeight="36"
+                                                ColumnDefinitions="32,2*,*,48,Auto">
+                                                <CheckBox
+                                                    VerticalAlignment="Center"
+                                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                                <TextBlock
+                                                    Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding DisplayLanguage}" />
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding Language}" />
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding !IsAi}"
+                                                    Text="{DynamicResource SubtitleTypeStandard}" />
+                                                <TextBlock
+                                                    Grid.Column="3"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsAi}"
+                                                    Text="{DynamicResource SubtitleTypeAi}" />
+                                                <RadioButton
+                                                    Grid.Column="4"
+                                                    VerticalAlignment="Center"
+                                                    Content="{DynamicResource DefaultSubtitle}"
+                                                    GroupName="DefaultSubtitle"
+                                                    IsChecked="{Binding IsDefault, Mode=TwoWay}"
+                                                    IsEnabled="{Binding IsSelected}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock
+                                x:Name="SubtitleTrackSelectionTip"
+                                Margin="4,2,4,4"
+                                FontSize="11"
+                                Foreground="{DynamicResource BrushTextGrey}"
+                                Text="{DynamicResource SubtitleTrackSelectionTip}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
                     </Border>
                     <Border
                         x:Name="SubtitleFallbackPanel"

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
@@ -55,6 +56,10 @@ public sealed class DownloadSettingsDialogLayoutTests
                 view.FindControl<TextBlock>("SubtitleSectionLabel"));
             var subtitleBorder = Assert.IsType<Border>(
                 view.FindControl<Border>("SubtitleTrackBorder"));
+            var subtitleTip = Assert.IsType<TextBlock>(
+                view.FindControl<TextBlock>("SubtitleTrackSelectionTip"));
+            var subtitleScrollViewer = Assert.Single(
+                selector.GetVisualAncestors().OfType<ScrollViewer>());
 
             Assert.InRange(
                 Math.Abs(directory.Bounds.Left - subtitleBorder.Bounds.Left),
@@ -68,6 +73,9 @@ public sealed class DownloadSettingsDialogLayoutTests
                 Math.Abs(subtitleLabel.Bounds.Center.Y - subtitleBorder.Bounds.Center.Y),
                 0,
                 0.5);
+            Assert.True(subtitleTip.IsVisible);
+            Assert.Equal(TextWrapping.Wrap, subtitleTip.TextWrapping);
+            Assert.True(subtitleScrollViewer.Bounds.Bottom <= subtitleTip.Bounds.Top);
 
             AssertAppearsBelow(view, "TransferIllustration", "DirectorySection");
             AssertAppearsBelow(view, "DirectorySection", "DownloadContentSection");
