@@ -33,10 +33,6 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
-          build-mode: manual
-      - name: Restore
-        run: dotnet restore ./DownKyi.sln
-      - name: Build
-        run: dotnet build ./DownKyi.sln -c Release --no-restore --no-incremental
+          build-mode: none
       - name: Analyze
         uses: github/codeql-action/analyze@v4

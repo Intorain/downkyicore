@@ -64,7 +64,7 @@ cross-platform stress proof，不得移除。
 
 - **Use when**：NuGet、SDK、target framework、Python、dotnet tool、GitHub Action version、restore、vulnerability、deprecated。
 - **Owner**：managed package version 只在 `Directory.Packages.props`（同步升級的 Avalonia runtime family 共用 `AvaloniaRuntimeVersion`）；repo target framework 只在 `Directory.Build.props`；.NET SDK 只在 `global.json`；Python 只在 `.python-version`；PupNet 只在 `.config/dotnet-tools.json`；重複使用的 GitHub Action 版本各自由 `.github/actions/<name>/action.yml` 擁有。
-- **Invariant**：project、script 與 workflow 只引用上述 owner，不重複版本值；同一 upstream 但不同入口的 CodeQL `init`／`analyze` 因 `uses` 不支援版本變數而保留兩個靜態入口，architecture guard 要求兩者版本一致；floating `*-latest` runner 自動跟隨 GitHub 更新，固定 runner label 是各 release／compatibility job 的獨立相容性決策，不合併成一個假 owner。`Dependency policy` 在每個 PR 解析 toolchain owner，無效內容 fail closed，restore 與 vulnerable／deprecated audit 不因 path filter 跳過；always-on quality gate 必須以實際 artifact round trip 驗證本地 upload／download action owner，不能只靠不會觸發 consumer 的 path filter；Dependabot 每日 UTC 00:00 分別檢查 NuGet、.NET SDK、workflow 與本地 action owner，預設每個依賴各自開 PR，只有必須同步版本的 Avalonia runtime package family 合併為一張 PR；每張 PR 只在既有 required checks 全部通過後由 GitHub auto-merge；dependency update 不混入非必要 refactor；deprecated report 的修復仍需人工判讀。
+- **Invariant**：project、script 與 workflow 只引用上述 owner，不重複版本值；同一 upstream 但不同入口的 CodeQL `init`／`analyze` 因 `uses` 不支援版本變數而保留兩個靜態入口，architecture guard 要求兩者版本一致；floating `*-latest` runner 自動跟隨 GitHub 更新，固定 runner label 是各 release／compatibility job 的獨立相容性決策，不合併成一個假 owner。`Dependency policy` 在每個 PR 驗證 .NET SDK 與 NuGet，`Format check` 驗證 Python；無效內容 fail closed，restore 與 vulnerable／deprecated audit 不因 path filter 跳過；always-on quality gate 必須以實際 artifact round trip 驗證本地 upload／download action owner，不能只靠不會觸發 consumer 的 path filter；Dependabot 每日 UTC 00:00 分別檢查 NuGet、.NET SDK、workflow 與本地 action owner，預設每個依賴各自開 PR，只有必須同步版本的 Avalonia runtime package family 合併為一張 PR；每張 PR 只在既有 required checks 全部通過後由 GitHub auto-merge；dependency update 不混入非必要 refactor；deprecated report 的修復仍需人工判讀。
 - **Do**：只改對應 central version owner；先 focused proof，再跑風險相稱的 gate；CI 是自動合併的唯一版本風險判斷，不另做 major／minor 分流；紅燈只封鎖該依賴 PR，交由人工或 Agent 分析，不自動改產品語義。
 - **Proof**：restore、strict build、applicable tests、workflow lint、vulnerable／deprecated package audit。
 - **Stop**：若 dependency change 迫使產品語義改變，拆成獨立 scope。
@@ -77,9 +77,9 @@ cross-platform stress proof，不得移除。
 - **Use when**：CI、timeout、TRX、zero tests、cleanup、resource contention、CodeQL。
 - **Owner**：正式執行由 `DownKyi.CentralTestRunner` 擁有；native behavior 歸對應 OS test project。
 - **Invariant**：test project 明列 `DownKyiTestPlatforms`；正式入口只走 runner。PASS 刪 recorder；FAIL 保存 bounded output、cleanup、snapshot；未見 child 不代表不存在。
-- **Do**：保存首次失敗；對準 resource／operation，再用同語義 probe。xUnit 升級須驗證 MTP invocation、TRX、UI adapter discovery 與 headless session lifecycle。ETW 只對窄目標；CodeQL 保持 `manual` build。
+- **Do**：保存首次失敗；對準 resource／operation，再用同語義 probe。xUnit 升級須驗證 MTP invocation、TRX、UI adapter discovery 與 headless session lifecycle。ETW 只對窄目標。
 - **Proof**：TRX、recorder、focused regression；無 owner／lifecycle evidence 就寫 `Root cause not proven.`。
-- **Stop**：不同 owner／evidence → Pending；不 rerun 洗綠、不加 timing workaround、不改 buildless mode。
+- **Stop**：不同 owner／evidence → Pending；不 rerun 洗綠、不加 timing workaround。
 - **Details**：[Testing](testing/README.md)；[Targeted Resource Forensics](testing/targeted-resource-forensics.md)。
 
 <a id="download-persistence"></a>
