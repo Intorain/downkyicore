@@ -36,7 +36,9 @@ Product PRs do not update this file merely because their work state changed.
   this public set with `script/assemble-release-assets.ps1`; publish verification
   files only inside the ZIP.
 - Releases are assembled as drafts, receive the complete validated public asset
-  set, then are published once and read back as immutable.
+  set, then are published once. The publisher API read-back must match the exact
+  uploaded asset names, sizes and SHA-256 digests and report the release as
+  immutable.
   Published assets are never replaced or deleted; an interrupted draft is
   inspected and removed before a clean rerun.
 - Existing tags are immutable. Do not change `version.txt`, create a tag or

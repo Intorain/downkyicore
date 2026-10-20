@@ -566,6 +566,7 @@ public sealed class AgentEnvironmentArchitectureTests
             "script/resolve-release-plan.ps1",
             "script/validate-build-run-artifacts.ps1",
             "script/assemble-release-assets.ps1",
+            "script/verify-published-release.ps1",
             "script/validate-publish-output.ps1",
             "script/write-package-checksum.ps1",
             "script/macos/create-dmg.sh",

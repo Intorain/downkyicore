@@ -61,8 +61,8 @@ public sealed class ReleaseWorkflowArchitectureTests
         Assert.Contains("replacesArtifacts: false", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("IMMUTABLE_RELEASES_READ_TOKEN", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("repos/$GITHUB_REPOSITORY/immutable-releases", workflow, StringComparison.Ordinal);
-        Assert.Contains("Verify immutable release publication", workflow, StringComparison.Ordinal);
-        Assert.Contains(".immutable == true", workflow, StringComparison.Ordinal);
+        Assert.Contains("Verify published release identity", workflow, StringComparison.Ordinal);
+        Assert.Contains("./script/verify-published-release.ps1", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain("artifacts: artifacts/*", workflow, StringComparison.Ordinal);
     }
 
@@ -191,7 +191,7 @@ public sealed class ReleaseWorkflowArchitectureTests
             "./script/validate-build-run-artifacts.ps1",
             "./script/assemble-release-assets.ps1",
             "artifacts: artifacts/release-assets/*",
-            "Verify immutable release publication");
+            "./script/verify-published-release.ps1");
     }
 
     [Fact]
