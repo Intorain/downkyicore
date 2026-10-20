@@ -96,8 +96,42 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             return recovered;
         }
 
-        var probe = await ProbeAsync(expectedBytes, cancellationToken).ConfigureAwait(false);
-        recovered = TryRecoverCompletedTarget(targetFile, probe.TotalBytes);
+        try
+        {
+            return await DownloadCoreAsync(
+                targetFile,
+                expectedBytes,
+                useRanges: true,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (BuiltinRangeProtocolException exception) when (!File.Exists(targetFile))
+        {
+            var partialFile = $"{targetFile}.download";
+            if (File.Exists(partialFile))
+            {
+                File.Delete(partialFile);
+            }
+
+            _logger.LogWarningMessage(
+                $"Built-in range transfer was rejected by the media server; " +
+                $"fallback=sequential; reason={exception.Message}");
+            return await DownloadCoreAsync(
+                targetFile,
+                expectedBytes,
+                useRanges: false,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<BuiltinRangeDownloadResult> DownloadCoreAsync(
+        string targetFile,
+        long expectedBytes,
+        bool useRanges,
+        CancellationToken cancellationToken)
+    {
+        var probe = await ProbeAsync(expectedBytes, useRanges, cancellationToken)
+            .ConfigureAwait(false);
+        var recovered = TryRecoverCompletedTarget(targetFile, probe.TotalBytes);
         if (recovered != null)
         {
             return recovered;
@@ -186,22 +220,25 @@ internal sealed class BuiltinRangeDownloader : IDisposable
 
     private async Task<BuiltinRangeProbe> ProbeAsync(
         long expectedBytes,
+        bool useRanges,
         CancellationToken cancellationToken)
     {
-        using var request = CreateRequest(rangeStart: 0, rangeEnd: 0);
+        using var request = useRanges
+            ? CreateRequest(rangeStart: 0, rangeEnd: 0)
+            : CreateRequest(rangeStart: null, rangeEnd: null);
         using var response = await SendWithStallTimeoutAsync(request, cancellationToken)
             .ConfigureAwait(false);
         ThrowForHttpFailure(response);
 
         long totalBytes;
         bool supportsRanges;
-        if (response.StatusCode == HttpStatusCode.PartialContent)
+        if (useRanges && response.StatusCode == HttpStatusCode.PartialContent)
         {
             var contentRange = response.Content.Headers.ContentRange;
             if (contentRange is not { From: 0, To: 0, Length: > 0 }
                 || !string.Equals(contentRange.Unit, "bytes", StringComparison.OrdinalIgnoreCase))
             {
-                throw new BuiltinResumeRejectedException(
+                throw new BuiltinRangeProtocolException(
                     "The range probe returned an invalid Content-Range header.");
             }
 
@@ -868,20 +905,20 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                 || contentRange.Length != totalBytes
                 || !string.Equals(contentRange.Unit, "bytes", StringComparison.OrdinalIgnoreCase))
             {
-                throw new BuiltinResumeRejectedException(
+                throw new BuiltinRangeProtocolException(
                     "The media server did not honor the requested byte range.");
             }
         }
         else if (response.StatusCode != HttpStatusCode.OK || requestStart != 0)
         {
-            throw new BuiltinResumeRejectedException(
+            throw new BuiltinRangeProtocolException(
                 "The media server cannot resume the partial response.");
         }
 
         if (response.Content.Headers.ContentLength is { } contentLength
             && contentLength != expectedLength)
         {
-            throw new BuiltinResumeRejectedException(
+            throw new BuiltinRangeProtocolException(
                 "The media response length did not match the requested byte range.");
         }
 
@@ -914,7 +951,7 @@ internal sealed class BuiltinRangeDownloader : IDisposable
 
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
-            throw new BuiltinResumeRejectedException(
+            throw new BuiltinRangeProtocolException(
                 "The media server rejected the requested resume range.");
         }
 
@@ -1082,7 +1119,7 @@ internal enum BuiltinRangeContinuity
     Mismatch
 }
 
-internal sealed class BuiltinResumeRejectedException : IOException
+internal class BuiltinResumeRejectedException : IOException
 {
     public BuiltinResumeRejectedException()
     {
@@ -1098,6 +1135,23 @@ internal sealed class BuiltinResumeRejectedException : IOException
     {
     }
 
+}
+
+internal sealed class BuiltinRangeProtocolException : BuiltinResumeRejectedException
+{
+    public BuiltinRangeProtocolException()
+    {
+    }
+
+    public BuiltinRangeProtocolException(string message)
+        : base(message)
+    {
+    }
+
+    public BuiltinRangeProtocolException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
 }
 
 internal sealed class BuiltinHttpStatusException : HttpRequestException

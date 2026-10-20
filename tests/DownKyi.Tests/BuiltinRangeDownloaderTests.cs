@@ -132,6 +132,40 @@ public sealed class BuiltinRangeDownloaderTests
     }
 
     [Fact]
+    public async Task RangeProtocolRejectionFallsBackToSequentialDownload()
+    {
+        var payload = CreatePayload(12);
+        using var handler = new RangeRejectedThenSequentialPayloadHandler(payload);
+        var directory = CreateTemporaryDirectory("range-sequential-fallback");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: 4);
+
+            var result = await downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(payload.Length, result.TotalBytes);
+            Assert.Equal(payload.Length, result.ReceivedBytes);
+            Assert.Equal(2, handler.RangeRequests);
+            Assert.Equal(2, handler.SequentialRequests);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(
+                target,
+                TestContext.Current.CancellationToken));
+            Assert.False(File.Exists($"{target}.download"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task SmallValidatedFileStillUsesConfiguredParallelism()
     {
         var payload = CreatePayload(8);
@@ -1248,6 +1282,57 @@ public sealed class BuiltinRangeDownloaderTests
             Interlocked.Increment(ref _requests);
             return Task.FromException<HttpResponseMessage>(
                 new InvalidOperationException("The completed target must not be downloaded again."));
+        }
+    }
+
+    private sealed class RangeRejectedThenSequentialPayloadHandler(byte[] payload)
+        : HttpMessageHandler
+    {
+        private int _rangeRequests;
+        private int _sequentialRequests;
+
+        public int RangeRequests => Volatile.Read(ref _rangeRequests);
+
+        public int SequentialRequests => Volatile.Read(ref _sequentialRequests);
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.Headers.Range == null)
+            {
+                Interlocked.Increment(ref _sequentialRequests);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(payload),
+                    RequestMessage = request
+                });
+            }
+
+            Interlocked.Increment(ref _rangeRequests);
+            var range = Assert.Single(request.Headers.Range.Ranges);
+            var start = range.From ?? 0;
+            var end = range.To ?? (payload.LongLength - 1);
+            if (start == 0 && end == 0)
+            {
+                var content = new ByteArrayContent([payload[0]]);
+                content.Headers.ContentRange = new ContentRangeHeaderValue(
+                    0,
+                    0,
+                    payload.LongLength);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent)
+                {
+                    Content = content,
+                    RequestMessage = request
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(payload),
+                RequestMessage = request
+            });
         }
     }
 
