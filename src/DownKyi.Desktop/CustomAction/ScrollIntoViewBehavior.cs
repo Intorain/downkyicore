@@ -1,74 +1,82 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Xaml.Interactivity;
 
 namespace DownKyi.CustomAction;
 
 internal class ScrollIntoViewBehavior : Behavior<DataGrid>
 {
-    private int _selectionVersion;
+    private int _itemsSourceVersion;
 
     protected override void OnAttached()
     {
         base.OnAttached();
         if (AssociatedObject != null)
         {
-            AssociatedObject.SelectionChanged += OnSelectionChanged;
+            AssociatedObject.PropertyChanged += OnGridPropertyChanged;
+            QueueScrollIntoView();
         }
     }
 
     protected override void OnDetaching()
     {
-        Interlocked.Increment(ref _selectionVersion);
+        _itemsSourceVersion++;
         base.OnDetaching();
         if (AssociatedObject != null)
         {
-            AssociatedObject.SelectionChanged -= OnSelectionChanged;
+            AssociatedObject.PropertyChanged -= OnGridPropertyChanged;
         }
     }
 
-    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void OnGridPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        var selectionVersion = Interlocked.Increment(ref _selectionVersion);
-        _ = OnSelectionChangedAsync(selectionVersion);
+        if (e.Property != DataGrid.ItemsSourceProperty)
+        {
+            return;
+        }
+
+        QueueScrollIntoView();
     }
 
-    private async Task OnSelectionChangedAsync(int selectionVersion)
+    private void QueueScrollIntoView()
     {
-        try
+        var dataGrid = AssociatedObject;
+        if (dataGrid == null)
         {
-            var dataGrid = AssociatedObject;
-            var selectedItem = dataGrid?.SelectedItem;
-            if (dataGrid == null || selectedItem == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            await Task.Delay(100).ConfigureAwait(true);
-            if (selectionVersion != Volatile.Read(ref _selectionVersion))
+        var itemsSourceVersion = ++_itemsSourceVersion;
+        Dispatcher.UIThread.Post(
+            () =>
             {
-                return;
-            }
+                if (itemsSourceVersion != _itemsSourceVersion
+                    || !ReferenceEquals(dataGrid, AssociatedObject))
+                {
+                    return;
+                }
 
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (selectionVersion == Volatile.Read(ref _selectionVersion)
-                    && ReferenceEquals(dataGrid, AssociatedObject))
+                var selectedItem = dataGrid.SelectedItem;
+                if (selectedItem == null)
+                {
+                    return;
+                }
+
+                try
                 {
                     dataGrid.ScrollIntoView(selectedItem, null);
                 }
-            });
-        }
-        catch (InvalidOperationException)
-        {
-            return;
-        }
-        catch (ArgumentException)
-        {
-            return;
-        }
+                catch (InvalidOperationException)
+                {
+                    return;
+                }
+                catch (ArgumentException)
+                {
+                    return;
+                }
+            },
+            DispatcherPriority.Background);
     }
-
 }
