@@ -15,7 +15,7 @@ namespace DownKyi.Desktop.Tests;
 public sealed class VideoDetailScrollBehaviorTests
 {
     [AvaloniaFact]
-    public async Task SelectingAnotherVisiblePageDoesNotReturnToTheInputPage()
+    public async Task SelectingAnotherVisiblePageAfterItemsSourceReplacementDoesNotReturnToTheInputPage()
     {
         await AvaloniaTestDispatcher.RunAsync(async () =>
         {
@@ -76,10 +76,17 @@ public sealed class VideoDetailScrollBehaviorTests
                 var inputPageOffset = verticalScrollBar.Value;
                 Assert.True(inputPageOffset > 0);
 
+                dataGrid.ItemsSource = pages.ToArray();
+                await Dispatcher.UIThread.InvokeAsync(
+                    window.UpdateLayout,
+                    DispatcherPriority.Background);
+                var replacedInputPageOffset = verticalScrollBar.Value;
+                Assert.True(replacedInputPageOffset > 0);
+
                 dataGrid.ScrollIntoView(laterPage, null);
                 window.UpdateLayout();
                 var laterPageOffset = verticalScrollBar.Value;
-                Assert.True(laterPageOffset > inputPageOffset);
+                Assert.True(laterPageOffset > replacedInputPageOffset);
 
                 laterPage.IsSelected = true;
                 await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
