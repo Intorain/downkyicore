@@ -17,7 +17,6 @@ on:
       - 'Directory.Build.targets'
       - 'Directory.Packages.props'
       - 'DownKyi.sln'
-      - '.python-version'
       - 'global.json'
   schedule:
     - cron: '31 3 * * 3'
@@ -42,10 +41,6 @@ jobs:
         uses: $/.github/actions/setup-dotnet
         with:
           global-json-file: global.json
-      - name: Install Python
-        uses: $/.github/actions/setup-python
-        with:
-          python-version-file: .python-version
       - name: Restore
         run: dotnet restore ${{ env.SOLUTION_FILE }}
       - name: Vulnerability audit
