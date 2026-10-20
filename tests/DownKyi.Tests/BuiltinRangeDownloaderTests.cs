@@ -166,6 +166,108 @@ public sealed class BuiltinRangeDownloaderTests
     }
 
     [Fact]
+    public async Task ProbedLengthIsUsedWhenSequentialResponseOmitsLength()
+    {
+        var payload = CreatePayload(12);
+        using var handler = new RangeRejectedThenSequentialPayloadHandler(
+            payload,
+            sequentialDeclaresLength: false);
+        var directory = CreateTemporaryDirectory("range-sequential-probed-length");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: 4);
+
+            var result = await downloader.DownloadAsync(
+                target,
+                expectedBytes: 0,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(payload.Length, result.TotalBytes);
+            Assert.Equal(payload.Length, result.ReceivedBytes);
+            Assert.Equal(2, handler.RangeRequests);
+            Assert.Equal(1, handler.SequentialRequests);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(
+                target,
+                TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task MatchingValidatorOnIgnoredRangeFallsBackToSequentialDownload()
+    {
+        var payload = CreatePayload(12);
+        using var handler = new RangeRejectedThenSequentialPayloadHandler(
+            payload,
+            entityTag: "\"resource-v1\"");
+        var directory = CreateTemporaryDirectory("range-sequential-matching-validator");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: 4);
+
+            var result = await downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(payload.Length, result.TotalBytes);
+            Assert.Equal(payload.Length, result.ReceivedBytes);
+            Assert.Equal(2, handler.RangeRequests);
+            Assert.Equal(1, handler.SequentialRequests);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(
+                target,
+                TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ChangedValidatorOnIgnoredRangeDoesNotFallback()
+    {
+        var payload = CreatePayload(12);
+        using var handler = new RangeRejectedThenSequentialPayloadHandler(
+            payload,
+            entityTag: "\"resource-v1\"",
+            rejectedEntityTag: "\"resource-v2\"");
+        var directory = CreateTemporaryDirectory("range-sequential-changed-validator");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: 4);
+
+            await Assert.ThrowsAsync<BuiltinResumeRejectedException>(() => downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken));
+
+            Assert.Equal(2, handler.RangeRequests);
+            Assert.Equal(0, handler.SequentialRequests);
+            Assert.False(File.Exists(target));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task FailedSequentialFallbackPreservesExistingRangeCheckpoint()
     {
         var payload = CreatePayload(12);
@@ -1329,7 +1431,10 @@ public sealed class BuiltinRangeDownloaderTests
 
     private sealed class RangeRejectedThenSequentialPayloadHandler(
         byte[] payload,
-        int? sequentialBodyLength = null)
+        int? sequentialBodyLength = null,
+        bool sequentialDeclaresLength = true,
+        string? entityTag = null,
+        string? rejectedEntityTag = null)
         : HttpMessageHandler
     {
         private int _rangeRequests;
@@ -1351,12 +1456,22 @@ public sealed class BuiltinRangeDownloaderTests
                 var content = new StreamContent(new MemoryStream(
                     payload.AsMemory(0, bodyLength).ToArray(),
                     writable: false));
-                content.Headers.ContentLength = payload.LongLength;
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                if (sequentialDeclaresLength)
+                {
+                    content.Headers.ContentLength = payload.LongLength;
+                }
+
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = content,
                     RequestMessage = request
-                });
+                };
+                if (entityTag != null)
+                {
+                    response.Headers.ETag = EntityTagHeaderValue.Parse(entityTag);
+                }
+
+                return Task.FromResult(response);
             }
 
             Interlocked.Increment(ref _rangeRequests);
@@ -1370,18 +1485,31 @@ public sealed class BuiltinRangeDownloaderTests
                     0,
                     0,
                     payload.LongLength);
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent)
+                var response = new HttpResponseMessage(HttpStatusCode.PartialContent)
                 {
                     Content = content,
                     RequestMessage = request
-                });
+                };
+                if (entityTag != null)
+                {
+                    response.Headers.ETag = EntityTagHeaderValue.Parse(entityTag);
+                }
+
+                return Task.FromResult(response);
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            var rejectedResponse = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(payload),
                 RequestMessage = request
-            });
+            };
+            var responseEntityTag = rejectedEntityTag ?? entityTag;
+            if (responseEntityTag != null)
+            {
+                rejectedResponse.Headers.ETag = EntityTagHeaderValue.Parse(responseEntityTag);
+            }
+
+            return Task.FromResult(rejectedResponse);
         }
     }
 

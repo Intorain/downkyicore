@@ -96,11 +96,14 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             return recovered;
         }
 
+        var sequentialExpectedBytes = expectedBytes;
         try
         {
+            var probe = await ProbeAsync(expectedBytes, cancellationToken).ConfigureAwait(false);
+            sequentialExpectedBytes = probe.TotalBytes;
             return await DownloadCoreAsync(
                 targetFile,
-                expectedBytes,
+                probe,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (BuiltinRangeProtocolException exception) when (!File.Exists(targetFile))
@@ -110,17 +113,16 @@ internal sealed class BuiltinRangeDownloader : IDisposable
                 $"fallback=sequential; reason={exception.Message}");
             return await DownloadSequentialAsync(
                 targetFile,
-                expectedBytes,
+                sequentialExpectedBytes,
                 cancellationToken).ConfigureAwait(false);
         }
     }
 
     private async Task<BuiltinRangeDownloadResult> DownloadCoreAsync(
         string targetFile,
-        long expectedBytes,
+        BuiltinRangeProbe probe,
         CancellationToken cancellationToken)
     {
-        var probe = await ProbeAsync(expectedBytes, cancellationToken).ConfigureAwait(false);
         var recovered = TryRecoverCompletedTarget(targetFile, probe.TotalBytes);
         if (recovered != null)
         {
@@ -1014,8 +1016,16 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             && response.StatusCode == HttpStatusCode.OK
             && !string.IsNullOrWhiteSpace(resourceIdentity.IfRangeValue))
         {
-            throw new BuiltinResumeRejectedException(
-                "The media response resource identity changed during the transfer.");
+            var continuity = resourceIdentity.CompareContinuity(
+                BuiltinRangeResourceIdentity.Create(_address, response));
+            if (continuity != BuiltinRangeContinuity.Match)
+            {
+                throw new BuiltinResumeRejectedException(
+                    "The media response resource identity changed during the transfer.");
+            }
+
+            throw new BuiltinRangeProtocolException(
+                "The media server did not honor the requested byte range.");
         }
 
         if (supportsRanges)
