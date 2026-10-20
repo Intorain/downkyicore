@@ -145,8 +145,10 @@ pwsh ./script/assemble-release-assets.ps1 `
 目前共九個 installer 加一個 ZIP，合計十個公開附件。ZIP 根目錄保存原有的
 九份 `.sha256` 與九份 `publish-manifest-*.json`，檔名及內容逐位元組保留，
 不合併或重新序列化 manifest。GitHub Release 不再單獨上傳這些驗證檔。正式
-發布時建立 Draft Release、上傳完整集合並一次發布；發布後必須回讀
-`immutable=true` 才算成功。不得更新或覆寫已發布的 immutable release；若在
+發布時建立 Draft Release、上傳完整集合並一次發布；發布後由
+`verify-published-release.ps1` 以 publisher API 回讀精確 tag、公開附件名稱、
+大小、SHA-256 digest 與 `immutable=true`，並與剛上傳的組裝目錄直接比對。
+不得更新或覆寫已發布的 immutable release；若在
 發布前中斷，只能先人工檢查並移除未發布 draft，再從相同 exact-head run 重跑。
 
 macOS artifact 另需確認 x64 與 arm64 final app 均已完成簽章並
@@ -163,10 +165,9 @@ pwsh ./script/validate-release-version.ps1 -GitRef "refs/tags/v$version"
 ```
 
 這個檢查要求 tag 與 `version.txt` 完全一致；不得移動或重用既有 tag。正式
-發布後重新下載安裝包與驗證 ZIP。將 ZIP 解壓到下載的安裝包所在目錄，按
-對應 `.sha256` 核對安裝包 SHA-256，並確認每個 package 的 sidecar 與 manifest
-均完整收錄、與組裝輸入逐位元組一致。公開附件不得包含 `.internal.*` 或散落的
-per-package 驗證檔。
+發布後不再重複下載整組公開附件。發布 job 直接將 GitHub API 回報的附件
+名稱、大小與 SHA-256 digest 對照本次已驗證的組裝輸出，因此仍會拒絕
+缺件、多餘件、位元組不一致、`.internal.*` 或散落的 per-package 驗證檔。
 
 登入態 API audit 只能由明確授權的 operator 執行：
 

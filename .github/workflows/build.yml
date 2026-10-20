@@ -768,12 +768,20 @@ jobs:
           body: ${{ needs.changelog.outputs.release_body }}
           immutableCreate: true
           replacesArtifacts: false
-      - name: Verify immutable release publication
+      - name: Verify published release identity
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2026-03-10' \
-            "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-            --jq 'if .immutable == true then .tag_name else error("published release is not immutable") end'
+          $releaseJsonPath = './artifacts/published-release.json'
+          gh api `
+            -H 'Accept: application/vnd.github+json' `
+            -H 'X-GitHub-Api-Version: 2026-03-10' `
+            "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:GITHUB_REF_NAME" > $releaseJsonPath
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to read back the published GitHub Release.'
+          }
+          ./script/verify-published-release.ps1 `
+            -ReleaseJsonPath $releaseJsonPath `
+            -AssetDirectory ./artifacts/release-assets `
+            -ExpectedTag $env:GITHUB_REF_NAME
