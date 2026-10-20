@@ -101,24 +101,16 @@ internal sealed class BuiltinRangeDownloader : IDisposable
             return await DownloadCoreAsync(
                 targetFile,
                 expectedBytes,
-                useRanges: true,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (BuiltinRangeProtocolException exception) when (!File.Exists(targetFile))
         {
-            var partialFile = $"{targetFile}.download";
-            if (File.Exists(partialFile))
-            {
-                File.Delete(partialFile);
-            }
-
             _logger.LogWarningMessage(
                 $"Built-in range transfer was rejected by the media server; " +
                 $"fallback=sequential; reason={exception.Message}");
-            return await DownloadCoreAsync(
+            return await DownloadSequentialAsync(
                 targetFile,
                 expectedBytes,
-                useRanges: false,
                 cancellationToken).ConfigureAwait(false);
         }
     }
@@ -126,11 +118,9 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     private async Task<BuiltinRangeDownloadResult> DownloadCoreAsync(
         string targetFile,
         long expectedBytes,
-        bool useRanges,
         CancellationToken cancellationToken)
     {
-        var probe = await ProbeAsync(expectedBytes, useRanges, cancellationToken)
-            .ConfigureAwait(false);
+        var probe = await ProbeAsync(expectedBytes, cancellationToken).ConfigureAwait(false);
         var recovered = TryRecoverCompletedTarget(targetFile, probe.TotalBytes);
         if (recovered != null)
         {
@@ -202,6 +192,133 @@ internal sealed class BuiltinRangeDownloader : IDisposable
         return new BuiltinRangeDownloadResult(receivedBytes, probe.TotalBytes);
     }
 
+    private async Task<BuiltinRangeDownloadResult> DownloadSequentialAsync(
+        string targetFile,
+        long expectedBytes,
+        CancellationToken cancellationToken)
+    {
+        var temporaryFile = $"{targetFile}.sequential.download";
+        try
+        {
+            File.Delete(temporaryFile);
+            using var request = CreateRequest(rangeStart: null, rangeEnd: null);
+            using var response = await SendWithStallTimeoutAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+            ThrowForHttpFailure(response);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new BuiltinRangeProtocolException(
+                    "The media server did not return a complete sequential response.");
+            }
+
+            var totalBytes = response.Content.Headers.ContentLength ?? expectedBytes;
+            if (totalBytes <= 0)
+            {
+                throw new HttpIOException(
+                    HttpRequestError.InvalidResponse,
+                    "The media response did not declare its total length.");
+            }
+
+            if (expectedBytes > 0 && expectedBytes != totalBytes)
+            {
+                throw new BuiltinResumeRejectedException(
+                    "The media length changed before the sequential transfer started.");
+            }
+
+            var directory = Path.GetDirectoryName(temporaryFile);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            _planCreated?.Invoke(1);
+            _progress(0, totalBytes);
+            var source = await response.Content
+                .ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await using var sourceLifetime = source.ConfigureAwait(false);
+            var storage = new FileStream(
+                temporaryFile,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.Read,
+                BufferSize,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var storageLifetime = storage.ConfigureAwait(false);
+            var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            long receivedBytes = 0;
+            try
+            {
+                while (receivedBytes < totalBytes)
+                {
+                    var read = await ReadWithBandwidthLimitAsync(
+                        source,
+                        buffer.AsMemory(
+                            0,
+                            (int)Math.Min(buffer.Length, totalBytes - receivedBytes)),
+                        cancellationToken).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        throw new HttpIOException(
+                            HttpRequestError.ResponseEnded,
+                            "The sequential media response ended before the expected length.");
+                    }
+
+                    await storage.WriteAsync(
+                        buffer.AsMemory(0, read),
+                        cancellationToken).ConfigureAwait(false);
+                    receivedBytes += read;
+                    _progress(receivedBytes, totalBytes);
+                }
+
+                if (await ReadWithBandwidthLimitAsync(
+                        source,
+                        buffer.AsMemory(0, 1),
+                        cancellationToken).ConfigureAwait(false) != 0)
+                {
+                    throw new BuiltinResumeRejectedException(
+                        "The sequential media response exceeded the expected length.");
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+
+            await storage.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await storage.DisposeAsync().ConfigureAwait(false);
+            File.Move(temporaryFile, targetFile, overwrite: false);
+            try
+            {
+                File.Delete($"{targetFile}.download");
+            }
+            catch (Exception cleanupException) when (cleanupException is IOException
+                or UnauthorizedAccessException)
+            {
+                _logger.LogWarningMessage(
+                    $"Built-in range checkpoint cleanup failed after the sequential " +
+                    $"transfer committed; type={cleanupException.GetType().Name}.");
+            }
+
+            return new BuiltinRangeDownloadResult(receivedBytes, totalBytes);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(temporaryFile);
+            }
+            catch (Exception cleanupException) when (cleanupException is IOException
+                or UnauthorizedAccessException)
+            {
+                _logger.LogWarningMessage(
+                    $"Built-in sequential temporary cleanup failed while preserving the " +
+                    $"primary transfer failure; type={cleanupException.GetType().Name}.");
+            }
+
+            throw;
+        }
+    }
+
     internal static IReadOnlyList<BuiltinRangeChunk> CreateChunks(
         long totalBytes,
         long segmentSize = DefaultSegmentSize)
@@ -220,19 +337,16 @@ internal sealed class BuiltinRangeDownloader : IDisposable
 
     private async Task<BuiltinRangeProbe> ProbeAsync(
         long expectedBytes,
-        bool useRanges,
         CancellationToken cancellationToken)
     {
-        using var request = useRanges
-            ? CreateRequest(rangeStart: 0, rangeEnd: 0)
-            : CreateRequest(rangeStart: null, rangeEnd: null);
+        using var request = CreateRequest(rangeStart: 0, rangeEnd: 0);
         using var response = await SendWithStallTimeoutAsync(request, cancellationToken)
             .ConfigureAwait(false);
         ThrowForHttpFailure(response);
 
         long totalBytes;
         bool supportsRanges;
-        if (useRanges && response.StatusCode == HttpStatusCode.PartialContent)
+        if (response.StatusCode == HttpStatusCode.PartialContent)
         {
             var contentRange = response.Content.Headers.ContentRange;
             if (contentRange is not { From: 0, To: 0, Length: > 0 }
@@ -896,6 +1010,14 @@ internal sealed class BuiltinRangeDownloader : IDisposable
     {
         ThrowForHttpFailure(response);
         var expectedLength = checked(requestEnd - requestStart + 1);
+        if (supportsRanges
+            && response.StatusCode == HttpStatusCode.OK
+            && !string.IsNullOrWhiteSpace(resourceIdentity.IfRangeValue))
+        {
+            throw new BuiltinResumeRejectedException(
+                "The media response resource identity changed during the transfer.");
+        }
+
         if (supportsRanges)
         {
             var contentRange = response.Content.Headers.ContentRange;

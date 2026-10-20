@@ -153,11 +153,53 @@ public sealed class BuiltinRangeDownloaderTests
             Assert.Equal(payload.Length, result.TotalBytes);
             Assert.Equal(payload.Length, result.ReceivedBytes);
             Assert.Equal(2, handler.RangeRequests);
-            Assert.Equal(2, handler.SequentialRequests);
+            Assert.Equal(1, handler.SequentialRequests);
             Assert.Equal(payload, await File.ReadAllBytesAsync(
                 target,
                 TestContext.Current.CancellationToken));
             Assert.False(File.Exists($"{target}.download"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FailedSequentialFallbackPreservesExistingRangeCheckpoint()
+    {
+        var payload = CreatePayload(12);
+        var directory = CreateTemporaryDirectory("range-sequential-fallback-failure");
+        var target = Path.Combine(directory, "media.bin");
+        try
+        {
+            await WritePartialAsync(
+                target,
+                payload,
+                ResourceIdentity(strongETag: null));
+            var partialFile = $"{target}.download";
+            var checkpoint = await File.ReadAllBytesAsync(
+                partialFile,
+                TestContext.Current.CancellationToken);
+            using var handler = new RangeRejectedThenSequentialPayloadHandler(
+                payload,
+                sequentialBodyLength: 2);
+            using var downloader = CreateDownloader(
+                handler,
+                parallelCount: 1,
+                segmentSize: 4);
+
+            await Assert.ThrowsAsync<HttpIOException>(() => downloader.DownloadAsync(
+                target,
+                payload.Length,
+                TestContext.Current.CancellationToken));
+
+            Assert.Equal(1, handler.SequentialRequests);
+            Assert.Equal(checkpoint, await File.ReadAllBytesAsync(
+                partialFile,
+                TestContext.Current.CancellationToken));
+            Assert.False(File.Exists(target));
+            Assert.False(File.Exists($"{target}.sequential.download"));
         }
         finally
         {
@@ -1285,7 +1327,9 @@ public sealed class BuiltinRangeDownloaderTests
         }
     }
 
-    private sealed class RangeRejectedThenSequentialPayloadHandler(byte[] payload)
+    private sealed class RangeRejectedThenSequentialPayloadHandler(
+        byte[] payload,
+        int? sequentialBodyLength = null)
         : HttpMessageHandler
     {
         private int _rangeRequests;
@@ -1303,9 +1347,14 @@ public sealed class BuiltinRangeDownloaderTests
             if (request.Headers.Range == null)
             {
                 Interlocked.Increment(ref _sequentialRequests);
+                var bodyLength = sequentialBodyLength ?? payload.Length;
+                var content = new StreamContent(new MemoryStream(
+                    payload.AsMemory(0, bodyLength).ToArray(),
+                    writable: false));
+                content.Headers.ContentLength = payload.LongLength;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = new ByteArrayContent(payload),
+                    Content = content,
                     RequestMessage = request
                 });
             }
