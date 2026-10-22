@@ -6,6 +6,7 @@ using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
 using DownKyi.Core.BiliApi.BiliUtils;
+using DownKyi.Domain.Downloads;
 using DownKyi.Models;
 using DownKyi.ViewModels.DownloadManager;
 using DownKyi.Views.DownloadManager;
@@ -42,6 +43,69 @@ public sealed class DownloadTaskRowLayoutTests
             finally
             {
                 application.RequestedThemeVariant = originalTheme;
+                application.Styles.Remove(fluentTheme);
+            }
+        });
+    }
+
+    [AvaloniaFact]
+    public Task FailedTaskOffersDetailsInPlaceOfTheSpeedMetric()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var application = DesktopTestResources.EnsureProductThemeResources();
+            var fluentTheme = new FluentTheme();
+            application.Styles.Insert(0, fluentTheme);
+            var item = new DownloadingItem
+            {
+                Failure = new DownloadFailure("download.transfer.http-403", "下载失败", true),
+                Downloading = new Downloading
+                {
+                    DownloadStatus = DownloadStatus.DownloadFailed,
+                    SpeedDisplay = "2 MB/s"
+                }
+            };
+            var view = new ViewDownloading();
+            var list = Assert.IsType<ListBox>(view.FindControl<ListBox>("DownloadingList"));
+            list.ItemsSource = new[] { item };
+            var window = new Window { Content = view, Width = 800, Height = 500 };
+
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var container = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(0));
+                var row = Named<Border>(container, "NameTaskRow");
+                var detailsButton = Named<Button>(container, "NameTaskFailureDetailsButton");
+                var detailsPanel = Named<Border>(container, "NameTaskFailureDetailsPanel");
+
+                Assert.True(detailsButton.IsVisible);
+                Assert.Equal("查看原因", detailsButton.Content);
+                Assert.False(Named<TextBlock>(container, "NameTaskSpeed").IsVisible);
+                Assert.False(detailsPanel.IsVisible);
+                Assert.Equal(86, row.Bounds.Height);
+
+                item.IsFailureDetailsExpanded = true;
+                window.UpdateLayout();
+
+                Assert.True(detailsPanel.IsVisible);
+                Assert.True(row.Bounds.Height > 86);
+                Assert.Equal("收起原因", detailsButton.Content);
+                Assert.Contains(
+                    "download.transfer.http-403",
+                    Named<TextBlock>(detailsPanel, "NameTaskFailureDetailsText").Text,
+                    StringComparison.Ordinal);
+
+                item.IsFailureDetailsExpanded = false;
+                window.UpdateLayout();
+
+                Assert.False(detailsPanel.IsVisible);
+                Assert.Equal(86, row.Bounds.Height);
+            }
+            finally
+            {
+                window.Close();
                 application.Styles.Remove(fluentTheme);
             }
         });
@@ -107,6 +171,8 @@ public sealed class DownloadTaskRowLayoutTests
             var progress = Named<ProgressBar>(container, "NameTaskProgress");
             var size = Named<TextBlock>(container, "NameTaskSize");
             var speed = Named<TextBlock>(container, "NameTaskSpeed");
+            var failureDetails = Named<Button>(container, "NameTaskFailureDetailsButton");
+            var failurePanel = Named<Border>(container, "NameTaskFailureDetailsPanel");
             var toggle = Named<Button>(container, "NameTaskToggleButton");
             var delete = Named<Button>(container, "NameTaskDeleteButton");
 
@@ -118,6 +184,8 @@ public sealed class DownloadTaskRowLayoutTests
             Assert.Equal("暂停中……", item.DownloadStatusTitle);
             Assert.Equal("285.92 MB / 4.55 GB", size.Text);
             Assert.Equal("2.62 MB/s", speed.Text);
+            Assert.False(failureDetails.IsVisible);
+            Assert.False(failurePanel.IsVisible);
 
             Assert.True(LeftInView(title, view) < LeftInView(progress, view));
             Assert.True(RightInView(progress, view) < LeftInView(toggle, view));

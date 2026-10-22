@@ -1,6 +1,8 @@
 using System;
+using DownKyi.Domain.Downloads;
 using DownKyi.Images;
 using DownKyi.Models;
+using DownKyi.Services.Download;
 using DownKyi.Utils;
 using DownloadStatus = DownKyi.Models.DownloadStatus;
 
@@ -34,9 +36,56 @@ namespace DownKyi.ViewModels.DownloadManager
                 OnPropertyChanged(nameof(Progress));
                 OnPropertyChanged(nameof(DownloadingFileSize));
                 OnPropertyChanged(nameof(SpeedDisplay));
+                OnPropertyChanged(nameof(HasFailureDetails));
+                if (value.DownloadStatus != DownloadStatus.DownloadFailed)
+                {
+                    IsFailureDetailsExpanded = false;
+                }
                 RefreshControlPresentation(value.DownloadStatus);
             }
         }
+
+        private DownloadFailure? _failure;
+
+        public DownloadFailure? Failure
+        {
+            get => _failure;
+            set
+            {
+                if (!SetProperty(ref _failure, value))
+                {
+                    return;
+                }
+
+                IsFailureDetailsExpanded = false;
+                OnPropertyChanged(nameof(HasFailureDetails));
+                OnPropertyChanged(nameof(FailureDetailsText));
+            }
+        }
+
+        public bool HasFailureDetails =>
+            _failure != null && _downloading?.DownloadStatus == DownloadStatus.DownloadFailed;
+
+        private bool _isFailureDetailsExpanded;
+
+        public bool IsFailureDetailsExpanded
+        {
+            get => _isFailureDetailsExpanded;
+            set
+            {
+                if (SetProperty(ref _isFailureDetailsExpanded, value && HasFailureDetails))
+                {
+                    OnPropertyChanged(nameof(FailureDetailsToggleText));
+                }
+            }
+        }
+
+        public string FailureDetailsToggleText => DictionaryResource.GetString(
+            IsFailureDetailsExpanded ? "HideFailureDetails" : "DownloadFailureDetails");
+
+        public string FailureDetailsText => _failure is null
+            ? string.Empty
+            : DownloadActivityPresenter.FormatFailureDetails(_failure);
 
         // 正在下载内容（音频、视频、弹幕、字幕、封面）
         public string? DownloadContent

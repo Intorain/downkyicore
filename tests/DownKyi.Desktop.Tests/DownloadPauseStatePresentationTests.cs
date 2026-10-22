@@ -73,6 +73,34 @@ public sealed class DownloadPauseStatePresentationTests
         }).ConfigureAwait(true);
     }
 
+    [AvaloniaFact]
+    public async Task FailedTaskKeepsDetailsAfterProjectionAndClearsThemOnRetry()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var failed = CreateTask()
+                .Fail(
+                    new DownloadFailure("download.transfer.http-403", "下载失败", true),
+                    DateTimeOffset.UnixEpoch.AddSeconds(1))
+                .RequireValue();
+            var item = DownloadTaskProjectionMapper.ToDownloadingItem(failed);
+
+            Assert.True(item.HasFailureDetails);
+            Assert.Equal("download.transfer.http-403", item.Failure?.Code);
+            item.IsFailureDetailsExpanded = true;
+            Assert.True(item.IsFailureDetailsExpanded);
+
+            DownloadTaskProjectionMapper.Apply(
+                failed.Retry(DateTimeOffset.UnixEpoch.AddSeconds(2)).RequireValue(),
+                item);
+
+            Assert.False(item.HasFailureDetails);
+            Assert.False(item.IsFailureDetailsExpanded);
+            Assert.Null(item.Failure);
+        }).ConfigureAwait(true);
+    }
+
     private static DownloadTask CreateTask()
     {
         return DownloadTask.Create(
