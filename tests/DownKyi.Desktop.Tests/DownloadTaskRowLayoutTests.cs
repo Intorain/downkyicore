@@ -6,6 +6,7 @@ using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
 using DownKyi.Core.BiliApi.BiliUtils;
+using DownKyi.Domain.Downloads;
 using DownKyi.Models;
 using DownKyi.ViewModels.DownloadManager;
 using DownKyi.Views.DownloadManager;
@@ -42,6 +43,45 @@ public sealed class DownloadTaskRowLayoutTests
             finally
             {
                 application.RequestedThemeVariant = originalTheme;
+                application.Styles.Remove(fluentTheme);
+            }
+        });
+    }
+
+    [AvaloniaFact]
+    public Task FailedTaskOffersDetailsInPlaceOfTheSpeedMetric()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            var application = DesktopTestResources.EnsureProductThemeResources();
+            var fluentTheme = new FluentTheme();
+            application.Styles.Insert(0, fluentTheme);
+            var item = new DownloadingItem
+            {
+                Failure = new DownloadFailure("download.transfer.http-403", "下载失败", true),
+                Downloading = new Downloading
+                {
+                    DownloadStatus = DownloadStatus.DownloadFailed,
+                    SpeedDisplay = "2 MB/s"
+                }
+            };
+            var view = new ViewDownloading();
+            var list = Assert.IsType<ListBox>(view.FindControl<ListBox>("DownloadingList"));
+            list.ItemsSource = new[] { item };
+            var window = new Window { Content = view, Width = 800, Height = 500 };
+
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var container = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(0));
+
+                Assert.True(Named<Button>(container, "NameTaskFailureDetailsButton").IsVisible);
+                Assert.False(Named<TextBlock>(container, "NameTaskSpeed").IsVisible);
+            }
+            finally
+            {
+                window.Close();
                 application.Styles.Remove(fluentTheme);
             }
         });
@@ -107,6 +147,7 @@ public sealed class DownloadTaskRowLayoutTests
             var progress = Named<ProgressBar>(container, "NameTaskProgress");
             var size = Named<TextBlock>(container, "NameTaskSize");
             var speed = Named<TextBlock>(container, "NameTaskSpeed");
+            var failureDetails = Named<Button>(container, "NameTaskFailureDetailsButton");
             var toggle = Named<Button>(container, "NameTaskToggleButton");
             var delete = Named<Button>(container, "NameTaskDeleteButton");
 
@@ -118,6 +159,7 @@ public sealed class DownloadTaskRowLayoutTests
             Assert.Equal("暂停中……", item.DownloadStatusTitle);
             Assert.Equal("285.92 MB / 4.55 GB", size.Text);
             Assert.Equal("2.62 MB/s", speed.Text);
+            Assert.False(failureDetails.IsVisible);
 
             Assert.True(LeftInView(title, view) < LeftInView(progress, view));
             Assert.True(RightInView(progress, view) < LeftInView(toggle, view));

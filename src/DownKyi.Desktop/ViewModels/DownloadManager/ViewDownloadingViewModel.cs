@@ -87,6 +87,22 @@ namespace DownKyi.ViewModels.DownloadManager
                 : _downloadManagerCoordinator.ToggleAsync(downloadingItem);
         }
 
+        private DownKyiAsyncDelegateCommand<DownloadingItem>? _showFailureDetailsCommand;
+
+        public DownKyiAsyncDelegateCommand<DownloadingItem> ShowFailureDetailsCommand =>
+            _showFailureDetailsCommand ??= new DownKyiAsyncDelegateCommand<DownloadingItem>(
+                ExecuteShowFailureDetailsCommand,
+                _logger);
+
+        private Task ExecuteShowFailureDetailsCommand(DownloadingItem? downloadingItem)
+        {
+            return downloadingItem?.Failure is { } failure
+                ? new AlertService(AppDialogs).ShowInfo(
+                    DownloadActivityPresenter.FormatFailureDetails(failure),
+                    buttonNumber: 1)
+                : Task.CompletedTask;
+        }
+
         // 删除所有下载事件
         private DownKyiAsyncDelegateCommand? _deleteAllDownloadingCommand;
 
