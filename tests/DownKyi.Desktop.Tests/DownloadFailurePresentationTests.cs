@@ -64,6 +64,60 @@ public sealed class DownloadFailurePresentationTests
     }
 
     [AvaloniaFact]
+    public Task ArtifactAccessFailureDoesNotSuggestChangingMediaQuality()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var details = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    "download.artifact.subtitle.http-403",
+                    "字幕下载失败",
+                    true));
+
+            Assert.Contains("附加文件请求", details, StringComparison.Ordinal);
+            Assert.Contains("检查登录状态", details, StringComparison.Ordinal);
+            Assert.DoesNotContain("画质", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
+    public Task TlsFailureAllowsManualRetryAfterSettingsAreCorrected()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var failure = DownloadActivityPresenter.CreateFailure(OperationError.Unexpected(
+                "download.transfer.tls.expired",
+                "Sensitive certificate details."));
+            var details = DownloadActivityPresenter.FormatFailureDetails(failure);
+
+            Assert.True(failure.IsTransient);
+            Assert.Contains("证书设置", details, StringComparison.Ordinal);
+            Assert.Contains("再重试", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
+    public Task MissingPublishedArtifactRequiresRecreatingTheTask()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var failure = DownloadActivityPresenter.CreateFailure(new OperationError(
+                "download.validate.published-missing",
+                "A published artifact is missing.",
+                OperationErrorKind.Validation));
+            var details = DownloadActivityPresenter.FormatFailureDetails(failure);
+
+            Assert.False(failure.IsTransient);
+            Assert.Contains("已发布的下载文件已缺失或损坏", details, StringComparison.Ordinal);
+            Assert.Contains("重新解析并建立任务", details, StringComparison.Ordinal);
+            Assert.DoesNotContain("点“重试”", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
     public Task SubtitleIoFailuresExplainTheirDistinctRecoveryPaths()
     {
         return AvaloniaTestDispatcher.RunAsync(() =>
@@ -115,6 +169,7 @@ public sealed class DownloadFailurePresentationTests
                 ("download.validate.subtitle", "所选字幕"),
                 ("download.validate.danmaku", "附加文件"),
                 ("download.publish.reconcile", "文件发布的状态无法安全确认"),
+                ("download.validate.published-missing", "原任务不能直接重试"),
                 ("download.transfer.legacy-cleanup-failed", "旧下载器")
             };
             foreach (var (code, expectedText) in expectations)
@@ -123,6 +178,14 @@ public sealed class DownloadFailurePresentationTests
                     new DownKyi.Domain.Downloads.DownloadFailure(code, "下载失败", false));
                 Assert.Contains(expectedText, details, StringComparison.Ordinal);
             }
+
+            var publicationDetails = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    "download.publish.reconcile",
+                    "下载失败",
+                    false));
+            Assert.Contains("删除此失败任务", publicationDetails, StringComparison.Ordinal);
+            Assert.DoesNotContain("重新启动应用", publicationDetails, StringComparison.Ordinal);
         });
     }
 

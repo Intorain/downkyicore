@@ -124,6 +124,14 @@ internal sealed class DownloadActivityPresenter
 
         if (!TlsFailureClassifier.IsTlsErrorCode(error.Code))
         {
+            if (error.Code == "download.validate.published-missing")
+            {
+                return new DownloadFailure(
+                    error.Code,
+                    DictionaryResource.GetString("DownloadFailed"),
+                    false);
+            }
+
             return new DownloadFailure(
                 error.Code,
                 DictionaryResource.GetString("DownloadFailed"),
@@ -133,7 +141,7 @@ internal sealed class DownloadActivityPresenter
         return new DownloadFailure(
             error.Code,
             DictionaryResource.GetString(TlsFailureClassifier.GetResourceKey(error.Code)),
-            false);
+            true);
     }
 
     public static string FormatFailureDetails(DownloadFailure failure)
@@ -169,12 +177,14 @@ internal sealed class DownloadActivityPresenter
                 or "download.artifact.subtitle.http-429" => "DownloadFailureRateLimitDetails",
 
             "download.transfer.http-401"
-                or "download.artifact.cover.http-401"
+                or "download.transfer.http-client-error" => "DownloadFailureAccessDetails",
+
+            "download.artifact.cover.http-401"
                 or "download.artifact.danmaku.http-401"
                 or "download.artifact.subtitle.http-401"
                 or "download.artifact.cover.http-403"
                 or "download.artifact.danmaku.http-403"
-                or "download.artifact.subtitle.http-403" => "DownloadFailureAccessDetails",
+                or "download.artifact.subtitle.http-403" => "DownloadFailureArtifactAccessDetails",
 
             "download.transfer.http-403"
                 or "download.transfer.http-404" => "DownloadFailureExpiredAddressDetails",
@@ -211,7 +221,6 @@ internal sealed class DownloadActivityPresenter
             "download.transfer.invalid-media"
             or "download.media.durl-manifest"
             or "download.validate.media"
-            or "download.validate.published-missing"
             or "download.validate.unpublished-invalid"
             or "download.artifact.cover.invalid"
             or "download.artifact.danmaku.invalid"
@@ -244,6 +253,8 @@ internal sealed class DownloadActivityPresenter
             or "download.publish.invalid" => "DownloadFailureProcessingDetails",
 
             "download.publish.reconcile" => "DownloadFailurePublicationRecoveryDetails",
+
+            "download.validate.published-missing" => "DownloadFailurePublishedArtifactDetails",
 
             "download.transfer.network"
             or "download.transfer.timeout"
