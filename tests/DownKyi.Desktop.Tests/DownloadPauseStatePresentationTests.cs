@@ -88,12 +88,15 @@ public sealed class DownloadPauseStatePresentationTests
 
             Assert.True(item.HasFailureDetails);
             Assert.Equal("download.transfer.http-403", item.Failure?.Code);
+            item.IsFailureDetailsExpanded = true;
+            Assert.True(item.IsFailureDetailsExpanded);
 
             DownloadTaskProjectionMapper.Apply(
                 failed.Retry(DateTimeOffset.UnixEpoch.AddSeconds(2)).RequireValue(),
                 item);
 
             Assert.False(item.HasFailureDetails);
+            Assert.False(item.IsFailureDetailsExpanded);
             Assert.Null(item.Failure);
         }).ConfigureAwait(true);
     }

@@ -13,11 +13,11 @@
                         <Border
                             Name="NameTaskRow"
                             Width="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListBox}}, Path=Bounds.Width}"
-                            Height="86"
+                            MinHeight="86"
                             Padding="14,0"
                             Background="{TemplateBinding Background}"
                             CornerRadius="{DynamicResource DownKyiRadiusSmall}">
-                            <Grid ColumnDefinitions="52,1.05*,1.75*,92">
+                            <Grid ColumnDefinitions="52,1.05*,1.75*,92" RowDefinitions="86,Auto">
 
                                 <Border
                                     Name="NameZoneIconFrame"
@@ -179,9 +179,9 @@
                                             Padding="4,0"
                                             Background="Transparent"
                                             BorderThickness="0"
-                                            Command="{Binding ElementName=DownloadingList,Path=((vmdm:ViewDownloadingViewModel)DataContext).ShowFailureDetailsCommand}"
+                                            Command="{Binding ElementName=DownloadingList,Path=((vmdm:ViewDownloadingViewModel)DataContext).ToggleFailureDetailsCommand}"
                                             CommandParameter="{Binding}"
-                                            Content="{DynamicResource DownloadFailureDetails}"
+                                            Content="{Binding FailureDetailsToggleText}"
                                             Cursor="Hand"
                                             FontSize="12"
                                             Foreground="{DynamicResource BrushPrimary}"
@@ -241,6 +241,24 @@
                                         </ContentControl>
                                     </Button>
                                 </StackPanel>
+
+                                <Border
+                                    Name="NameTaskFailureDetailsPanel"
+                                    Grid.Row="1"
+                                    Grid.Column="1"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,0,16,12"
+                                    Padding="10,8"
+                                    Background="{DynamicResource BrushControlFill}"
+                                    CornerRadius="{DynamicResource DownKyiRadiusSmall}"
+                                    IsVisible="{Binding IsFailureDetailsExpanded}">
+                                    <TextBlock
+                                        Name="NameTaskFailureDetailsText"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource BrushTextSecondary}"
+                                        Text="{Binding FailureDetailsText}"
+                                        TextWrapping="Wrap" />
+                                </Border>
                             </Grid>
                         </Border>
                     </ControlTemplate>

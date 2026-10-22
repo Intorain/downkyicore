@@ -1,4 +1,6 @@
 using DownKyi.Application.Desktop;
+using DownKyi.Domain.Downloads;
+using DownKyi.Models;
 using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,6 +9,29 @@ namespace DownKyi.Tests;
 
 public sealed class DownloadBatchCommandTests
 {
+    [Fact]
+    public void FailureDetailsAreExpandedOnlyWhenRequestedByTheUser()
+    {
+        using var viewModel = new ViewDownloadingViewModel(
+            new TestDesktopInteractionContext(),
+            new DownloadListState(),
+            new BlockingCoordinator(),
+            NullLogger<ViewDownloadingViewModel>.Instance);
+        var item = new DownloadingItem
+        {
+            Failure = new DownloadFailure("download.transfer.http-403", "下载失败", true),
+            Downloading = new Downloading { DownloadStatus = DownloadStatus.DownloadFailed }
+        };
+
+        Assert.False(item.IsFailureDetailsExpanded);
+
+        viewModel.ToggleFailureDetailsCommand.Execute(item);
+        Assert.True(item.IsFailureDetailsExpanded);
+
+        viewModel.ToggleFailureDetailsCommand.Execute(item);
+        Assert.False(item.IsFailureDetailsExpanded);
+    }
+
     [Fact]
     public void PauseResumePauseClicksAreAllForwardedWhileEarlierBatchesRun()
     {

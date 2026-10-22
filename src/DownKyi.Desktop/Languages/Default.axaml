@@ -173,6 +173,7 @@
     <system:String x:Key="Waiting">等待中……</system:String>
     <system:String x:Key="DownloadFailed">下载失败</system:String>
     <system:String x:Key="DownloadFailureDetails">查看原因</system:String>
+    <system:String x:Key="HideFailureDetails">收起原因</system:String>
     <system:String x:Key="DownloadFailureCode">错误代码</system:String>
     <system:String x:Key="DownloadFailureUnknownCode">未知</system:String>
     <system:String x:Key="DownloadFailureUnavailableDetails">请求的画质、音轨或其他内容目前不可用。请重新解析并建立任务，选择当前可用的内容；原任务的选择不会因重试而改变。</system:String>
