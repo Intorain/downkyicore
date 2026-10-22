@@ -124,7 +124,11 @@ internal sealed class DownloadActivityPresenter
 
         if (!TlsFailureClassifier.IsTlsErrorCode(error.Code))
         {
-            if (error.Code == "download.validate.published-missing")
+            if (error.Code is "download.media.recreate-task"
+                or "download.resolve.recreate-task"
+                or "download.media.contract"
+                or "download.media.durl-audio-only"
+                or "download.validate.published-missing")
             {
                 return new DownloadFailure(
                     error.Code,
@@ -180,9 +184,10 @@ internal sealed class DownloadActivityPresenter
                 or "download.transfer.http-client-error" => "DownloadFailureAccessDetails",
 
             "download.artifact.cover.http-401"
-                or "download.artifact.danmaku.http-401"
+                or "download.artifact.cover.http-403" => "DownloadFailureCoverAccessDetails",
+
+            "download.artifact.danmaku.http-401"
                 or "download.artifact.subtitle.http-401"
-                or "download.artifact.cover.http-403"
                 or "download.artifact.danmaku.http-403"
                 or "download.artifact.subtitle.http-403" => "DownloadFailureArtifactAccessDetails",
 

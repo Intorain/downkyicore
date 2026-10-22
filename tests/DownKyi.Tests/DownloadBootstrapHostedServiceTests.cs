@@ -16,10 +16,12 @@ namespace DownKyi.Tests;
 public sealed class DownloadBootstrapHostedServiceTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public async Task StartupReconcilesMovedPendingPublicationFromReopenedSqlite(
-        bool replaceDestination)
+        bool replaceDestination,
+        bool failBeforeRestart)
     {
         var directory = Path.Combine(Path.GetTempPath(), "downkyi-publish-startup",
             Guid.NewGuid().ToString("N"));
@@ -51,6 +53,13 @@ public sealed class DownloadBootstrapHostedServiceTests
                 Assert.True((await firstTasks.BeginPublishingArtifactAsync(
                     taskId, publishing, TestContext.Current.CancellationToken)).IsSuccess);
                 File.Move(staged, destination, overwrite: false);
+                if (failBeforeRestart)
+                {
+                    Assert.True((await firstTasks.FailAsync(
+                        taskId,
+                        new DownloadFailure("download.existing", "Existing failure.", true),
+                        TestContext.Current.CancellationToken)).IsSuccess);
+                }
                 firstStaging.CleanupCurrentSession();
             }
 
@@ -95,6 +104,8 @@ public sealed class DownloadBootstrapHostedServiceTests
             if (replaceDestination)
             {
                 Assert.Equal(DownloadPhase.Failed, recovered.Phase);
+                Assert.Equal("download.publish.reconcile", recovered.Failure?.Code);
+                Assert.False(recovered.Failure?.IsTransient);
                 Assert.NotNull(recovered.Output.PublishingArtifact);
                 Assert.Empty(recovered.Output.PublishedArtifacts);
                 Assert.DoesNotContain(taskId, runtime.Enqueued);

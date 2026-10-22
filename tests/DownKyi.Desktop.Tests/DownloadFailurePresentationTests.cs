@@ -82,6 +82,23 @@ public sealed class DownloadFailurePresentationTests
     }
 
     [AvaloniaFact]
+    public Task AnonymousCoverAccessFailureDoesNotSuggestSigningIn()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var details = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    "download.artifact.cover.http-403",
+                    "封面下载失败",
+                    true));
+
+            Assert.Contains("封面请求", details, StringComparison.Ordinal);
+            Assert.DoesNotContain("登录", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
     public Task TlsFailureAllowsManualRetryAfterSettingsAreCorrected()
     {
         return AvaloniaTestDispatcher.RunAsync(() =>
@@ -112,8 +129,22 @@ public sealed class DownloadFailurePresentationTests
 
             Assert.False(failure.IsTransient);
             Assert.Contains("已发布的下载文件已缺失或损坏", details, StringComparison.Ordinal);
+            Assert.Contains("移走或删除", details, StringComparison.Ordinal);
             Assert.Contains("重新解析并建立任务", details, StringComparison.Ordinal);
             Assert.DoesNotContain("点“重试”", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
+    public Task RecreateTaskFailuresDoNotOfferAnIneffectiveRetry()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            AssertNotRetryable("download.media.recreate-task");
+            AssertNotRetryable("download.resolve.recreate-task");
+            AssertNotRetryable("download.media.contract");
+            AssertNotRetryable("download.media.durl-audio-only");
         });
     }
 
@@ -223,6 +254,13 @@ public sealed class DownloadFailurePresentationTests
             new DownKyi.Domain.Downloads.DownloadFailure(code, "下载失败", true));
         Assert.Contains("附加文件", details, StringComparison.Ordinal);
         Assert.DoesNotContain("本地下载文件无法写入", details, StringComparison.Ordinal);
+    }
+
+    private static void AssertNotRetryable(string code)
+    {
+        var failure = DownloadActivityPresenter.CreateFailure(
+            OperationError.Unexpected(code, "The task must be recreated."));
+        Assert.False(failure.IsTransient);
     }
 
 }

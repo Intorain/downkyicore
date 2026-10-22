@@ -116,7 +116,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                         {
                             blocked.Add(task.Id);
                             if (task.Phase is DownloadPhase.Queued or DownloadPhase.Downloading
-                                or DownloadPhase.Pausing)
+                                or DownloadPhase.Pausing or DownloadPhase.Failed)
                             {
                                 await _stateWriter.FailAsync(task.Id, new DownloadFailure(
                                         "download.publish.reconcile",
