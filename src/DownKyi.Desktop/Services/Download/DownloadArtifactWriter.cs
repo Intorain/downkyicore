@@ -24,6 +24,11 @@ namespace DownKyi.Services.Download;
 
 internal sealed partial class DownloadArtifactWriter
 {
+    internal const string SubtitleResponseReadFailureCode =
+        "download.artifact.subtitle.response-read";
+    internal const string SubtitleOutputWriteFailureCode =
+        "download.artifact.subtitle.output-write";
+
     private readonly IWbiKeyProvider _wbiKeyProvider;
     private readonly DownloadTaskStateWriter _stateWriter;
     private readonly ILogger _logger;
@@ -303,7 +308,7 @@ internal sealed partial class DownloadArtifactWriter
         {
             _logger.LogErrorMessage("Subtitle response could not be read.", e);
             return SubtitleArtifactFailure(
-                "download.artifact.subtitle.io",
+                SubtitleResponseReadFailureCode,
                 "The requested subtitle response could not be read.");
         }
 
@@ -391,7 +396,7 @@ internal sealed partial class DownloadArtifactWriter
             {
                 _logger.LogErrorMessage("Subtitle download failed.", e);
                 return SubtitleArtifactFailure(
-                    "download.artifact.subtitle.io",
+                    SubtitleOutputWriteFailureCode,
                     "A requested subtitle could not be written.");
             }
             catch (UnauthorizedAccessException e)
@@ -430,7 +435,7 @@ internal sealed partial class DownloadArtifactWriter
             {
                 _logger.LogErrorMessage("Default subtitle write failed.", e);
                 return SubtitleArtifactFailure(
-                    "download.artifact.subtitle.io",
+                    SubtitleOutputWriteFailureCode,
                     "The default subtitle could not be written.");
             }
             catch (UnauthorizedAccessException e)

@@ -46,6 +46,47 @@ public sealed class DownloadFailurePresentationTests
     }
 
     [AvaloniaFact]
+    public Task UnauthorizedTransferExplainsAccessRecovery()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var details = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    "download.transfer.http-401",
+                    "下载失败",
+                    true));
+
+            Assert.Contains("服务器拒绝", details, StringComparison.Ordinal);
+            Assert.Contains("检查登录状态", details, StringComparison.Ordinal);
+            Assert.Contains("download.transfer.http-401", details, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
+    public Task SubtitleIoFailuresExplainTheirDistinctRecoveryPaths()
+    {
+        return AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var responseDetails = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    DownloadArtifactWriter.SubtitleResponseReadFailureCode,
+                    "下载失败",
+                    true));
+            var outputDetails = DownloadActivityPresenter.FormatFailureDetails(
+                new DownKyi.Domain.Downloads.DownloadFailure(
+                    DownloadArtifactWriter.SubtitleOutputWriteFailureCode,
+                    "下载失败",
+                    true));
+
+            Assert.Contains("字幕", responseDetails, StringComparison.Ordinal);
+            Assert.DoesNotContain("下载目录权限", responseDetails, StringComparison.Ordinal);
+            Assert.Contains("下载目录权限", outputDetails, StringComparison.Ordinal);
+        });
+    }
+
+    [AvaloniaFact]
     public Task UnknownDiagnosticCodeDoesNotDisplayUntrustedText()
     {
         return AvaloniaTestDispatcher.RunAsync(() =>

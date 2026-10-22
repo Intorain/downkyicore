@@ -169,7 +169,7 @@ internal sealed class DownloadActivityPresenter
             return "DownloadFailureRateLimitDetails";
         }
 
-        if (code == "download.transfer.http-403")
+        if (code is "download.transfer.http-401" or "download.transfer.http-403")
         {
             return "DownloadFailureAccessDetails";
         }
@@ -190,6 +190,7 @@ internal sealed class DownloadActivityPresenter
             or "download.media.directory"
             or "download.resolve.directory"
             or "download.publish.collision"
+            or DownloadArtifactWriter.SubtitleOutputWriteFailureCode
             || code.EndsWith(".permission", StringComparison.Ordinal)
             || code.EndsWith(".io", StringComparison.Ordinal)
             || code.Contains(".cleanup", StringComparison.Ordinal))
