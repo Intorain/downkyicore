@@ -120,7 +120,7 @@ internal sealed class DownloadBootstrapHostedService : IHostedService, IDisposab
                             {
                                 await _stateWriter.FailAsync(task.Id, new DownloadFailure(
                                         "download.publish.reconcile",
-                                        "Pending publication could not be safely reconciled.", true),
+                                        "Pending publication could not be safely reconciled.", false),
                                     cancellationToken).ConfigureAwait(false);
                             }
                         }

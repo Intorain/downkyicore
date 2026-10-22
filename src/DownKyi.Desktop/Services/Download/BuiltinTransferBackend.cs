@@ -278,6 +278,9 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 DownloadTransferFailureKind.RateLimited,
                 "download.transfer.http-429",
                 retryAfter),
+            HttpStatusCode.Unauthorized => DownloadTransferResult.Failed(
+                DownloadTransferFailureKind.Permanent,
+                "download.transfer.http-401"),
             HttpStatusCode.Forbidden => DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.ExpiredAddress,
                 "download.transfer.http-403"),
@@ -289,13 +292,13 @@ internal sealed class BuiltinTransferBackend : ITransferBackend
                 "download.transfer.http-408"),
             >= HttpStatusCode.InternalServerError => DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
-                $"download.transfer.http-{(int)statusCode.Value}"),
+                "download.transfer.http-server-error"),
             null => DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.TransientNetwork,
                 "download.transfer.network"),
             _ => DownloadTransferResult.Failed(
                 DownloadTransferFailureKind.Permanent,
-                $"download.transfer.http-{(int)statusCode.Value}")
+                "download.transfer.http-client-error")
         };
     }
 

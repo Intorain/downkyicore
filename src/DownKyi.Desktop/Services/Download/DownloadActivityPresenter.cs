@@ -114,7 +114,7 @@ internal sealed class DownloadActivityPresenter
                 false);
         }
 
-        if (error.Code.StartsWith("download.artifact.subtitle.", StringComparison.Ordinal))
+        if (IsSubtitleFailureCode(error.Code))
         {
             return new DownloadFailure(
                 error.Code,
@@ -149,88 +149,140 @@ internal sealed class DownloadActivityPresenter
 
     private static string GetFailureDetailsResourceKey(string code)
     {
-        if (code == DownloadTaskStateWriter.LegacyBackendRemovedFailureCode)
+        return code switch
         {
-            return "DownloadFailureLegacyDetails";
-        }
+            DownloadTaskStateWriter.LegacyBackendRemovedFailureCode
+                or "download.transfer.legacy-cleanup-failed" => "DownloadFailureLegacyDetails",
 
-        if (code == "download.runtime.unavailable")
-        {
-            return "DownloadFailureRuntimeDetails";
-        }
+            "download.runtime.unavailable" => "DownloadFailureRuntimeDetails",
 
-        if (TlsFailureClassifier.IsTlsErrorCode(code))
-        {
-            return "DownloadFailureTlsDetails";
-        }
+            "download.transfer.tls.untrusted"
+                or "download.transfer.tls.expired"
+                or "download.transfer.tls.not-yet-valid"
+                or "download.transfer.tls.hostname"
+                or "download.transfer.tls.chain"
+                or "download.transfer.tls.handshake" => "DownloadFailureTlsDetails",
 
-        if (code == "download.transfer.http-429")
-        {
-            return "DownloadFailureRateLimitDetails";
-        }
+            "download.transfer.http-429"
+                or "download.artifact.cover.http-429"
+                or "download.artifact.danmaku.http-429"
+                or "download.artifact.subtitle.http-429" => "DownloadFailureRateLimitDetails",
 
-        if (code is "download.transfer.http-401" or "download.transfer.http-403")
-        {
-            return "DownloadFailureAccessDetails";
-        }
+            "download.transfer.http-401"
+                or "download.artifact.cover.http-401"
+                or "download.artifact.danmaku.http-401"
+                or "download.artifact.subtitle.http-401"
+                or "download.artifact.cover.http-403"
+                or "download.artifact.danmaku.http-403"
+                or "download.artifact.subtitle.http-403" => "DownloadFailureAccessDetails",
 
-        if (code is "download.playback.selection-unavailable"
+            "download.transfer.http-403"
+                or "download.transfer.http-404" => "DownloadFailureExpiredAddressDetails",
+
+            "download.playback.selection-unavailable"
             or "download.media.recreate-task"
             or "download.resolve.recreate-task"
             or "download.media.contract"
             or "download.media.durl-audio-only"
+            or "download.media.missing"
+            or "download.media.descriptor"
+            or "download.media.url"
+            or "download.media.audio"
+            or "download.media.video"
+            or "download.media.durl"
             or "download.validate.no-resource"
             or "download.transfer.no-address"
-            or "download.transfer.http-404")
-        {
-            return "DownloadFailureUnavailableDetails";
-        }
+            or "download.finalize.no-output" => "DownloadFailureUnavailableDetails",
 
-        if (code is "download.transfer.disk"
+            "download.transfer.disk"
             or "download.media.directory"
             or "download.resolve.directory"
             or "download.publish.collision"
             or DownloadArtifactWriter.SubtitleOutputWriteFailureCode
-            || code.EndsWith(".permission", StringComparison.Ordinal)
-            || code.EndsWith(".io", StringComparison.Ordinal)
-            || code.Contains(".cleanup", StringComparison.Ordinal))
-        {
-            return "DownloadFailureStorageDetails";
-        }
+            or "download.transfer.cleanup"
+            or "download.transfer.cleanup-failed"
+            or "download.transfer.source-change-cleanup"
+            or "download.artifact.cover.permission"
+            or "download.artifact.danmaku.permission"
+            or "download.artifact.subtitle.permission"
+            or "download.artifact.nfo.io"
+            or "download.artifact.nfo.permission" => "DownloadFailureStorageDetails",
 
-        if (code is "download.transfer.invalid-media"
+            "download.transfer.invalid-media"
             or "download.media.durl-manifest"
-            || code.StartsWith("download.validate.", StringComparison.Ordinal))
-        {
-            return "DownloadFailureInvalidOutputDetails";
-        }
+            or "download.validate.media"
+            or "download.validate.published-missing"
+            or "download.validate.unpublished-invalid"
+            or "download.artifact.cover.invalid"
+            or "download.artifact.danmaku.invalid"
+            or "download.artifact.subtitle.invalid"
+            or "download.artifact.nfo.invalid" => "DownloadFailureInvalidOutputDetails",
 
-        if (code.StartsWith("download.artifact.subtitle.", StringComparison.Ordinal))
-        {
-            return "DownloadFailureSubtitleDetails";
-        }
+            "download.validate.subtitle"
+            or "download.artifact.subtitle.parse"
+            or "download.artifact.subtitle.duplicate-track"
+            or "download.artifact.subtitle.missing-tracks"
+            or "download.artifact.subtitle.duplicate-output" => "DownloadFailureSubtitleDetails",
 
-        if (code.StartsWith("download.artifact.", StringComparison.Ordinal))
-        {
-            return "DownloadFailureArtifactDetails";
-        }
+            "download.validate.danmaku"
+            or "download.artifact.danmaku.parse"
+            or "download.artifact.danmaku.xml"
+            or "download.artifact.danmaku.data"
+            or "download.artifact.danmaku.io"
+            or "download.artifact.danmaku.snapshot-incomplete"
+            or "download.artifact.cover.io"
+            or "download.artifact.nfo.xml"
+            or "download.artifact.unknown" => "DownloadFailureArtifactDetails",
 
-        if (code.StartsWith("download.mux.", StringComparison.Ordinal)
-            || code.StartsWith("download.finalize.", StringComparison.Ordinal))
-        {
-            return "DownloadFailureProcessingDetails";
-        }
+            "download.mux.media-kind"
+            or "download.mux.dash"
+            or "download.mux.durl-input"
+            or "download.mux.durl"
+            or "download.mux.concat"
+            or "download.finalize.unvalidated"
+            or "download.publish.unvalidated"
+            or "download.publish.invalid" => "DownloadFailureProcessingDetails",
 
-        if (code is "download.transfer.network"
+            "download.publish.reconcile" => "DownloadFailurePublicationRecoveryDetails",
+
+            "download.transfer.network"
             or "download.transfer.timeout"
             or "download.transfer.http-408"
+            or "download.transfer.http-server-error"
             or "download.transfer.resume-rejected"
-            || code.StartsWith("download.transfer.http-5", StringComparison.Ordinal))
-        {
-            return "DownloadFailureNetworkDetails";
-        }
+            or "download.transfer.redirect-limit"
+            or "download.transfer.redirect-location-missing"
+            or DownloadArtifactWriter.SubtitleResponseReadFailureCode
+            or "download.artifact.cover.http"
+            or "download.artifact.cover.http-408"
+            or "download.artifact.cover.http-server-error"
+            or "download.artifact.danmaku.http"
+            or "download.artifact.danmaku.http-408"
+            or "download.artifact.danmaku.http-server-error"
+            or "download.artifact.subtitle.http"
+            or "download.artifact.subtitle.http-408"
+            or "download.artifact.subtitle.http-server-error" => "DownloadFailureNetworkDetails",
 
-        return "DownloadFailureGenericDetails";
+            _ => "DownloadFailureGenericDetails"
+        };
+    }
+
+    private static bool IsSubtitleFailureCode(string code)
+    {
+        return code is DownloadArtifactWriter.SubtitleResponseReadFailureCode
+            or DownloadArtifactWriter.SubtitleOutputWriteFailureCode
+            or "download.artifact.subtitle.http"
+            or "download.artifact.subtitle.http-401"
+            or "download.artifact.subtitle.http-403"
+            or "download.artifact.subtitle.http-408"
+            or "download.artifact.subtitle.http-429"
+            or "download.artifact.subtitle.http-server-error"
+            or "download.artifact.subtitle.parse"
+            or "download.artifact.subtitle.duplicate-track"
+            or "download.artifact.subtitle.missing-tracks"
+            or "download.artifact.subtitle.duplicate-output"
+            or "download.artifact.subtitle.invalid"
+            or "download.artifact.subtitle.permission";
     }
 
     private static bool IsSafeDiagnosticCode(string code)

@@ -109,7 +109,7 @@ internal sealed partial class DownloadArtifactWriter
         {
             _logger.LogErrorMessage("Cover download failed.", e);
             return ArtifactFailure(
-                "download.artifact.cover.http",
+                GetArtifactHttpFailureCode("cover", e.StatusCode),
                 "The requested cover could not be downloaded.");
         }
         catch (IOException e)
@@ -211,7 +211,7 @@ internal sealed partial class DownloadArtifactWriter
         {
             _logger.LogErrorMessage("Danmaku download failed.", e);
             return ArtifactFailure(
-                "download.artifact.danmaku.http",
+                GetArtifactHttpFailureCode("danmaku", e.StatusCode),
                 "The requested danmaku could not be downloaded.");
         }
         catch (InvalidProtocolBufferException e)
@@ -301,7 +301,7 @@ internal sealed partial class DownloadArtifactWriter
         {
             _logger.LogErrorMessage("Subtitle download failed.", e);
             return SubtitleArtifactFailure(
-                "download.artifact.subtitle.http",
+                GetArtifactHttpFailureCode("subtitle", e.StatusCode),
                 "The requested subtitles could not be downloaded.");
         }
         catch (IOException e)
@@ -520,6 +520,22 @@ internal sealed partial class DownloadArtifactWriter
     {
         return OperationResult.Failure<DownloadArtifactWriteResult>(
             OperationError.Unexpected(code, message));
+    }
+
+    private static string GetArtifactHttpFailureCode(
+        string artifact,
+        HttpStatusCode? statusCode)
+    {
+        var suffix = statusCode switch
+        {
+            HttpStatusCode.Unauthorized => "http-401",
+            HttpStatusCode.Forbidden => "http-403",
+            HttpStatusCode.RequestTimeout => "http-408",
+            HttpStatusCode.TooManyRequests => "http-429",
+            >= HttpStatusCode.InternalServerError => "http-server-error",
+            _ => "http"
+        };
+        return $"download.artifact.{artifact}.{suffix}";
     }
 
     private static OperationResult<DownloadSubtitleWriteResult> SubtitleArtifactFailure(

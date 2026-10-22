@@ -711,14 +711,17 @@ public sealed class DownloadRetryPolicyTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.Forbidden, (int)DownloadTransferFailureKind.ExpiredAddress)]
-    [InlineData(HttpStatusCode.NotFound, (int)DownloadTransferFailureKind.ExpiredAddress)]
-    [InlineData(HttpStatusCode.RequestTimeout, (int)DownloadTransferFailureKind.TransientNetwork)]
-    [InlineData(HttpStatusCode.TooManyRequests, (int)DownloadTransferFailureKind.RateLimited)]
-    [InlineData(HttpStatusCode.InternalServerError, (int)DownloadTransferFailureKind.TransientNetwork)]
+    [InlineData(HttpStatusCode.Unauthorized, (int)DownloadTransferFailureKind.Permanent, "download.transfer.http-401")]
+    [InlineData(HttpStatusCode.Forbidden, (int)DownloadTransferFailureKind.ExpiredAddress, "download.transfer.http-403")]
+    [InlineData(HttpStatusCode.NotFound, (int)DownloadTransferFailureKind.ExpiredAddress, "download.transfer.http-404")]
+    [InlineData(HttpStatusCode.RequestTimeout, (int)DownloadTransferFailureKind.TransientNetwork, "download.transfer.http-408")]
+    [InlineData(HttpStatusCode.TooManyRequests, (int)DownloadTransferFailureKind.RateLimited, "download.transfer.http-429")]
+    [InlineData(HttpStatusCode.InternalServerError, (int)DownloadTransferFailureKind.TransientNetwork, "download.transfer.http-server-error")]
+    [InlineData(HttpStatusCode.BadRequest, (int)DownloadTransferFailureKind.Permanent, "download.transfer.http-client-error")]
     public void BuiltinBackendClassifiesHttpFailures(
         HttpStatusCode statusCode,
-        int expectedValue)
+        int expectedValue,
+        string expectedCode)
     {
         var exception = new HttpRequestException(
             "Sanitized test failure.",
@@ -731,6 +734,7 @@ public sealed class DownloadRetryPolicyTests
 
         Assert.Equal(DownloadTransferOutcome.Failed, result.Outcome);
         Assert.Equal((DownloadTransferFailureKind)expectedValue, result.FailureKind);
+        Assert.Equal(expectedCode, result.ErrorCode);
     }
 
     [Fact]
