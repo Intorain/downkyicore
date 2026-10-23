@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
+using DownKyi.Core.BiliApi;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
@@ -170,8 +171,6 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         long mid,
         CancellationToken cancellationToken)
     {
-        var settings = await _client.GetSpaceSettingsAsync(mid, cancellationToken)
-            .ConfigureAwait(false);
         var info = await _client.GetMyInfoAsync(cancellationToken).ConfigureAwait(false);
         if (info == null)
         {
@@ -179,11 +178,10 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        var background = await LoadOptionalBackgroundAsync(mid, cancellationToken).ConfigureAwait(false);
         var nextExperience = info.LevelExp.NextExp;
         return new MySpaceProfileSnapshot(
-            settings?.Toutu?.Limg is { Length: > 0 } background
-                ? $"https://i0.hdslb.com/{background}"
-                : "avares://DownKyi.Desktop/Resources/backgound/9-绿荫秘境.png",
+            background,
             info.Face,
             info.Name,
             info.Sex switch
@@ -206,6 +204,38 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
             info.LevelExp.CurrentExp,
             info.Moral.ToString(CultureInfo.CurrentCulture),
             DictionaryResource.GetString(info.Silence == 1 ? "Ban" : "Normal"));
+    }
+
+    private async Task<string> LoadOptionalBackgroundAsync(
+        long mid,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var publicInfo = await WbiRequestExecutor.ExecuteAsync(
+                _wbiKeyProvider,
+                (keys, unixTimeSeconds) => _client.GetUserInfoForSpaceAsync(
+                    keys,
+                    unixTimeSeconds,
+                    mid,
+                    cancellationToken),
+                TimeProvider.System,
+                cancellationToken).ConfigureAwait(false);
+            return UserSpaceBackground.Resolve(publicInfo?.TopPhoto);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is BilibiliApiResponseException
+            or HttpRequestException
+            or OperationCanceledException)
+        {
+            _logger.LogWarningMessage(
+                "Optional user-space background could not be loaded; the profile will use the local background.",
+                exception);
+            return UserSpaceBackground.FallbackAddress;
+        }
     }
 
     public async Task<MySpaceStatsSnapshot> LoadMyStatsAsync(

@@ -24,8 +24,8 @@ internal sealed record UserSpaceFavoriteFolder(
     long UpdatedAtUnixSeconds);
 
 internal sealed record UserSpaceSnapshot(
-    SpaceSettings? Settings,
     UserInfoForSpace? User,
+    string Background,
     IReadOnlyList<SpacePublicationListTypeVideoZone>? PublicationTypes,
     SpaceSeasonsSeries? SeasonsSeries,
     IReadOnlyList<UserSpaceFavoriteFolder> FavoriteFolders,
@@ -106,8 +106,6 @@ internal sealed class UserSpaceLoadCoordinator : IUserSpaceLoadCoordinator
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = await _client.GetSpaceSettingsAsync(mid, cancellationToken)
-            .ConfigureAwait(false);
         var seasonsSeries = await _client.GetSeasonsSeriesAsync(mid, 1, 20, cancellationToken)
             .ConfigureAwait(false);
         var favoriteFolders = await LoadFavoriteFoldersAsync(mid, cancellationToken)
@@ -117,8 +115,8 @@ internal sealed class UserSpaceLoadCoordinator : IUserSpaceLoadCoordinator
         var statistics = await _client.GetUpStatAsync(mid, cancellationToken)
             .ConfigureAwait(false);
         return new UserSpaceSnapshot(
-            settings,
             user,
+            UserSpaceBackground.Resolve(user?.TopPhoto),
             publicationTypes,
             seasonsSeries,
             favoriteFolders,

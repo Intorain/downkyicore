@@ -88,7 +88,6 @@ $probes = @(
     @{ Name = 'ordinary-tags'; Uri = 'https://api.bilibili.com/x/web-interface/view/detail/tag?bvid=BV17x411w7KC&cid=279786'; Kind = 'json' }
     @{ Name = 'relation-stat'; Uri = 'https://api.bilibili.com/x/relation/stat?vmid=2'; Kind = 'json' }
     @{ Name = 'up-stat'; Uri = 'https://api.bilibili.com/x/space/upstat?mid=2'; Kind = 'json' }
-    @{ Name = 'space-settings'; Uri = 'https://space.bilibili.com/ajax/settings/getSettings?mid=2'; Kind = 'json' }
     @{ Name = 'seasons-series'; Uri = 'https://api.bilibili.com/x/polymer/web-space/seasons_series_list?mid=2&page_num=1&page_size=1'; Kind = 'json' }
     @{ Name = 'series-metadata'; Uri = 'https://api.bilibili.com/x/series/series?series_id=1'; Kind = 'json' }
     @{ Name = 'bangumi-season'; Uri = 'https://api.bilibili.com/pgc/view/web/season?ep_id=21495'; Kind = 'json' }

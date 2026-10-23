@@ -241,9 +241,7 @@ internal partial class ViewUserSpaceViewModel : ViewModelBase
                 ? DictionaryResource.GetString("Followed")
                 : DictionaryResource.GetString("NotFollowed");
 
-            Background = snapshot.Settings != null
-                ? $"https://i0.hdslb.com/{snapshot.Settings.Toutu.Limg}"
-                : "avares://DownKyi.Desktop/Resources/backgound/9-绿荫秘境.png";
+            Background = snapshot.Background;
 
             ViewVisibility = true;
             LoadingVisibility = false;
