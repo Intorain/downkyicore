@@ -70,6 +70,39 @@ public sealed class UserSpacePageCoordinatorTests
     }
 
     [Fact]
+    public async Task ProfileUsesWbiTopPhotoWithoutRequestingLegacySettings()
+    {
+        const string topPhoto = "https://i0.hdslb.com/bfs/space/header.png";
+        var requests = new List<string>();
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (request, _) =>
+            {
+                requests.Add(request.RequestAddress);
+                var response = request.RequestAddress switch
+                {
+                    var address when address.Contains("/x/space/wbi/acc/info?", StringComparison.Ordinal) =>
+                        $$$"""{"code":0,"data":{"mid":42,"top_photo":"{{{topPhoto}}}"}}""",
+                    var address when address.Contains("/x/space/myinfo", StringComparison.Ordinal) =>
+                        """{"code":0,"data":{"mid":42,"name":"fixture"}}""",
+                    _ => throw new InvalidOperationException(
+                        $"Unexpected Bilibili request: {request.RequestAddress}")
+                };
+                return Task.FromResult(response);
+            }
+        };
+        using var settings = new TestSettingsStore();
+        var coordinator = CreateCoordinator(settings, client);
+
+        var profile = await coordinator.LoadMyProfileAsync(42, CancellationToken.None);
+
+        Assert.Equal(topPhoto, Assert.IsType<MySpaceProfileSnapshot>(profile).Background);
+        Assert.DoesNotContain(
+            requests,
+            address => address.Contains("/ajax/settings/getSettings", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task PreCanceledStatsLoadDoesNotStartApiWork()
     {
         using var settings = new TestSettingsStore();
@@ -97,13 +130,15 @@ public sealed class UserSpacePageCoordinatorTests
             cancellation.Token));
     }
 
-    private static UserSpacePageCoordinator CreateCoordinator(TestSettingsStore settings)
+    private static UserSpacePageCoordinator CreateCoordinator(
+        TestSettingsStore settings,
+        TestBilibiliApiClient? client = null)
     {
         return new UserSpacePageCoordinator(
             settings.Store,
             new TestWbiKeyProvider(),
             new TestNavigationService(),
             NullLogger<UserSpacePageCoordinator>.Instance,
-            new TestBilibiliApiClient());
+            client ?? new TestBilibiliApiClient());
     }
 }

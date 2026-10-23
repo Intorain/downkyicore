@@ -170,8 +170,15 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         long mid,
         CancellationToken cancellationToken)
     {
-        var settings = await _client.GetSpaceSettingsAsync(mid, cancellationToken)
-            .ConfigureAwait(false);
+        var publicInfo = await WbiRequestExecutor.ExecuteAsync(
+            _wbiKeyProvider,
+            (keys, unixTimeSeconds) => _client.GetUserInfoForSpaceAsync(
+                keys,
+                unixTimeSeconds,
+                mid,
+                cancellationToken),
+            TimeProvider.System,
+            cancellationToken).ConfigureAwait(false);
         var info = await _client.GetMyInfoAsync(cancellationToken).ConfigureAwait(false);
         if (info == null)
         {
@@ -181,8 +188,8 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         cancellationToken.ThrowIfCancellationRequested();
         var nextExperience = info.LevelExp.NextExp;
         return new MySpaceProfileSnapshot(
-            settings?.Toutu?.Limg is { Length: > 0 } background
-                ? $"https://i0.hdslb.com/{background}"
+            publicInfo?.TopPhoto is { Length: > 0 } background
+                ? background
                 : "avares://DownKyi.Desktop/Resources/backgound/9-绿荫秘境.png",
             info.Face,
             info.Name,

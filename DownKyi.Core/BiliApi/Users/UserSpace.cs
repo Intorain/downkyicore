@@ -11,34 +11,6 @@ namespace DownKyi.Core.BiliApi.Users;
 /// </summary>
 public static partial class UserSpace
 {
-    /// <summary>
-    /// 查询空间设置
-    /// </summary>
-    /// <param name="mid"></param>
-    /// <returns></returns>
-    public static async Task<SpaceSettings?> GetSpaceSettingsAsync(
-        this IBilibiliApiClient client,
-        long mid,
-        CancellationToken cancellationToken = default)
-    {
-        var url = $"https://space.bilibili.com/ajax/settings/getSettings?mid={mid}";
-        const string referer = "https://www.bilibili.com";
-        var settings = await BiliApiRequest.RequestJsonAsync<SpaceSettingsOrigin>(
-            client,
-            url,
-            referer,
-            nameof(GetSpaceSettingsAsync),
-            "UserSpace",
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        if (!settings.Status)
-        {
-            return null;
-        }
-
-        return BiliApiRequest.RequirePayload(settings.Data);
-    }
-
     #region 投稿
 
     /// <summary>
