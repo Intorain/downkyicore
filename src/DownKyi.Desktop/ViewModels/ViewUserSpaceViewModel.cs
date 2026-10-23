@@ -241,9 +241,7 @@ internal partial class ViewUserSpaceViewModel : ViewModelBase
                 ? DictionaryResource.GetString("Followed")
                 : DictionaryResource.GetString("NotFollowed");
 
-            Background = string.IsNullOrWhiteSpace(userInfo.TopPhoto)
-                ? "avares://DownKyi.Desktop/Resources/backgound/9-绿荫秘境.png"
-                : userInfo.TopPhoto;
+            Background = snapshot.Background;
 
             ViewVisibility = true;
             LoadingVisibility = false;

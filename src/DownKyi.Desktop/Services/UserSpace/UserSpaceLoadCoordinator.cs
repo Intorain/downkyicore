@@ -25,6 +25,7 @@ internal sealed record UserSpaceFavoriteFolder(
 
 internal sealed record UserSpaceSnapshot(
     UserInfoForSpace? User,
+    string Background,
     IReadOnlyList<SpacePublicationListTypeVideoZone>? PublicationTypes,
     SpaceSeasonsSeries? SeasonsSeries,
     IReadOnlyList<UserSpaceFavoriteFolder> FavoriteFolders,
@@ -115,6 +116,7 @@ internal sealed class UserSpaceLoadCoordinator : IUserSpaceLoadCoordinator
             .ConfigureAwait(false);
         return new UserSpaceSnapshot(
             user,
+            UserSpaceBackground.Resolve(user?.TopPhoto),
             publicationTypes,
             seasonsSeries,
             favoriteFolders,

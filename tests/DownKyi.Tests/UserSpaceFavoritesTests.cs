@@ -12,7 +12,7 @@ public sealed class UserSpaceFavoritesTests
     public async Task LoadingSpaceDoesNotRequestLegacySettingsForTheHeaderImage()
     {
         const long mid = 3_493_080_065_903_512;
-        const string topPhoto = "https://i0.hdslb.com/bfs/space/header.png";
+        const string topPhoto = "http://i0.hdslb.com/bfs/space/header.png";
         var requests = new List<string>();
         var client = new TestBilibiliApiClient
         {
@@ -47,6 +47,7 @@ public sealed class UserSpaceFavoritesTests
         var snapshot = await coordinator.LoadAsync(mid, CancellationToken.None);
 
         Assert.Equal(topPhoto, Assert.IsType<DownKyi.Core.BiliApi.Users.Models.UserInfoForSpace>(snapshot.User).TopPhoto);
+        Assert.Equal("https://i0.hdslb.com/bfs/space/header.png", snapshot.Background);
         Assert.DoesNotContain(
             requests,
             address => address.Contains("/ajax/settings/getSettings", StringComparison.Ordinal));
