@@ -61,7 +61,7 @@ public sealed class ValidateStageTests
             TestContext.Current.CancellationToken);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("download.validate.media", result.Error?.Code);
+        Assert.Equal("download.validate.published-missing", result.Error?.Code);
     }
 
     [Fact]

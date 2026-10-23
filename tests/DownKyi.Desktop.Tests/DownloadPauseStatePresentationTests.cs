@@ -101,6 +101,27 @@ public sealed class DownloadPauseStatePresentationTests
         }).ConfigureAwait(true);
     }
 
+    [AvaloniaFact]
+    public async Task NonTransientFailureHidesRetryEvenWithoutLegacyProvenance()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            var failed = CreateTask()
+                .Fail(
+                    new DownloadFailure(
+                        "download.publish.reconcile",
+                        "Pending publication could not be safely reconciled.",
+                        false),
+                    DateTimeOffset.UnixEpoch.AddSeconds(1))
+                .RequireValue();
+
+            var item = DownloadTaskProjectionMapper.ToDownloadingItem(failed);
+
+            Assert.False(item.IsToggleVisible);
+        }).ConfigureAwait(true);
+    }
+
     private static DownloadTask CreateTask()
     {
         return DownloadTask.Create(

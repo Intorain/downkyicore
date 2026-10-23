@@ -171,6 +171,24 @@ public sealed partial class DownloadTask
     public OperationResult<DownloadTask> Fail(DownloadFailure failure, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(failure);
+        if (Phase == DownloadPhase.Failed)
+        {
+            EnsureTimestampDoesNotMoveBackward(now);
+            return OperationResult.Success(new DownloadTask(
+                Id,
+                Metadata,
+                Plan,
+                Output,
+                Phase,
+                Progress,
+                Transfer,
+                failure,
+                Completion,
+                checked(Version + 1),
+                CreatedAtUtc,
+                now));
+        }
+
         return TransitionTo(DownloadPhase.Failed, now, failure: failure);
     }
 

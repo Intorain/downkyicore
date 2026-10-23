@@ -32,7 +32,9 @@ internal sealed class ValidateStage : IDownloadPipelineStage
                     : !File.Exists(mediaFile)))
             {
                 return Task.FromResult(DownloadStageResult.Failure(
-                    "download.validate.media",
+                    hasPublishedMedia
+                        ? "download.validate.published-missing"
+                        : "download.validate.media",
                     "The finalized media file is missing or invalid.",
                     OperationErrorKind.Validation));
             }

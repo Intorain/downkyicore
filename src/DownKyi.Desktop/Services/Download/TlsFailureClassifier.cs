@@ -162,7 +162,12 @@ internal static class TlsFailureClassifier
 
     public static bool IsTlsErrorCode(string? errorCode)
     {
-        return errorCode?.StartsWith(Prefix, StringComparison.Ordinal) == true;
+        return errorCode is Prefix + "untrusted"
+            or Prefix + "expired"
+            or Prefix + "not-yet-valid"
+            or Prefix + "hostname"
+            or Prefix + "chain"
+            or Prefix + "handshake";
     }
 
     public static string GetResourceKey(string errorCode)

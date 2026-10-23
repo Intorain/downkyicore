@@ -965,7 +965,7 @@ public sealed class DownloadArtifactStageTests
             TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("download.artifact.cover.http", result.Error?.Code);
+        Assert.Equal("download.artifact.cover.http-server-error", result.Error?.Code);
         Assert.Equal("https://example.test/main.png", Assert.Single(requestedAddresses));
     }
 
@@ -1345,7 +1345,59 @@ public sealed class DownloadArtifactStageTests
             TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("download.artifact.subtitle.io", result.Error?.Code);
+        Assert.Equal(DownloadArtifactWriter.SubtitleOutputWriteFailureCode, result.Error?.Code);
+    }
+
+    [Fact]
+    public async Task SubtitleResponseReadFailureIsDistinctFromOutputWriteFailure()
+    {
+        var request = 0;
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (_, _) => request++ == 0
+                ? Task.FromResult(
+                    """
+                    {"code":0,"data":{"aid":1,"bvid":"BV1test","cid":2,"subtitle":{"subtitles":[{"lan":"zh","lan_doc":"Chinese","subtitle_url":"//example.test/subtitle.json","type":0}]}}}
+                    """)
+                : Task.FromException<string>(new IOException("Response read failed."))
+        };
+        using var context = await ArtifactTestContext.CreateAsync(client, subtitle: true)
+            .ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DownloadArtifactWriter.SubtitleResponseReadFailureCode, result.Error?.Code);
+        Assert.NotEqual(DownloadArtifactWriter.SubtitleOutputWriteFailureCode, result.Error?.Code);
+    }
+
+    [Fact]
+    public async Task SubtitleHttpStatusIsPreservedAsAStableFailureCode()
+    {
+        var request = 0;
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (_, _) => request++ == 0
+                ? Task.FromResult(
+                    """
+                    {"code":0,"data":{"aid":1,"bvid":"BV1test","cid":2,"subtitle":{"subtitles":[{"lan":"zh","lan_doc":"Chinese","subtitle_url":"//example.test/subtitle.json","type":0}]}}}
+                    """)
+                : Task.FromException<string>(new HttpRequestException(
+                    "Unauthorized.",
+                    null,
+                    HttpStatusCode.Unauthorized))
+        };
+        using var context = await ArtifactTestContext.CreateAsync(client, subtitle: true)
+            .ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.artifact.subtitle.http-401", result.Error?.Code);
     }
 
     [Fact]
@@ -1365,6 +1417,28 @@ public sealed class DownloadArtifactStageTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal("download.artifact.danmaku.http", result.Error?.Code);
+    }
+
+    [Fact]
+    public async Task DanmakuRateLimitIsPreservedAsAStableFailureCode()
+    {
+        var client = new TestBilibiliApiClient
+        {
+            OpenReadAsyncHandler = (_, _) =>
+                Task.FromException<Stream>(new HttpRequestException(
+                    "Rate limited.",
+                    null,
+                    HttpStatusCode.TooManyRequests))
+        };
+        using var context = await ArtifactTestContext.CreateAsync(client, danmaku: true)
+            .ConfigureAwait(true);
+
+        var result = await context.Stage.ExecuteAsync(
+            context.Execution,
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.artifact.danmaku.http-429", result.Error?.Code);
     }
 
     [Fact]
