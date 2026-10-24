@@ -53,7 +53,11 @@ internal sealed class DownloadPlaybackResolver
         PlayUrl? playUrl;
         try
         {
-            playUrl = await (input.StreamType switch
+            var playbackStreamType = input.StreamType == PlayStreamType.Bangumi
+                                     && media.EpisodeId == -1
+                ? PlayStreamType.Video
+                : input.StreamType;
+            playUrl = await (playbackStreamType switch
             {
                 PlayStreamType.Video => WbiRequestExecutor.ExecuteAsync(
                     _wbiKeyProvider,

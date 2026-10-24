@@ -110,7 +110,6 @@ internal class CheeseInfoService : IInfoService
 
             var page = new VideoPage
             {
-                PlaybackStreamType = PlayStreamType.Cheese,
                 Avid = episode.Aid,
                 Bvid = string.Empty,
                 Cid = episode.Cid,

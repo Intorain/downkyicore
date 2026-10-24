@@ -801,7 +801,7 @@ public sealed class DownloadArtifactStageTests
     }
 
     [Fact]
-    public async Task BangumiCoverOwnerCreatesEpisodeAndSeriesImages()
+    public async Task BangumiEmbeddedVideoCoverOwnerCreatesEpisodeAndSeriesImages()
     {
         var requestedAddresses = new List<string>();
         var client = new TestBilibiliApiClient
@@ -817,6 +817,7 @@ public sealed class DownloadArtifactStageTests
             cover: true,
             coverUrl: "https://example.test/main.png",
             pageCoverUrl: "https://example.test/page.jpg",
+            episodeId: -1,
             streamType: PlayStreamType.Bangumi).ConfigureAwait(true);
 
         var result = await context.Stage.ExecuteAsync(

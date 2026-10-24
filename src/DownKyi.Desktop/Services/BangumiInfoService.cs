@@ -133,8 +133,6 @@ internal class BangumiInfoService : IInfoService
 
             var page = new VideoPage
             {
-                PlaybackStreamType = PlayStreamType.Bangumi,
-                PlaybackAddress = episode.Link,
                 Avid = episode.Aid,
                 Bvid = episode.Bvid,
                 Cid = episode.Cid,
@@ -229,20 +227,17 @@ internal class BangumiInfoService : IInfoService
 
                 // 标题
                 var name = !string.IsNullOrEmpty(episode.LongTitle) ? $"{episode.Title} {episode.LongTitle}" : episode.Title;
-                var playbackStreamType = PlayStreamTypeResolver.ResolvePlayStreamType(episode.Link)
-                    is PlayStreamType.Video
-                    ? PlayStreamType.Video
-                    : PlayStreamType.Bangumi;
+                var isOrdinaryVideo = PlayStreamTypeResolver.ResolvePlayStreamType(episode.Link)
+                    is PlayStreamType.Video;
                 var page = new VideoPage
                 {
-                    PlaybackStreamType = playbackStreamType,
-                    PlaybackAddress = episode.Link,
+                    PlaybackAddress = isOrdinaryVideo ? episode.Link : string.Empty,
                     Avid = episode.Aid,
-                    Bvid = playbackStreamType == PlayStreamType.Video
+                    Bvid = isOrdinaryVideo
                         ? ParseEntrance.GetBvId(episode.Link)
                         : episode.Bvid,
                     Cid = episode.Cid,
-                    EpisodeId = playbackStreamType == PlayStreamType.Video
+                    EpisodeId = isOrdinaryVideo
                         ? -1
                         : ResolveEpisodeId(episode),
                     FirstFrame = episode.Cover,

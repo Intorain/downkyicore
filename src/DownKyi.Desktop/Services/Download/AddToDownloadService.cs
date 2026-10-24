@@ -312,8 +312,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                         finalizedPage.AvailableMedia,
                         settings,
                         finalizedPage.FinalizedContent);
-                    if (DownloadTaskDraftFactory.ResolvePlayStreamType(finalizedDownload.Video.TypeId)
-                        == PlayStreamType.Bangumi)
+                    if (item.Downloading.PlayStreamType == PlayStreamType.Bangumi)
                     {
                         var ownsMainCover = finalizedPage.FinalizedContent.Cover
                                             && !bangumiMainCoverAssigned;

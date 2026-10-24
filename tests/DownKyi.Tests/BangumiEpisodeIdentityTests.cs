@@ -22,6 +22,7 @@ public sealed class BangumiEpisodeIdentityTests
           "code": 0,
           "message": "success",
           "result": {
+            "type": 4,
             "episodes": [
               {
                 "aid": 1,
@@ -75,6 +76,7 @@ public sealed class BangumiEpisodeIdentityTests
           "result": {
             "type": 4,
             "title": "凡人修仙传",
+            "cover": "https://example.test/season.png",
             "episodes": [],
             "positive": {
               "id": 1,
@@ -93,6 +95,7 @@ public sealed class BangumiEpisodeIdentityTests
                     "id": 215048,
                     "ep_id": 0,
                     "title": "独家对话：凡人导演带你看人界篇燃点天花板慕兰之战！",
+                    "cover": "https://example.test/entry.jpg",
                     "link": "https://www.bilibili.com/video/BV18CEY6oEyH",
                     "status": 0
                   }
@@ -252,7 +255,9 @@ public sealed class BangumiEpisodeIdentityTests
         Assert.Equal("BV18CEY6oEyH", sectionPage.Bvid);
         Assert.Equal(0, sectionPage.Cid);
         Assert.Equal(-1, sectionPage.EpisodeId);
-        Assert.Equal(PlayStreamType.Video, sectionPage.PlaybackStreamType);
+        Assert.Equal(
+            "https://www.bilibili.com/video/BV18CEY6oEyH",
+            sectionPage.PlaybackAddress);
 
         var requestedContent = DownloadContentSelection.None with { Video = true };
         var preparation = new DownloadPreparationService(
@@ -294,7 +299,10 @@ public sealed class BangumiEpisodeIdentityTests
             preparedPage.AvailableMedia,
             settings.Store.Current,
             requestedContent);
-        Assert.Equal(PlayStreamType.Video, item.Downloading.PlayStreamType);
+        Assert.Equal(PlayStreamType.Bangumi, item.Downloading.PlayStreamType);
+        Assert.Equal(-1, item.DownloadBase.EpisodeId);
+        Assert.Equal("https://example.test/season.png", item.DownloadBase.CoverUrl);
+        Assert.Equal("https://example.test/entry.jpg", item.DownloadBase.PageCoverUrl);
 
         var resolver = new DownloadPlaybackResolver(
             new TestWbiKeyProvider(),
@@ -307,6 +315,107 @@ public sealed class BangumiEpisodeIdentityTests
         Assert.True(result.IsSuccess, result.Error?.Message);
         Assert.DoesNotContain(requests, request =>
             request.AbsolutePath == "/pgc/player/web/v2/playurl");
+    }
+
+    [Fact]
+    public async Task BangumiSessionUsesSuppliedOrdinaryVideoService()
+    {
+        using var settings = new TestSettingsStore();
+        var requests = new List<Uri>();
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (request, _) =>
+            {
+                var requestUri = new Uri(request.RequestAddress);
+                requests.Add(requestUri);
+                if (requestUri.AbsolutePath == "/x/web-interface/wbi/view")
+                {
+                    return Task.FromResult(Issue668VideoViewResponse);
+                }
+
+                if (requestUri.Host == "www.bilibili.com"
+                    && requestUri.AbsolutePath.Contains("/video/BV18CEY6oEyH", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(OrdinaryPlaybackPageResponse);
+                }
+
+                if (requestUri.AbsolutePath == "/x/player/wbi/playurl")
+                {
+                    return Task.FromResult(OrdinaryPlaybackApiResponse);
+                }
+
+                throw new InvalidOperationException($"Unexpected request path: {requestUri.AbsolutePath}");
+            }
+        };
+        var videoService = await VideoInfoService.CreateAsync(
+            "BV18CEY6oEyH",
+            settings.Store,
+            new VideoTagProvider(client),
+            new TestWbiKeyProvider(),
+            client,
+            TestContext.Current.CancellationToken);
+        var preparation = new DownloadPreparationService(
+            PlayStreamType.Bangumi,
+            settings.Store,
+            new VideoTagProvider(client),
+            new TestWbiKeyProvider(),
+            client,
+            NullLogger.Instance);
+
+        var prepared = await preparation.PrepareAsync(
+            videoService,
+            DownloadContentSelection.None with { Video = true },
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(prepared);
+        Assert.DoesNotContain(requests, request =>
+            request.AbsolutePath == "/pgc/player/web/v2/playurl");
+        Assert.Equal(1, requests.Count(request =>
+            request.AbsolutePath == "/x/web-interface/wbi/view"));
+        Assert.Contains(requests, request =>
+            request.AbsolutePath == "/x/player/wbi/playurl");
+    }
+
+    [Fact]
+    public async Task VideoSessionUsesSuppliedBangumiService()
+    {
+        using var settings = new TestSettingsStore();
+        var requests = new List<Uri>();
+        var client = new TestBilibiliApiClient
+        {
+            GetStringAsyncHandler = (request, _) =>
+            {
+                var requestUri = new Uri(request.RequestAddress);
+                requests.Add(requestUri);
+                return Task.FromResult(requestUri.AbsolutePath == "/pgc/view/web/season"
+                    ? SeasonResponse
+                    : PlaybackResponse);
+            }
+        };
+        var bangumiService = await BangumiInfoService.CreateAsync(
+            "ss1",
+            settings.Store,
+            client,
+            TestContext.Current.CancellationToken);
+        var preparation = new DownloadPreparationService(
+            PlayStreamType.Video,
+            settings.Store,
+            new VideoTagProvider(client),
+            new TestWbiKeyProvider(),
+            client,
+            NullLogger.Instance);
+
+        var prepared = await preparation.PrepareAsync(
+            bangumiService,
+            DownloadContentSelection.None with { Video = true },
+            TestContext.Current.CancellationToken);
+
+        var section = Assert.Single(Assert.IsType<PreparedDownload>(prepared).Sections);
+        Assert.Equal(EpisodeId, Assert.Single(section.Pages).Page.EpisodeId);
+        Assert.Contains(requests, request =>
+            request.AbsolutePath == "/pgc/player/web/v2/playurl");
+        Assert.DoesNotContain(requests, request =>
+            request.AbsolutePath == "/x/player/wbi/playurl");
     }
 
     private static TestBilibiliApiClient CreateClient(Action<BilibiliHttpRequest> observeRequest)

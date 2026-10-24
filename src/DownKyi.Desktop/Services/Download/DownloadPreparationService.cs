@@ -21,7 +21,6 @@ namespace DownKyi.Services.Download;
 internal sealed class DownloadPreparationService
 {
     private readonly IInfoService _playbackService;
-    private readonly PlayStreamType _defaultStreamType;
     private readonly ISettingsStore _settingsStore;
     private readonly IVideoTagProvider _tagProvider;
     private readonly IWbiKeyProvider _wbiKeyProvider;
@@ -36,7 +35,6 @@ internal sealed class DownloadPreparationService
         IBilibiliApiClient client,
         ILogger logger)
     {
-        _defaultStreamType = streamType;
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _tagProvider = tagProvider ?? throw new ArgumentNullException(nameof(tagProvider));
@@ -151,16 +149,9 @@ internal sealed class DownloadPreparationService
         VideoPage page,
         CancellationToken cancellationToken)
     {
-        var streamType = page.PlaybackStreamType ?? _defaultStreamType;
-        if (streamType == _defaultStreamType)
+        if (string.IsNullOrWhiteSpace(page.PlaybackAddress))
         {
             return defaultService;
-        }
-
-        if (streamType != PlayStreamType.Video)
-        {
-            throw new InvalidOperationException(
-                $"Playback stream type '{streamType}' cannot be prepared by this session.");
         }
 
         var videoService = await VideoInfoService.CreateAsync(
