@@ -63,6 +63,22 @@ namespace DownKyi.ViewModels
             set => SetProperty(ref _noDataVisibility, value);
         }
 
+        private string _pageTitle = string.Empty;
+
+        public string PageTitle
+        {
+            get => _pageTitle;
+            set => SetProperty(ref _pageTitle, value);
+        }
+
+        private bool _searchVisibility = true;
+
+        public bool SearchVisibility
+        {
+            get => _searchVisibility;
+            set => SetProperty(ref _searchVisibility, value);
+        }
+
         private VectorImage _arrowBack;
 
         public VectorImage ArrowBack
@@ -157,6 +173,8 @@ namespace DownKyi.ViewModels
             Loading = true;
             LoadingVisibility = false;
             NoDataVisibility = false;
+            PageTitle = DictionaryResource.GetString("Publication");
+            SearchVisibility = true;
 
             _arrowBack = NavigationIcon.CreateArrowBack();
 

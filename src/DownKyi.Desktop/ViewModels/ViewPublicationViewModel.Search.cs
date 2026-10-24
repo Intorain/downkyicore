@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -18,6 +19,9 @@ internal partial class ViewPublicationViewModel
     private string _inputSearchText = string.Empty;
     private string _activeSearchText = string.Empty;
     private PublicationNavigationPayload? _loadedPayload;
+    private DynamicVideoNavigationPayload? _loadedDynamicPayload;
+    private readonly Dictionary<int, string?> _dynamicOffsets = [];
+    private bool _dynamicVideoMode;
     private bool _hasLoadedPage;
     private bool _suppressTabSelection;
     private RelayCommand? _searchCommand;
@@ -39,6 +43,11 @@ internal partial class ViewPublicationViewModel
 
     private void SelectPublicationType(TabHeader tabHeader)
     {
+        if (_dynamicVideoMode)
+        {
+            return;
+        }
+
         InputSearchText = string.Empty;
         _activeSearchText = string.Empty;
         ConfigurePager(1, GetPageCount(tabHeader));
@@ -81,6 +90,34 @@ internal partial class ViewPublicationViewModel
         var tab = TabHeaders[SelectTabId];
         try
         {
+            if (_dynamicVideoMode)
+            {
+                if (!_dynamicOffsets.TryGetValue(current, out var offset))
+                {
+                    throw new InvalidOperationException("The requested dynamic-video page has no continuation offset.");
+                }
+
+                var dynamicPage = await _userSpaceCoordinator.LoadDynamicVideoPageAsync(
+                    _mid,
+                    offset,
+                    cancellationToken).ConfigureAwait(true);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                Medias.Clear();
+                Medias.AddRange(dynamicPage.Medias);
+                IsSelectAll = false;
+                LoadingVisibility = false;
+                NoDataVisibility = dynamicPage.Medias.Count == 0;
+                _hasLoadedPage = true;
+                Pager.Count = current + (dynamicPage.HasMore ? 1 : 0);
+                if (dynamicPage.HasMore)
+                {
+                    _dynamicOffsets[current + 1] = dynamicPage.NextOffset;
+                }
+
+                return;
+            }
+
             var page = await _userSpaceCoordinator.LoadPublicationPageAsync(
                 _mid,
                 current,
@@ -134,12 +171,22 @@ internal partial class ViewPublicationViewModel
         InputSearchText = string.Empty;
         _activeSearchText = string.Empty;
         _hasLoadedPage = false;
+        _dynamicVideoMode = false;
+        _dynamicOffsets.Clear();
+        PageTitle = DictionaryResource.GetString("Publication");
+        SearchVisibility = true;
     }
 
     public override void OnNavigatedTo(AppNavigationContext navigationContext)
     {
         ArgumentNullException.ThrowIfNull(navigationContext);
         base.OnNavigatedTo(navigationContext);
+
+        if (navigationContext.Parameter is DynamicVideoNavigationPayload dynamicPayload)
+        {
+            NavigateToDynamicVideos(dynamicPayload);
+            return;
+        }
 
         if (navigationContext.Parameter is not PublicationNavigationPayload payload)
         {
@@ -159,6 +206,7 @@ internal partial class ViewPublicationViewModel
 
         InitView();
         _loadedPayload = payload;
+        _loadedDynamicPayload = null;
         _mid = payload.Mid;
         if (payload.Zones.Count == 0)
         {
@@ -200,5 +248,45 @@ internal partial class ViewPublicationViewModel
         }
 
         ConfigurePager(1, GetPageCount(selectedTab));
+    }
+
+    private void NavigateToDynamicVideos(DynamicVideoNavigationPayload payload)
+    {
+        if (Equals(_loadedDynamicPayload, payload))
+        {
+            if (!_hasLoadedPage)
+            {
+                RunFireAndForget(UpdatePublicationAsync(Pager.Current), nameof(UpdatePublicationAsync), _logger);
+            }
+
+            return;
+        }
+
+        InitView();
+        _loadedPayload = null;
+        _loadedDynamicPayload = payload;
+        _dynamicVideoMode = true;
+        _dynamicOffsets[1] = null;
+        _mid = payload.Mid;
+        PageTitle = DictionaryResource.GetString("DynamicVideos");
+        SearchVisibility = false;
+        TabHeaders.Add(new TabHeader
+        {
+            Id = 0,
+            Title = DictionaryResource.GetString("DynamicVideos"),
+            SubTitle = string.Empty
+        });
+
+        _suppressTabSelection = true;
+        try
+        {
+            SelectTabId = 0;
+        }
+        finally
+        {
+            _suppressTabSelection = false;
+        }
+
+        ConfigurePager(1, 1);
     }
 }

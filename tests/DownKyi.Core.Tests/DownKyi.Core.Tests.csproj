@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <None Update="BiliApi\JsonSamples\space-publication-search.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="BiliApi\JsonSamples\space-dynamic-feed.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

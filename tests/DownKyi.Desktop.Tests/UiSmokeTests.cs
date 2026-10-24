@@ -89,6 +89,44 @@ public sealed class UiSmokeTests
     }
 
     [AvaloniaFact]
+    public async Task PublicationPageUsesOpaqueDynamicVideoCursorsWithoutSearch()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureProductThemeResources();
+            ViewPublicationViewModel? publication = null;
+            using var navigation = new AvaloniaNavigationService(
+                route => route == AppRoute.Publication
+                    ? publication!
+                    : throw new InvalidOperationException($"Unexpected route {route}."),
+                static action => action());
+            var coordinator = new PublicationPageCoordinatorStub(navigation);
+            publication = new ViewPublicationViewModel(
+                new DesktopInteractionContextStub(navigation),
+                new ContentDownloadCoordinatorStub(),
+                coordinator,
+                NullLogger<ViewPublicationViewModel>.Instance);
+
+            navigation.Navigate(new AppNavigationRequest(
+                AppRoute.Publication,
+                AppRoute.UserSpace,
+                new DynamicVideoNavigationPayload(42)));
+
+            Assert.Equal("动态中的视频", publication.PageTitle);
+            Assert.False(publication.SearchVisibility);
+            Assert.Equal(new string?[] { null }, coordinator.DynamicOffsets);
+            Assert.Equal("BV1dynamic01", Assert.Single(publication.Medias).Bvid);
+            Assert.Equal(2, publication.Pager.Count);
+
+            publication.Pager.Current = 2;
+
+            Assert.Equal(new string?[] { null, "next.offset" }, coordinator.DynamicOffsets);
+            Assert.Equal("BV1dynamic02", Assert.Single(publication.Medias).Bvid);
+            Assert.Equal(2, publication.Pager.Count);
+        }).ConfigureAwait(true);
+    }
+
+    [AvaloniaFact]
     public async Task TypedSeriesPayloadLoadsTheExistingSeriesPage()
     {
         await AvaloniaTestDispatcher.RunAsync(() =>
@@ -1451,6 +1489,8 @@ public sealed class UiSmokeTests
 
         public int LastPage { get; private set; }
 
+        public List<string?> DynamicOffsets { get; } = [];
+
         public Task<PublicationPageSnapshot> LoadPublicationPageAsync(
             long mid,
             int page,
@@ -1474,6 +1514,24 @@ public sealed class UiSmokeTests
             }
 
             return Task.FromResult(new PublicationPageSnapshot([media], string.IsNullOrEmpty(keyword) ? 60 : 35));
+        }
+
+        public Task<DynamicVideoPageSnapshot> LoadDynamicVideoPageAsync(
+            long mid,
+            string? offset,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            DynamicOffsets.Add(offset);
+            var firstPage = offset == null;
+            return Task.FromResult(new DynamicVideoPageSnapshot(
+                [new PublicationMedia(navigation, AppRoute.Publication)
+                {
+                    Bvid = firstPage ? "BV1dynamic01" : "BV1dynamic02",
+                    Title = firstPage ? "dynamic 1" : "dynamic 2"
+                }],
+                firstPage ? "next.offset" : null,
+                firstPage));
         }
 
         public Task<MySpaceProfileSnapshot?> LoadMyProfileAsync(long mid, CancellationToken cancellationToken) =>

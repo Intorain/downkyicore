@@ -221,6 +221,11 @@ public sealed class ViewMySpaceNavigationTests : IDisposable
             string? keyword,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<DynamicVideoPageSnapshot> LoadDynamicVideoPageAsync(
+            long mid,
+            string? offset,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<MySpaceProfileSnapshot?> LoadMyProfileAsync(
             long mid,
             CancellationToken cancellationToken) => Task.FromResult<MySpaceProfileSnapshot?>(null);

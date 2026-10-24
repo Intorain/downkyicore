@@ -92,6 +92,15 @@ internal partial class ViewUserSpaceViewModel : ViewModelBase
             return;
         }
 
+        if (banner.Id == 1)
+        {
+            Navigation.Navigate(new AppNavigationRequest(
+                AppRoute.Publication,
+                AppRoute.UserSpace,
+                new DynamicVideoNavigationPayload(mid)));
+            return;
+        }
+
         var parameters = new Dictionary<string, object?>
         {
             ["object"] = banner.NavigationData,
@@ -264,6 +273,14 @@ internal partial class ViewUserSpaceViewModel : ViewModelBase
                 IsSelected = true
             });
         }
+
+        TabLeftBanners.Add(new TabLeftBanner
+        {
+            Id = 1,
+            Icon = NormalIcon.Current.Channel1,
+            IconColor = "#FF7B61FF",
+            Title = DictionaryResource.GetString("DynamicVideos")
+        });
 
         // 合集和列表
         var seasonsSeries = snapshot.SeasonsSeries;
