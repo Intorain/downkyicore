@@ -94,6 +94,7 @@ internal partial class ViewUserSpaceViewModel : ViewModelBase
 
         if (banner.Id == 1)
         {
+            banner.IsSelected = false;
             Navigation.Navigate(new AppNavigationRequest(
                 AppRoute.Publication,
                 AppRoute.UserSpace,

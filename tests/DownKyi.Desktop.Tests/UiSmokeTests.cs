@@ -11,6 +11,7 @@ using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
 using DownKyi.Composition;
+using DownKyi.Core.BiliApi.Users.Models;
 using DownKyi.Core.Settings;
 using DownKyi.Core.Storage;
 using DownKyi.CustomAction;
@@ -123,6 +124,59 @@ public sealed class UiSmokeTests
             Assert.Equal(new string?[] { null, "next.offset" }, coordinator.DynamicOffsets);
             Assert.Equal("BV1dynamic02", Assert.Single(publication.Medias).Bvid);
             Assert.Equal(2, publication.Pager.Count);
+        }).ConfigureAwait(true);
+    }
+
+    [AvaloniaFact]
+    public async Task DynamicBannerClearsSelectionBeforeLeavingUserSpace()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            DesktopTestResources.EnsureProductThemeResources();
+            var directory = Path.Combine(
+                Path.GetTempPath(),
+                $"dynamic-banner-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(directory);
+            try
+            {
+                using var settings = new SettingsStore(Path.Combine(directory, "settings.json"));
+                ViewUserSpaceViewModel? userSpace = null;
+                var dynamicPage = new NavigationProbe(AppRoute.Publication);
+                using var navigation = new AvaloniaNavigationService(
+                    route => route switch
+                    {
+                        AppRoute.UserSpace => userSpace!,
+                        AppRoute.Publication => dynamicPage,
+                        _ => throw new InvalidOperationException($"Unexpected route {route}.")
+                    },
+                    static action => action());
+                userSpace = new ViewUserSpaceViewModel(
+                    new DesktopInteractionContextStub(navigation),
+                    settings,
+                    new UserSpaceLoadCoordinatorStub(),
+                    NullLogger<ViewUserSpaceViewModel>.Instance);
+
+                navigation.Navigate(new AppNavigationRequest(
+                    AppRoute.UserSpace,
+                    AppRoute.Index,
+                    42L));
+                Dispatcher.UIThread.RunJobs();
+                var dynamicBanner = Assert.Single(userSpace.TabLeftBanners, banner => banner.Id == 1);
+                dynamicBanner.IsSelected = true;
+
+                userSpace.TabLeftBannersCommand.Execute(dynamicBanner);
+
+                Assert.False(dynamicBanner.IsSelected);
+                Assert.Same(dynamicPage, navigation.GetActiveView(AppNavigationRegion.Main));
+                navigation.GoBack(AppNavigationRegion.Main);
+                Assert.Same(userSpace, navigation.GetActiveView(AppNavigationRegion.Main));
+                Assert.False(dynamicBanner.IsSelected);
+                Assert.Equal(1, dynamicPage.NavigatedToCount);
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
         }).ConfigureAwait(true);
     }
 
@@ -1546,6 +1600,27 @@ public sealed class UiSmokeTests
             int page,
             int pageSize,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    private sealed class UserSpaceLoadCoordinatorStub : IUserSpaceLoadCoordinator
+    {
+        public Task<UserSpaceSnapshot> LoadAsync(long mid, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new UserSpaceSnapshot(
+                new UserInfoForSpace
+                {
+                    Mid = mid,
+                    Name = "fixture uploader",
+                    Level = 0
+                },
+                string.Empty,
+                null,
+                null,
+                [],
+                null,
+                null));
+        }
     }
 
     private sealed class SeriesPageCoordinatorStub : ISeasonsSeriesCoordinator
