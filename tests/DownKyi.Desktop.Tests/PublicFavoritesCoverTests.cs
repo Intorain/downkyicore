@@ -38,6 +38,7 @@ public sealed class PublicFavoritesCoverTests
             };
             if (image.Source != null) { ready.TrySetResult(); }
             await ready.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ConfigureAwait(true);
+            fixture.Settle();
             Assert.Equal(fixture.Media.Cover, loader.RequestedUrl);
             Assert.IsAssignableFrom<Bitmap>(image.Source);
             Assert.True(image.IsEffectivelyVisible);
