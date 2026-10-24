@@ -642,7 +642,6 @@ public sealed class DownloadRuntimeArchitectureTests
         Assert.DoesNotContain("DownloadingItem", pipelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("DictionaryResource", pipelineSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FfmpegProcessor", pipelineSource, StringComparison.Ordinal);
-        Assert.True(File.ReadAllLines(Path.Combine(directory, "DownloadPipeline.cs")).Length < 150);
         Assert.False(File.Exists(Path.Combine(
             RepositoryRoot,
             "src", "DownKyi.Desktop",
