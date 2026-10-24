@@ -1,401 +1,347 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.ViewMySpace"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             d:DesignWidth="840"
-             d:DesignHeight="620"
-             xmlns:custom="clr-namespace:DownKyi.CustomControl"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             xmlns:vmp="clr-namespace:DownKyi.Presentation"
-             xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
-             x:DataType="vm:ViewMySpaceViewModel">
-    <UserControl.Styles>
-        <Style Selector="Grid.theme-header">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Grid.theme-header Path">
-            <Setter Property="Fill" Value="{DynamicResource BrushTextDark}" />
-        </Style>
-        <Style Selector="Grid.theme-header TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource BrushTextDark}" />
-        </Style>
-        <Style Selector="Grid.theme-header.overlay">
-            <Setter Property="Background" Value="{DynamicResource BrushMask100}" />
-        </Style>
-        <Style Selector="Grid.theme-header.overlay Path">
-            <Setter Property="Fill" Value="{DynamicResource BrushText}" />
-        </Style>
-        <Style Selector="Grid.theme-header.overlay TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource BrushText}" />
-        </Style>
-    </UserControl.Styles>
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:custom="clr-namespace:DownKyi.CustomControl"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    xmlns:vmp="clr-namespace:DownKyi.Presentation"
+    xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
+    x:Class="DownKyi.Views.ViewMySpace"
+    x:DataType="vm:ViewMySpaceViewModel"
+    Background="{DynamicResource SpacePaper}">
     <UserControl.Resources>
-        <ControlTheme x:Key="SpaceStyle" TargetType="{x:Type ListBox}">
-            <Setter Property="Template">
-                <ControlTemplate TargetType="ListBox">
-                    <Border
-                        Padding="50,0"
-                        Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}">
+        <ResourceDictionary>
+            <ControlTheme x:Key="SpaceList" TargetType="ListBox">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <ControlTemplate>
                         <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </ControlTheme>
-    </UserControl.Resources>
-    <Grid>
-        <Grid IsVisible="{Binding ViewVisibility}" RowDefinitions="350,*">
-            <Image
-                Grid.Row="0"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                asyncImageLoader:ImageLoader.Source="{Binding Background}"
-                Stretch="UniformToFill" />
-
-            <Grid Grid.Row="0" VerticalAlignment="Bottom" RowDefinitions="*,20" ColumnDefinitions="100,*">
-
-                <Image
-                    Grid.Column="0"
-                    Width="64"
-                    Height="64"
-                    asyncImageLoader:ImageLoader.Source="{Binding Header}">
-                    <Image.Clip>
-                        <!--  设置图像如何显示  -->
-                        <EllipseGeometry
-                            Center="32,32"
-                            RadiusX="32"
-                            RadiusY="32" />
-                    </Image.Clip>
-                </Image>
-                <!--  添加一个圆框在头像上，做边框  -->
-                <Ellipse
-                    Grid.Row="0"
-                    Grid.Column="0"
-                    Width="66"
-                    Height="66"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Stroke="{DynamicResource BrushImageBorder2}"
-                    StrokeThickness="2" />
-
-                <Grid Grid.Row="0" Grid.Column="1" RowDefinitions="*,*">
-                    <StackPanel
-                        Grid.Row="0"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                        <TextBlock
-                            FontSize="20"
-                            FontWeight="Bold"
-                            Foreground="{DynamicResource BrushText}"
-                            Text="{Binding UserName}" />
-                        <Image
-                            Width="18"
-                            Height="18"
-                            Margin="5,0,0,0"
-                            Source="{Binding Sex}" />
-                        <Image
-                            Width="28"
-                            Height="16"
-                            Margin="5,0,0,0"
-                            Source="{Binding Level}" />
+                    </ControlTemplate>
+                </Setter>
+            </ControlTheme>
+            <ControlTheme x:Key="SpaceEntryItem" TargetType="ListBoxItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+                <Setter Property="Template">
+                    <ControlTemplate>
                         <Border
-                            Height="17"
-                            Margin="5,0,0,0"
-                            Padding="5,0"
-                            Background="{DynamicResource BrushSecond}"
-                            CornerRadius="3"
-                            IsVisible="{Binding VipTypeVisibility}">
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontSize="10"
-                                Foreground="{DynamicResource BrushText}"
-                                Text="{Binding VipType}" />
+                            Name="SpaceEntry"
+                            Padding="16"
+                            MinHeight="154"
+                            BorderThickness="0,1,0,0"
+                            BorderBrush="{DynamicResource SpaceInk}"
+                            Background="{TemplateBinding Background}">
+                            <ContentPresenter
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="Stretch" />
                         </Border>
-                    </StackPanel>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:nth-child(1)">
+                    <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SpaceCarbon}" />
+                </Style>
+                <Style Selector="^:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource SpaceInk}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SpacePaper}" />
+                </Style>
+                <Style Selector="^:selected">
+                    <Setter Property="Background" Value="{DynamicResource SpaceInk}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SpacePaper}" />
+                </Style>
+                <Style Selector="^:focus-visible">
+                    <Setter Property="Background" Value="{DynamicResource SpaceInk}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SpacePaper}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#SpaceEntry">
+                    <Setter Property="BoxShadow" Value="inset 0 0 0 3 #EF592D" />
+                </Style>
+            </ControlTheme>
+            <ControlTheme x:Key="SpaceStatusItem" TargetType="ListBoxItem" x:DataType="vmp:SpaceItem">
+                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Name="StatusSurface" Padding="16,16" Background="Transparent">
+                            <ContentPresenter
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="Stretch" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover /template/ Border#StatusSurface">
+                    <Setter Property="Background" Value="{DynamicResource BrushControlFillHover}" />
+                </Style>
+                <Style Selector="^:focus-visible /template/ Border#StatusSurface">
+                    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #EF592D" />
+                </Style>
+            </ControlTheme>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid RowDefinitions="Auto,16,*" Margin="24,18,24,20">
+        <Grid Name="PersonalPageHeader" ColumnDefinitions="Auto,*,Auto" MinHeight="44">
+            <Button Theme="{StaticResource PersonalNavigationButton}" Command="{Binding BackSpaceCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Width="24" Height="24" Data="{Binding ArrowBack.Data}" Fill="{DynamicResource SpaceInk}" Stretch="Uniform" />
                     <TextBlock
-                        Grid.Row="1"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        Foreground="{DynamicResource BrushText}"
-                        Text="{Binding Sign}" />
-                </Grid>
-
-            </Grid>
-
-            <!--  内容  -->
-            <Grid Grid.Row="1" IsVisible="{Binding ContentVisibility}" RowDefinitions="2*,3*,3*,1*">
-
-                <Grid Grid.Row="0" ColumnDefinitions="*,*,*">
-                    <StackPanel
-                        Grid.Row="0"
-                        Margin="20,20,0,0"
-                        VerticalAlignment="Top"
-                        Orientation="Horizontal">
-                        <!--  硬币&B币  -->
-                        <ContentControl Width="20" Height="20">
-                            <Path
-                                Width="{Binding CoinIcon.Width}"
-                                Height="{Binding CoinIcon.Height}"
-                                Data="{Binding CoinIcon.Data}"
-                                Fill="{DynamicResource BrushPrimary}"
-                                Stretch="Uniform" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="5,0,0,0"
-                            VerticalAlignment="Center"
-                            Text="{Binding Coin}" />
-
-                        <ContentControl
-                            Width="20"
-                            Height="20"
-                            Margin="20,0,0,0">
-                            <Path
-                                Width="{Binding MoneyIcon.Width}"
-                                Height="{Binding MoneyIcon.Height}"
-                                Data="{Binding MoneyIcon.Data}"
-                                Fill="{DynamicResource BrushMoney}"
-                                Stretch="Uniform" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="5,0,0,0"
-                            VerticalAlignment="Center"
-                            Text="{Binding Money}" />
-
-                        <!--  绑定邮箱&手机  -->
-                        <ContentControl
-                            Width="20"
-                            Height="20"
-                            Margin="20,0,0,0">
-                            <Path
-                                Width="{Binding BindingEmail.Width}"
-                                Height="{Binding BindingEmail.Height}"
-                                Data="{Binding BindingEmail.Data}"
-                                Fill="{DynamicResource BrushPrimary}"
-                                Stretch="Uniform" />
-                        </ContentControl>
-                        <ContentControl
-                            Width="20"
-                            Height="20"
-                            Margin="5,0,0,0">
-                            <Path
-                                Width="{Binding BindingPhone.Width}"
-                                Height="{Binding BindingPhone.Height}"
-                                Data="{Binding BindingPhone.Data}"
-                                Fill="{DynamicResource BrushPrimary}"
-                                Stretch="Uniform" />
-                        </ContentControl>
-                    </StackPanel>
-                    <!--  等级  -->
-                    <StackPanel
-                        Grid.Column="2"
-                        Margin="20,20,20,0"
-                        Orientation="Vertical">
-                        <Grid>
-                            <TextBlock
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                Foreground="{DynamicResource BrushTextDark}"
-                                Text="{Binding LevelText}" />
-                            <TextBlock
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding CurrentExp}" />
-                        </Grid>
-                        <ProgressBar
-                            Name="NameExpProgress"
-                            Height="2"
-                            Margin="0,5,0,0"
-                            BorderBrush="{x:Null}"
-                            BorderThickness="0"
-                            Maximum="{Binding MaxExp}"
-                            Minimum="0"
-                            Value="{Binding ExpProgress}" />
-
-                    </StackPanel>
-                </Grid>
-
-                <ListBox
-                    Grid.Row="1"
-                    BorderBrush="{x:Null}"
-                    BorderThickness="0"
-                    ItemsSource="{Binding StatusList}"
-                    SelectedIndex="{Binding SelectedStatus}"
-                    SelectionMode="Single"
-                    Theme="{StaticResource SpaceStyle}">
-                    <Interaction.Behaviors>
-                        <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding StatusListCommand}" />
-                        </EventTriggerBehavior>
-                    </Interaction.Behaviors>
-
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="5" />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                    <ListBox.ItemContainerTheme>
-                        <ControlTheme TargetType="ListBoxItem">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type ListBoxItem}" x:DataType="vmp:SpaceItem">
-                                        <StackPanel
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Cursor="Hand"
-                                            IsEnabled="{Binding IsEnabled}"
-                                            Orientation="Vertical">
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                FontSize="16"
-                                                Foreground="{DynamicResource BrushTextDark}"
-                                                Text="{Binding Subtitle}" />
-                                            <TextBlock
-                                                Margin="0,15,0,0"
-                                                HorizontalAlignment="Center"
-                                                FontSize="14"
-                                                Foreground="{DynamicResource BrushTextGrey}"
-                                                Text="{Binding Title}" />
-                                        </StackPanel>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </ControlTheme>
-                    </ListBox.ItemContainerTheme>
-                </ListBox>
-                <ListBox
-                    Grid.Row="2"
-                    BorderBrush="{x:Null}"
-                    BorderThickness="0"
-                    ItemsSource="{Binding PackageList}"
-                    SelectedIndex="{Binding SelectedPackage}"
-                    SelectionMode="Single"
-                    Theme="{StaticResource SpaceStyle}">
-                    <Interaction.Behaviors>
-                        <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding PackageListCommand}" />
-                        </EventTriggerBehavior>
-                    </Interaction.Behaviors>
-                    <ListBox.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="6" />
-                        </ItemsPanelTemplate>
-                    </ListBox.ItemsPanel>
-                    <ListBox.ItemContainerTheme>
-                        <ControlTheme TargetType="ListBoxItem">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type ListBoxItem}" x:DataType="vmp:SpaceItem">
-                                        <StackPanel
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Cursor="Hand"
-                                            Orientation="Vertical">
-                                            <Border
-                                                Width="24"
-                                                Height="24"
-                                                Background="{DynamicResource BrushBackground}">
-                                                <Path
-                                                    Width="{Binding Image.Width}"
-                                                    Height="{Binding Image.Height}"
-                                                    Data="{Binding Image.Data}"
-                                                    Fill="{DynamicResource BrushPrimary}"
-                                                    Stretch="Uniform" />
-                                            </Border>
-                                            <TextBlock
-                                                Margin="0,15,0,0"
-                                                VerticalAlignment="Center"
-                                                FontSize="14"
-                                                Foreground="{DynamicResource BrushTextGrey}"
-                                                Text="{Binding Title}" />
-                                        </StackPanel>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </ControlTheme>
-                    </ListBox.ItemContainerTheme>
-                </ListBox>
-            </Grid>
+                        Text="{DynamicResource MySpace}"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource SpaceInk}"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Theme="{StaticResource PersonalNavigationButton}" Command="{Binding LogoutCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{DynamicResource Logout}" Foreground="{DynamicResource SpaceMuted}" VerticalAlignment="Center" />
+                    <Path Width="20" Height="20" Data="{Binding Logout.Data}" Fill="{DynamicResource SpaceMuted}" Stretch="Uniform" />
+                </StackPanel>
+            </Button>
         </Grid>
-        <!--  加载gif  -->
+        <ScrollViewer
+            Grid.Row="2"
+            Name="PersonalSpaceScroll"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            IsVisible="{Binding ViewVisibility}">
+            <StackPanel Margin="0,0,12,8">
+                <Grid ColumnDefinitions="*,280" MinHeight="280">
+                    <Border Background="{DynamicResource SpaceAccent}" Padding="24">
+                        <StackPanel Spacing="12" VerticalAlignment="Center">
+                            <TextBlock
+                                Text="{DynamicResource PersonalSpaceHeadline}"
+                                FontSize="64"
+                                FontWeight="Black"
+                                Foreground="{DynamicResource SpaceCarbon}" />
+                            <Grid ColumnDefinitions="48,16,*">
+                                <Border Width="48" Height="48" CornerRadius="24" ClipToBounds="True" Background="{DynamicResource SpaceCream}">
+                                    <Image asyncImageLoader:ImageLoader.Source="{Binding Header}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{Binding UserName}"
+                                        FontSize="26"
+                                        FontWeight="Bold"
+                                        Foreground="{DynamicResource SpaceCarbon}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip.Tip="{Binding UserName}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Image
+                                            Width="18"
+                                            Height="18"
+                                            Source="{Binding Sex}"
+                                            IsVisible="{Binding Sex, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Image Width="28" Height="16" Source="{Binding Level}" />
+                                        <TextBlock
+                                            Text="{Binding VipType}"
+                                            FontSize="12"
+                                            Foreground="{DynamicResource SpaceCarbon}"
+                                            IsVisible="{Binding VipTypeVisibility}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock
+                                Text="{Binding Sign}"
+                                FontSize="13"
+                                TextWrapping="Wrap"
+                                MaxLines="2"
+                                TextTrimming="CharacterEllipsis"
+                                Foreground="{DynamicResource SpaceCarbon}"
+                                ToolTip.Tip="{Binding Sign}"
+                                IsVisible="{Binding Sign, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <StackPanel Orientation="Horizontal" Spacing="20" IsVisible="{Binding ContentVisibility}">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{DynamicResource PersonalCoinBalance}"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource SpaceCarbon}" />
+                                    <TextBlock
+                                        Text="{Binding Coin}"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource SpaceCarbon}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock
+                                        Text="{DynamicResource PersonalMoneyBalance}"
+                                        FontSize="12"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource SpaceCarbon}" />
+                                    <TextBlock
+                                        Text="{Binding Money}"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        VerticalAlignment="Center"
+                                        Foreground="{DynamicResource SpaceCarbon}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <Path
+                                        Width="18"
+                                        Height="18"
+                                        Data="{Binding BindingEmail.Data}"
+                                        Stretch="Uniform"
+                                        Fill="{DynamicResource SpaceCarbon}"
+                                        IsVisible="{Binding BindingEmailVisibility}"
+                                        ToolTip.Tip="{DynamicResource PersonalEmailBound}" />
+                                    <Path
+                                        Width="18"
+                                        Height="18"
+                                        Data="{Binding BindingPhone.Data}"
+                                        Stretch="Uniform"
+                                        Fill="{DynamicResource SpaceCarbon}"
+                                        IsVisible="{Binding BindingPhoneVisibility}"
+                                        ToolTip.Tip="{DynamicResource PersonalPhoneBound}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Grid Grid.Column="1" Background="{DynamicResource SpaceCarbon}" RowDefinitions="*,Auto">
+                        <!-- Geometric layers are decoration, kept away from text and input. -->
+                        <Viewbox Stretch="Uniform" ClipToBounds="True" IsHitTestVisible="False">
+                            <Canvas Width="280" Height="200" ClipToBounds="True">
+                                <Ellipse Canvas.Left="112" Canvas.Top="-28" Width="190" Height="190" Fill="{DynamicResource SpaceCream}" />
+                                <Polygon Points="-20,160 98,42 216,160 98,278" Fill="{DynamicResource SpaceAccent}" />
+                                <Border
+                                    Canvas.Left="34"
+                                    Canvas.Top="54"
+                                    Width="212"
+                                    Height="118"
+                                    RenderTransform="rotate(-10deg)"
+                                    BoxShadow="10 10 0 0 #FF000000"
+                                    ClipToBounds="True"
+                                    IsVisible="{Binding Background, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <Border.Background>
+                                        <ImageBrush asyncImageLoader:ImageBrushLoader.Source="{Binding Background}" Stretch="UniformToFill" />
+                                    </Border.Background>
+                                </Border>
+                                <Path Data="M0,194 L280,0" Stroke="{DynamicResource SpaceCream}" StrokeThickness="1" Opacity="0.5" />
+                            </Canvas>
+                        </Viewbox>
+                        <StackPanel Grid.Row="1" Margin="24,12,24,24" Spacing="8" IsVisible="{Binding ContentVisibility}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Text="{Binding LevelText}" Foreground="{DynamicResource SpaceCream}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding CurrentExp}"
+                                    FontSize="12"
+                                    HorizontalAlignment="Right"
+                                    Foreground="{DynamicResource SpaceCream}" />
+                            </Grid>
+                            <ProgressBar
+                                Name="NameExpProgress"
+                                Height="4"
+                                CornerRadius="0"
+                                Foreground="{DynamicResource SpaceAccent}"
+                                Background="#55564F"
+                                Minimum="0"
+                                Maximum="{Binding MaxExp}"
+                                Value="{Binding ExpProgress}" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+                <StackPanel IsVisible="{Binding ContentVisibility}">
+                    <Border BorderBrush="{DynamicResource SpaceInk}" BorderThickness="0,0,0,1">
+                        <ListBox
+                            Name="SpaceStatusList"
+                            Theme="{StaticResource SpaceList}"
+                            ItemContainerTheme="{StaticResource SpaceStatusItem}"
+                            ItemsSource="{Binding StatusList}"
+                            SelectedIndex="{Binding SelectedStatus}"
+                            SelectionMode="Single">
+                            <Interaction.Behaviors>
+                                <EventTriggerBehavior EventName="SelectionChanged">
+                                    <InvokeCommandAction Command="{Binding StatusListCommand}" />
+                                </EventTriggerBehavior>
+                            </Interaction.Behaviors>
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="5" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vmp:SpaceItem">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="40" FontWeight="Bold" Foreground="{DynamicResource SpaceInk}" />
+                                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource SpaceMuted}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <TextBlock
+                        Text="{DynamicResource PersonalLibrary}"
+                        FontSize="28"
+                        FontWeight="Bold"
+                        Margin="0,20,0,12"
+                        Foreground="{DynamicResource SpaceInk}" />
+                    <ListBox
+                        Name="SpacePackageList"
+                        Theme="{StaticResource SpaceList}"
+                        ItemContainerTheme="{StaticResource SpaceEntryItem}"
+                        ItemsSource="{Binding PackageList}"
+                        SelectedIndex="{Binding SelectedPackage}"
+                        SelectionMode="Single">
+                        <Interaction.Behaviors>
+                            <EventTriggerBehavior EventName="SelectionChanged">
+                                <InvokeCommandAction Command="{Binding PackageListCommand}" />
+                            </EventTriggerBehavior>
+                        </Interaction.Behaviors>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="5" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vmp:SpaceItem">
+                                <Grid RowDefinitions="Auto,*,Auto" MinHeight="120">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Path
+                                            Width="28"
+                                            Height="28"
+                                            HorizontalAlignment="Left"
+                                            Data="{Binding Image.Data}"
+                                            Fill="{Binding $parent[ListBoxItem].Foreground}"
+                                            Stretch="Uniform" />
+                                        <Path
+                                            Grid.Column="1"
+                                            Width="18"
+                                            Height="18"
+                                            Data="M2,16 L16,2 M2,2 H16 V16"
+                                            Stroke="{Binding $parent[ListBoxItem].Foreground}"
+                                            StrokeThickness="1.5"
+                                            Stretch="Uniform" />
+                                    </Grid>
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Text="{Binding Title}"
+                                        FontSize="24"
+                                        FontWeight="Bold"
+                                        TextWrapping="Wrap"
+                                        MaxWidth="100"
+                                        HorizontalAlignment="Left"
+                                        Foreground="{Binding $parent[ListBoxItem].Foreground}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
         <StackPanel
+            Grid.Row="2"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Orientation="Vertical"
+            Spacing="12"
             IsVisible="{Binding LoadingVisibility}">
-            <custom:Loading
-                Width="40"
-                Height="40"
-                Foreground="Gray"
-                IsActive="{Binding Loading}" />
-            <TextBlock
-                Margin="0,10,0,0"
-                FontSize="14"
-                Foreground="{DynamicResource BrushTextDark}"
-                Text="{DynamicResource MySpaceWait}" />
+            <custom:Loading Width="32" Height="32" Foreground="{DynamicResource SpaceAccent}" IsActive="{Binding Loading}" />
+            <TextBlock Text="{DynamicResource MySpaceWait}" Foreground="{DynamicResource SpaceMuted}" />
         </StackPanel>
-
-        <!--  没有数据提示  -->
-        <Image
-            Width="256"
-            Height="256"
-            Source="/Resources/no-data.png"
-            IsVisible="{Binding NoDataVisibility}" />
-
-        <!--  顶部导航  -->
-        <Grid
-            VerticalAlignment="Top"
-            Classes="theme-header"
-            Classes.overlay="{Binding ViewVisibility}"
-            ColumnDefinitions="150,*,150">
-            <Button
-                Grid.Column="0"
-                Margin="10,5,0,5"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
-                Command="{Binding BackSpaceCommand}"
-                Theme="{StaticResource ImageBtnStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <ContentControl Width="24" Height="24">
-                        <Path
-                            Width="{Binding ArrowBack.Width}"
-                            Height="{Binding ArrowBack.Height}"
-                            Data="{Binding ArrowBack.Data}"
-                            Stretch="None" />
-                    </ContentControl>
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="16"
-                        Text="{DynamicResource MySpace}" />
-                </StackPanel>
-            </Button>
-            <Button
-                Grid.Column="2"
-                Margin="0,5,10,5"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Command="{Binding LogoutCommand}"
-                Theme="{StaticResource ImageBtnStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock
-                        Margin="10,0"
-                        VerticalAlignment="Center"
-                        FontSize="16"
-                        Text="{DynamicResource Logout}" />
-                    <ContentControl Width="24" Height="24">
-                        <Path
-                            Width="{Binding Logout.Width}"
-                            Height="{Binding Logout.Height}"
-                            Data="{Binding Logout.Data}"
-                            Stretch="Uniform" />
-                    </ContentControl>
-                </StackPanel>
-            </Button>
-        </Grid>
+        <ContentControl Theme="{StaticResource StudioEmptyState}" Grid.Row="2" IsVisible="{Binding NoDataVisibility}" />
     </Grid>
 </UserControl>

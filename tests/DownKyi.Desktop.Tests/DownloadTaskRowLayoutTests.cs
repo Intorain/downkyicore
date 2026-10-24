@@ -63,6 +63,8 @@ public sealed class DownloadTaskRowLayoutTests
                 Downloading = new Downloading
                 {
                     DownloadStatus = DownloadStatus.DownloadFailed,
+                    DownloadContent = string.Empty,
+                    DownloadStatusTitle = "下载失败",
                     SpeedDisplay = "2 MB/s"
                 }
             };
@@ -79,12 +81,20 @@ public sealed class DownloadTaskRowLayoutTests
                 var row = Named<Border>(container, "NameTaskRow");
                 var detailsButton = Named<Button>(container, "NameTaskFailureDetailsButton");
                 var detailsPanel = Named<Border>(container, "NameTaskFailureDetailsPanel");
+                var status = Named<TextBlock>(container, "NameTaskStatus");
 
+                Assert.Equal("下载失败", status.Text);
                 Assert.True(detailsButton.IsVisible);
                 Assert.Equal("查看原因", detailsButton.Content);
                 Assert.False(Named<TextBlock>(container, "NameTaskSpeed").IsVisible);
                 Assert.False(detailsPanel.IsVisible);
                 Assert.Equal(86, row.Bounds.Height);
+
+                // Empty content must not replace the status binding with a captured string.
+                item.DownloadContent = "视频";
+                item.DownloadStatusTitle = "准备重试";
+                window.UpdateLayout();
+                Assert.Equal("准备重试", status.Text);
 
                 item.IsFailureDetailsExpanded = true;
                 window.UpdateLayout();
@@ -199,29 +209,29 @@ public sealed class DownloadTaskRowLayoutTests
             Assert.Equal(36, delete.Bounds.Width);
             Assert.Equal(36, delete.Bounds.Height);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(toggle.Foreground));
             Assert.NotEqual(
-                ResourceColor(application, "BrushPrimary", theme),
+                ResourceColor(application, "SpaceAccent", theme),
                 SolidColor(toggle.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushWarning", theme),
+                ResourceColor(application, "DownloadWarning", theme),
                 SolidColor(delete.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushWarning", theme),
+                ResourceColor(application, "DownloadWarning", theme),
                 SolidColor(Named<ShapePath>(delete, null).Fill));
             Assert.Equal(
-                ResourceColor(application, "BrushPrimaryTranslucent3", theme),
+                ResourceColor(application, "SpaceHover", theme),
                 SolidColor(iconFrame.Background));
 
             var track = Named<Border>(progress, "PART_Track");
             var indicator = Named<Border>(progress, "PART_Indicator");
-            Assert.Equal(3, track.CornerRadius.TopLeft);
+            Assert.Equal(0, track.CornerRadius.TopLeft);
             Assert.Equal(
-                ResourceColor(application, "BrushControlFill", theme),
+                ResourceColor(application, "SpaceRule", theme),
                 SolidColor(track.Background));
             Assert.Equal(
-                ResourceColor(application, "BrushPrimary", theme),
+                ResourceColor(application, "SpaceAccent", theme),
                 SolidColor(indicator.Background));
 
             foreach (var button in new[] { toggle, delete })
@@ -229,7 +239,7 @@ public sealed class DownloadTaskRowLayoutTests
                 var chrome = Assert.Single(
                     button.GetVisualDescendants().OfType<Border>());
                 Assert.Equal(
-                    ResourceColor(application, "BrushControlFill", theme),
+                    ResourceColor(application, "SpacePaper", theme),
                     SolidColor(chrome.Background));
             }
 
@@ -239,7 +249,7 @@ public sealed class DownloadTaskRowLayoutTests
             window.UpdateLayout();
             Assert.True(container.IsPointerOver);
             Assert.Equal(
-                ResourceColor(application, "BrushSurfaceRaised", theme),
+                ResourceColor(application, "SpaceHover", theme),
                 SolidColor(row.Background));
         }
         finally

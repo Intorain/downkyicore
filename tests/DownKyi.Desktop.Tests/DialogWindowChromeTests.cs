@@ -126,19 +126,19 @@ public sealed class DialogWindowChromeTests
                         var cancelChrome = Assert.Single(
                             cancel.GetVisualDescendants().OfType<Border>());
 
-                        var primary = ResourceColor(application, "BrushPrimary", theme);
-                        var onPrimary = ResourceColor(application, "BrushText", theme);
-                        var text = ResourceColor(application, "BrushTextPrimary", theme);
-                        var surface = ResourceColor(application, "BrushSurfaceBase", theme);
+                        var primary = ResourceColor(application, "SpaceAccent", theme);
+                        var onPrimary = ResourceColor(application, "SpaceCarbon", theme);
+                        var text = ResourceColor(application, "SpaceInk", theme);
+                        var surface = ResourceColor(application, "SpacePaper", theme);
 
                         Assert.Equal(primary, SolidColor(confirmChrome.Background));
                         Assert.Equal(onPrimary, SolidColor(confirm.Foreground));
                         Assert.True(ContrastRatio(onPrimary, primary) >= 4.5);
 
-                        Assert.Equal(Colors.Transparent, SolidColor(cancelChrome.Background));
+                        Assert.Equal(surface, SolidColor(cancelChrome.Background));
                         Assert.Equal(text, SolidColor(cancel.Foreground));
                         Assert.Equal(
-                            ResourceColor(application, "BrushControlStroke", theme),
+                            ResourceColor(application, "SpaceRule", theme),
                             SolidColor(cancelChrome.BorderBrush));
                         Assert.True(ContrastRatio(text, surface) >= 4.5);
                     }

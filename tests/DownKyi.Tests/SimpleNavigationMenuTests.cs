@@ -1,5 +1,8 @@
 using DownKyi.Application.Desktop;
+using DownKyi.Services.Download;
 using DownKyi.ViewModels;
+using DownKyi.ViewModels.DownloadManager;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DownKyi.Tests;
 
@@ -38,7 +41,11 @@ public sealed class SimpleNavigationMenuTests
         AppRoute expectedRoute)
     {
         var navigation = new TestNavigationService();
-        using var viewModel = new ViewDownloadManagerViewModel(new TestDesktopInteractionContext(navigation));
+        var state = new DownloadListState();
+        var coordinator = new DownloadFinishedHistoryLoadingTests.RecordingCoordinator(
+            state, () => Task.FromResult<IReadOnlyList<DownloadedItem>>([]));
+        using var viewModel = new ViewDownloadManagerViewModel(new TestDesktopInteractionContext(navigation),
+            state, coordinator, NullLogger<ViewDownloadManagerViewModel>.Instance);
         Assert.Equal(2, viewModel.TabHeaders.Count);
         var menuItem = viewModel.TabHeaders[menuIndex];
         Assert.Equal(expectedMenuId, menuItem.Id);

@@ -98,7 +98,7 @@ public sealed class AboutSettingsLayoutTests
             Assert.Equal(HorizontalAlignment.Left, section.HorizontalAlignment);
             Assert.InRange(section.Bounds.Width, 800, 880);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(title.Foreground));
             Assert.Equal(6, items.Length);
             Assert.All(items, item =>
@@ -107,7 +107,7 @@ public sealed class AboutSettingsLayoutTests
                 Assert.Equal(22, item.LineHeight);
                 Assert.Equal(TextWrapping.WrapWithOverflow, item.TextWrapping);
                 Assert.Equal(
-                    ResourceColor(application, "BrushTextSecondary", theme),
+                    ResourceColor(application, "SpaceMuted", theme),
                     SolidColor(item.Foreground));
             });
             Assert.Contains(items, item => item.Bounds.Height > item.LineHeight);
@@ -131,8 +131,8 @@ public sealed class AboutSettingsLayoutTests
             view.FindControl<TextBlock>("NameFeedbackAndDiagnosticsTitle"));
         var feedbackTip = Assert.IsType<TextBlock>(
             view.FindControl<TextBlock>("NameFeedbackSupportTip"));
-        var feedbackActions = Assert.IsType<StackPanel>(
-            view.FindControl<StackPanel>("NameFeedbackActions"));
+        var feedbackActions = Assert.IsType<WrapPanel>(
+            view.FindControl<WrapPanel>("NameFeedbackActions"));
         var checkUpdate = Assert.IsType<Button>(
             view.FindControl<Button>("NameCheckUpdateButton"));
         var feedback = Assert.IsType<Button>(
@@ -179,11 +179,9 @@ public sealed class AboutSettingsLayoutTests
                 Assert.Equal(96, button.MinWidth);
                 Assert.True(button.Bounds.Width >= presenter.Bounds.Width + 24);
                 Assert.Equal(
-                    ResourceColor(application, "BrushControlFill", theme),
+                    ResourceColor(application, button == checkUpdate ? "SpaceAccent" : "SpacePaper", theme),
                     SolidColor(chrome.Background));
-                Assert.NotEqual(
-                    ResourceColor(application, "BrushSurfaceBase", theme),
-                    SolidColor(chrome.Background));
+                Assert.Equal(new CornerRadius(0), chrome.CornerRadius);
             }
 
             foreach (var button in new[] { feedback, openLogs, exportDiagnosticLog })

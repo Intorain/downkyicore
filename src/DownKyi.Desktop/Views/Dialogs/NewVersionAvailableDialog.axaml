@@ -1,20 +1,20 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="520"
-             Height="400"
-             xmlns:vmd="clr-namespace:DownKyi.ViewModels.Dialogs"
-             xmlns:custom="using:DownKyi.CustomControl"
-             x:DataType="vmd:NewVersionAvailableDialogViewModel"
-             x:Class="DownKyi.Views.Dialogs.NewVersionAvailableDialog">
-
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vmd="clr-namespace:DownKyi.ViewModels.Dialogs"
+    xmlns:custom="using:DownKyi.CustomControl"
+    x:Class="DownKyi.Views.Dialogs.NewVersionAvailableDialog"
+    x:DataType="vmd:NewVersionAvailableDialogViewModel"
+    Classes="studio-page studio-dialog">
     <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/StudioDialog.axaml" />
         <Style Selector="TextBlock.release-notes-body">
             <Setter Property="FontSize" Value="{DynamicResource DownKyiFontSizeBody}" />
-            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
         </Style>
         <Style Selector="TextBlock.release-notes-heading">
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
         </Style>
         <Style Selector="TextBlock.release-notes-h1">
             <Setter Property="FontSize" Value="{DynamicResource DownKyiFontSizeTitle}" />
@@ -35,92 +35,85 @@
             <Setter Property="FontStyle" Value="Italic" />
         </Style>
         <Style Selector="Span.release-notes-link">
-            <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceAccent}" />
             <Setter Property="TextDecorations" Value="Underline" />
         </Style>
         <Style Selector="Run.release-notes-inline-code">
             <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,Monaco,monospace" />
         </Style>
         <Style Selector="TextBlock.release-notes-list-marker">
-            <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceAccent}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style Selector="Border.release-notes-quote">
             <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Background" Value="{DynamicResource BrushSurfaceSunken}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}" />
+            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
             <Setter Property="BorderThickness" Value="3,0,0,0" />
         </Style>
         <Style Selector="Border.release-notes-code-block">
             <Setter Property="Padding" Value="10,8" />
-            <Setter Property="Background" Value="{DynamicResource BrushSurfaceSunken}" />
-            <Setter Property="CornerRadius" Value="{DynamicResource DownKyiRadiusSmall}" />
+            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+            <Setter Property="CornerRadius" Value="0" />
         </Style>
         <Style Selector="TextBlock.release-notes-code-text">
             <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,Monaco,monospace" />
         </Style>
         <Style Selector="Separator.release-notes-rule">
-            <Setter Property="Background" Value="{DynamicResource BrushBorderSubtle}" />
+            <Setter Property="Background" Value="{DynamicResource SpaceRule}" />
         </Style>
     </UserControl.Styles>
-
-    <Border Background="{DynamicResource BrushBackground}"
-            CornerRadius="8"
-            BorderBrush="{DynamicResource BrushPrimary}"
-            BorderThickness="1">
-        
-        <Grid RowDefinitions="auto,*,auto" Margin="16">
-            <Grid Grid.Row="0"
-                  Margin="0 0 0 16"
-                  WindowDecorationProperties.ElementRole="TitleBar">
-                <StackPanel Orientation="Horizontal" 
-                            VerticalAlignment="Center"
-                            Spacing="8">
-                    <PathIcon Data="M12 4V20M20 12H4" 
-                              Width="20"
-                              Height="20"/>
-                    
-                    <TextBlock Text="{DynamicResource NewVersionTitle}"
-                               FontSize="18"
-                               FontWeight="Bold"/>
-                </StackPanel>
-                
-                <Button HorizontalAlignment="Right"
-                        ToolTip.Tip="{DynamicResource Close}"
-                        Theme="{StaticResource ImageBtnStyle}"
-                        WindowDecorationProperties.ElementRole="User"
-                        Command="{Binding CloseCommand}">
-                    <PathIcon    
-                        Data="{Binding CloseIcon.Data}"
+    <Border Background="{DynamicResource SpacePaper}" BorderBrush="{DynamicResource SpaceRule}" BorderThickness="1">
+        <Grid RowDefinitions="40,*,Auto">
+            <Grid Classes="dialog-titlebar" ColumnDefinitions="*,40" WindowDecorationProperties.ElementRole="TitleBar">
+                <TextBlock
+                    Text="DownKyi"
+                    FontSize="12"
+                    Margin="24,0"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource SpaceMuted}" />
+                <Button
+                    Grid.Column="1"
+                    Classes="studio-back dialog-close"
+                    Theme="{StaticResource PersonalNavigationButton}"
+                    Command="{Binding CloseCommand}"
+                    WindowDecorationProperties.ElementRole="User"
+                    ToolTip.Tip="{DynamicResource Close}">
+                    <Path
                         Width="16"
-                        Height="16"/>
+                        Height="16"
+                        Data="{Binding CloseIcon.Data}"
+                        Fill="{DynamicResource SpaceInk}"
+                        Stretch="Uniform" />
                 </Button>
             </Grid>
-            
-            <ScrollViewer Grid.Row="1"
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="0 8">
-                <custom:ReleaseNotesMarkdownView Name="ReleaseNotesMarkdown"
-                                                 Margin="15,0,0,0"
-                                                 Markdown="{Binding MarkdownText}" />
+            <ScrollViewer
+                Name="DialogBodyScroll"
+                Grid.Row="1"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24,16,24,24" Spacing="16">
+                    <TextBlock Text="{DynamicResource NewVersionTitle}" Classes="dialog-heading" />
+                    <custom:ReleaseNotesMarkdownView Name="ReleaseNotesMarkdown" Margin="0" Markdown="{Binding MarkdownText}" />
+                </StackPanel>
             </ScrollViewer>
-            
-    
-            <StackPanel Grid.Row="2" 
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Right"
-                        Spacing="12"
-                        Margin="0 16 0 0">
-                
-                <Button Content="{DynamicResource SkipCurrentVersion}"
+            <Border Name="DialogFooter" Classes="dialog-footer" Grid.Row="2">
+                <WrapPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button
+                        Name="SkipVersionButton"
+                        Content="{DynamicResource SkipCurrentVersion}"
                         IsVisible="{Binding EnableSkipVersionOnLaunch}"
                         Command="{Binding SkipCurrentVersionCommand}"
-                        MinWidth="100"/>
-                
-                <Button Content="{DynamicResource ActionUpdate}"
+                        MinWidth="104"
+                        Margin="0,0,12,0" />
+                    <Button
+                        Name="UpdateVersionButton"
+                        Classes="studio-primary"
+                        Content="{DynamicResource ActionUpdate}"
                         Command="{Binding AllowCommand}"
-                        MinWidth="100"/>
-            </StackPanel>
+                        MinWidth="104" />
+                </WrapPanel>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

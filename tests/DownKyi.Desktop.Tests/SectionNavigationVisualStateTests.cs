@@ -16,7 +16,7 @@ namespace DownKyi.Desktop.Tests;
 public sealed class SectionNavigationVisualStateTests
 {
     [AvaloniaFact]
-    public Task SectionMenusShareOneRoundedSelectedStateAcrossThemes()
+    public Task SectionMenusUseTheSharedWorkspaceThemesAcrossThemes()
     {
         return AvaloniaTestDispatcher.RunAsync(() =>
         {
@@ -33,9 +33,16 @@ public sealed class SectionNavigationVisualStateTests
                     var listTheme = GetTheme(application, "LeftTabHeaderStyle", theme);
                     var itemTheme = GetTheme(application, "LeftTabHeaderItemStyle", theme);
 
-                    AssertTargetViewUsesSharedThemes(new ViewToolbox(), listTheme, itemTheme);
-                    AssertTargetViewUsesSharedThemes(new ViewDownloadManager(), listTheme, itemTheme);
-                    AssertTargetViewUsesSharedThemes(new ViewSettings(), listTheme, itemTheme);
+                    AssertTargetViewUsesSharedThemes(new ViewToolbox(),
+                        GetTheme(application, "PersonalTabs", theme),
+                        GetTheme(application, "DownloadSectionItem", theme));
+                    AssertTargetViewUsesSharedThemes(
+                        new ViewDownloadManager(),
+                        GetTheme(application, "PersonalTabs", theme),
+                        GetTheme(application, "DownloadSectionItem", theme));
+                    AssertTargetViewUsesSharedThemes(new ViewSettings(),
+                        GetTheme(application, "PersonalTabs", theme),
+                        GetTheme(application, "DownloadSectionItem", theme));
                     AssertSelectedState(application, theme, listTheme, itemTheme);
                 }
             }

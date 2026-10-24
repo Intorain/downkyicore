@@ -1,294 +1,223 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.ViewPublicFavorites"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             d:DesignWidth="840"
-             d:DesignHeight="620"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             xmlns:vmp="clr-namespace:DownKyi.Presentation"
-             xmlns:custom="clr-namespace:DownKyi.CustomControl"
-             xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
-             x:DataType="vm:ViewPublicFavoritesViewModel">
-    <Grid RowDefinitions="50,1,*">
-        <Grid Grid.Row="0" ColumnDefinitions="100,*,100">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    xmlns:vmp="clr-namespace:DownKyi.Presentation"
+    xmlns:custom="clr-namespace:DownKyi.CustomControl"
+    xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
+    x:Class="DownKyi.Views.ViewPublicFavorites"
+    mc:Ignorable="d"
+    d:DesignWidth="840"
+    d:DesignHeight="620"
+    x:DataType="vm:ViewPublicFavoritesViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,1,*" Margin="24,18,24,20">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
             <Button
-                Grid.Column="0"
-                Margin="10,5,0,5"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
+                Name="LibraryBackButton"
+                Classes="studio-back"
+                Theme="{StaticResource PersonalNavigationButton}"
                 Command="{Binding BackSpaceCommand}"
-                Theme="{StaticResource ImageBtnStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <ContentControl Width="24" Height="24">
-                        <Path
-                            x:Name="BackArrowPath"
-                            Width="{Binding ArrowBack.Width}"
-                            Height="{Binding ArrowBack.Height}"
-                            Data="{Binding ArrowBack.Data}"
-                            Fill="{DynamicResource BrushTextDark}"
-                            Stretch="None" />
-                    </ContentControl>
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="16"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{DynamicResource PublicFavorites}" />
-                </StackPanel>
-            </Button>
-
-            <Button
-                Grid.Column="2"
-                Width="24"
-                Height="24"
-                Margin="10,5"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Command="{Binding DownloadManagerCommand}"
-                Theme="{StaticResource ImageBtnStyle}"
-                ToolTip.Tip="{DynamicResource DownloadManager}">
-                <ContentControl>
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Padding="8">
+                <Grid ColumnDefinitions="24,12,*">
                     <Path
-                        x:Name="DownloadManagePath"
-                        Width="{Binding DownloadManage.Width}"
-                        Height="{Binding DownloadManage.Height}"
-                        Data="{Binding DownloadManage.Data}"
-                        Fill="{DynamicResource BrushPrimary}"
+                        Name="BackArrowPath"
+                        Width="24"
+                        Height="24"
+                        Data="{Binding ArrowBack.Data}"
+                        Fill="{DynamicResource SpaceInk}"
                         Stretch="Uniform" />
-                </ContentControl>
+                    <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="{DynamicResource PublicFavorites}" FontSize="24" FontWeight="Bold" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <Button
+                Grid.Column="1"
+                Classes="studio-back"
+                Theme="{StaticResource PersonalNavigationButton}"
+                Width="44"
+                Height="44"
+                Margin="16,0,0,0"
+                Command="{Binding DownloadManagerCommand}"
+                ToolTip.Tip="{DynamicResource DownloadManager}">
+                <Path
+                    Name="DownloadManagePath"
+                    Width="24"
+                    Height="24"
+                    Data="{Binding DownloadManage.Data}"
+                    Fill="{DynamicResource SpaceInk}"
+                    Stretch="Uniform" />
             </Button>
         </Grid>
-
-        <TextBlock Grid.Row="1" Background="{DynamicResource BrushBorder}" />
-
-        <Grid Grid.Row="2" IsVisible="{Binding ContentVisibility}" ColumnDefinitions="320,*">
+        <TextBlock Grid.Row="1" Background="{DynamicResource SpaceRule}" />
+        <Grid
+            Grid.Row="2"
+            IsVisible="{Binding ContentVisibility}"
+            ColumnDefinitions="296,24,*"
+            Name="PublicFavoritesBody"
+            RowDefinitions="*,Auto"
+            Margin="0,16,0,0">
             <!--  左侧  -->
-            <Grid
-                Grid.Column="0"
-                Margin="10,10,10,10"
-                RowDefinitions="*,Auto">
+            <Grid Grid.Column="0" Margin="0" RowDefinitions="*" Name="FavoritesSummary">
                 <ScrollViewer
                     Grid.Row="0"
                     HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-                    <StackPanel Orientation="Vertical">
-                <Image asyncImageLoader:ImageLoader.Source="{Binding Favorites.CoverUrl}">
-                    <Image.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Command="{Binding CopyCoverUrlCommand}" Header="{DynamicResource CopyCoverUrl}" />
-                        </ContextMenu>
-                    </Image.ContextMenu>
-                </Image>
-
-                <TextBlock
-                    Margin="0,10,0,0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    FontSize="18"
-                    FontWeight="Bold"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    Text="{Binding Favorites.Title}"
-                    TextTrimming="CharacterEllipsis"
-                    ToolTip.Tip="{Binding Favorites.Title}" />
-
-                <ScrollViewer
-                    MaxHeight="80"
-                    Margin="0,10,0,0"
-                    VerticalScrollBarVisibility="Auto">
-                    <TextBox
-                        Background="{x:Null}"
-                        BorderBrush="{x:Null}"
-                        BorderThickness="0"
-                        FontSize="12"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        IsReadOnly="True"
-                        Text="{Binding Favorites.Description}"
-                        TextWrapping="WrapWithOverflow" />
+                    VerticalScrollBarVisibility="Auto"
+                    Name="FavoritesSummaryScroll">
+                    <Grid Name="FavoritesSummaryLayout" ColumnDefinitions="0,*" RowDefinitions="Auto,Auto">
+                        <Image
+                            asyncImageLoader:ImageLoader.Source="{Binding Favorites.CoverUrl}"
+                            Name="FavoritesCover"
+                            Grid.Column="1"
+                            VerticalAlignment="Top"
+                            MaxHeight="170"
+                            Stretch="UniformToFill">
+                            <Image.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Command="{Binding CopyCoverUrlCommand}" Header="{DynamicResource CopyCoverUrl}" />
+                                </ContextMenu>
+                            </Image.ContextMenu>
+                        </Image>
+                        <StackPanel Name="FavoritesMetadata" Grid.Column="1" Grid.Row="1" Spacing="4">
+                            <TextBlock
+                                Margin="0,10,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="18"
+                                FontWeight="Bold"
+                                Foreground="{DynamicResource SpaceInk}"
+                                Text="{Binding Favorites.Title}"
+                                TextTrimming="CharacterEllipsis"
+                                ToolTip.Tip="{Binding Favorites.Title}" />
+                            <ScrollViewer MaxHeight="80" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                                <TextBox
+                                    Background="{x:Null}"
+                                    BorderBrush="{x:Null}"
+                                    BorderThickness="0"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource SpaceInk}"
+                                    IsReadOnly="True"
+                                    Text="{Binding Favorites.Description}"
+                                    TextWrapping="WrapWithOverflow" />
+                            </ScrollViewer>
+                            <Grid Margin="0,15,0,0" ColumnDefinitions="*,*">
+                                <TextBlock
+                                    Grid.Column="0"
+                                    HorizontalAlignment="Left"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource SpaceMuted}"
+                                    Text="{Binding Favorites.CreateTime}" />
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal" IsVisible="{Binding Favorites.MediaCount}">
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding Favorites.MediaCount}" />
+                                    <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource FavoritesMediaCount}" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,15,0,0" ColumnDefinitions="*,*,*,*">
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center" Orientation="Vertical">
+                                    <ContentControl Width="16" Height="16">
+                                        <Path
+                                            Width="{Binding Favorites.Play.Width}"
+                                            Height="{Binding Favorites.Play.Height}"
+                                            Data="{Binding Favorites.Play.Data}"
+                                            Fill="{DynamicResource SpaceMuted}"
+                                            Stretch="UniformToFill" />
+                                    </ContentControl>
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource SpaceMuted}"
+                                        Text="{Binding Favorites.PlayNumber}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Vertical">
+                                    <ContentControl Width="16" Height="16">
+                                        <Path
+                                            Width="{Binding Favorites.Like.Width}"
+                                            Height="{Binding Favorites.Like.Height}"
+                                            Data="{Binding Favorites.Like.Data}"
+                                            Fill="{DynamicResource SpaceMuted}"
+                                            Stretch="UniformToFill" />
+                                    </ContentControl>
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource SpaceMuted}"
+                                        Text="{Binding Favorites.LikeNumber}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center" Orientation="Vertical">
+                                    <ContentControl Width="16" Height="16">
+                                        <Path
+                                            Width="{Binding Favorites.Favorite.Width}"
+                                            Height="{Binding Favorites.Favorite.Height}"
+                                            Data="{Binding Favorites.Favorite.Data}"
+                                            Fill="{DynamicResource SpaceMuted}"
+                                            Stretch="UniformToFill" />
+                                    </ContentControl>
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource SpaceMuted}"
+                                        Text="{Binding Favorites.FavoriteNumber}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" HorizontalAlignment="Center" Orientation="Vertical">
+                                    <ContentControl Width="16" Height="16">
+                                        <Path
+                                            Width="{Binding Favorites.Share.Width}"
+                                            Height="{Binding Favorites.Share.Height}"
+                                            Data="{Binding Favorites.Share.Data}"
+                                            Fill="{DynamicResource SpaceMuted}"
+                                            Stretch="UniformToFill" />
+                                    </ContentControl>
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        HorizontalAlignment="Center"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource SpaceMuted}"
+                                        Text="{Binding Favorites.ShareNumber}" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Margin="0,20,0,0" Cursor="Hand" Orientation="Horizontal" ToolTip.Tip="{Binding Favorites.UpName}">
+                                <Interaction.Behaviors>
+                                    <EventTriggerBehavior EventName="PointerReleased">
+                                        <InvokeCommandAction Command="{Binding UpperCommand}" />
+                                    </EventTriggerBehavior>
+                                </Interaction.Behaviors>
+                                <Image Width="48" Height="48" asyncImageLoader:ImageLoader.Source="{Binding Favorites.UpHeader}">
+                                    <Image.Clip>
+                                        <EllipseGeometry Center="24,24" RadiusX="24" RadiusY="24" />
+                                    </Image.Clip>
+                                </Image>
+                                <TextBlock
+                                    Margin="15,0,0,0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
+                                    Foreground="{DynamicResource SpaceInk}"
+                                    Text="{Binding Favorites.UpName}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
                 </ScrollViewer>
-
-                <Grid Margin="0,15,0,0" ColumnDefinitions="*,*">
-
-                    <TextBlock
-                        Grid.Column="0"
-                        HorizontalAlignment="Left"
-                        FontSize="12"
-                        Foreground="{DynamicResource BrushTextGrey}"
-                        Text="{Binding Favorites.CreateTime}" />
-
-                    <StackPanel
-                        Grid.Column="1"
-                        HorizontalAlignment="Right"
-                        Orientation="Horizontal"
-                        IsVisible="{Binding Favorites.MediaCount}">
-                        <TextBlock
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey}"
-                            Text="{Binding Favorites.MediaCount}" />
-                        <TextBlock
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey}"
-                            Text="{DynamicResource FavoritesMediaCount}" />
-                    </StackPanel>
-                </Grid>
-
-                <Grid Margin="0,15,0,0" ColumnDefinitions="*,*,*,*">
-
-                    <StackPanel
-                        Grid.Column="0"
-                        HorizontalAlignment="Center"
-                        Orientation="Vertical">
-                        <ContentControl Width="16" Height="16">
-                            <Path
-                                Width="{Binding Favorites.Play.Width}"
-                                Height="{Binding Favorites.Play.Height}"
-                                Data="{Binding Favorites.Play.Data}"
-                                Fill="{DynamicResource BrushTextGrey2}"
-                                Stretch="UniformToFill" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            HorizontalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey2}"
-                            Text="{Binding Favorites.PlayNumber}" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="1"
-                        HorizontalAlignment="Center"
-                        Orientation="Vertical">
-                        <ContentControl Width="16" Height="16">
-                            <Path
-                                Width="{Binding Favorites.Like.Width}"
-                                Height="{Binding Favorites.Like.Height}"
-                                Data="{Binding Favorites.Like.Data}"
-                                Fill="{DynamicResource BrushTextGrey2}"
-                                Stretch="UniformToFill" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            HorizontalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey2}"
-                            Text="{Binding Favorites.LikeNumber}" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="2"
-                        HorizontalAlignment="Center"
-                        Orientation="Vertical">
-                        <ContentControl Width="16" Height="16">
-                            <Path
-                                Width="{Binding Favorites.Favorite.Width}"
-                                Height="{Binding Favorites.Favorite.Height}"
-                                Data="{Binding Favorites.Favorite.Data}"
-                                Fill="{DynamicResource BrushTextGrey2}"
-                                Stretch="UniformToFill" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            HorizontalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey2}"
-                            Text="{Binding Favorites.FavoriteNumber}" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="3"
-                        HorizontalAlignment="Center"
-                        Orientation="Vertical">
-                        <ContentControl Width="16" Height="16">
-                            <Path
-                                Width="{Binding Favorites.Share.Width}"
-                                Height="{Binding Favorites.Share.Height}"
-                                Data="{Binding Favorites.Share.Data}"
-                                Fill="{DynamicResource BrushTextGrey2}"
-                                Stretch="UniformToFill" />
-                        </ContentControl>
-                        <TextBlock
-                            Margin="0,5,0,0"
-                            HorizontalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{DynamicResource BrushTextGrey2}"
-                            Text="{Binding Favorites.ShareNumber}" />
-                    </StackPanel>
-                </Grid>
-
-                <StackPanel
-                    Margin="0,20,0,0"
-                    Cursor="Hand"
-                    Orientation="Horizontal"
-                    ToolTip.Tip="{Binding Favorites.UpName}">
-                    <Interaction.Behaviors>
-                        <EventTriggerBehavior EventName="PointerReleased">
-                            <InvokeCommandAction Command="{Binding UpperCommand}" />
-                        </EventTriggerBehavior>
-                    </Interaction.Behaviors>
-
-                    <Image
-                        Width="48"
-                        Height="48"
-                        asyncImageLoader:ImageLoader.Source="{Binding Favorites.UpHeader}">
-                        <Image.Clip>
-                            <EllipseGeometry
-                                Center="24,24"
-                                RadiusX="24"
-                                RadiusY="24" />
-                        </Image.Clip>
-                    </Image>
-                    <TextBlock
-                        Margin="15,0,0,0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        Foreground="{DynamicResource BrushPrimary}"
-                        Text="{Binding Favorites.UpName}"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-
-                <TextBlock
-                    Height="1"
-                    Margin="0,20,0,0"
-                    Background="{DynamicResource BrushBorder}" />
-
-                <Button
-                    Height="40"
-                    Margin="0,20,0,0"
-                    HorizontalAlignment="Stretch"
-                    Command="{Binding AddToDownloadCommand}"
-                    Content="{DynamicResource DownloadSelected}"
-                    FontSize="12"
-                    Theme="{StaticResource BtnStyle}" />
-
-                <Button
-                    Height="40"
-                    Margin="0,20,0,0"
-                    HorizontalAlignment="Stretch"
-                    Command="{Binding AddAllToDownloadCommand}"
-                    Content="{DynamicResource AddAllToDownload}"
-                    FontSize="12"
-                    Theme="{StaticResource BtnStyle}" />
-
-                    </StackPanel>
-                </ScrollViewer>
-
-                <custom:DownloadPreparationStatus
-                    x:Name="PublicFavoritesDownloadPreparationStatus"
-                    Grid.Row="1"
-                    Margin="0,12,0,0"
-                    CancelCommand="{Binding CancelDownloadPreparationCommand}"
-                    IsActive="{Binding DownloadCommandGate.IsExecuting}" />
             </Grid>
-
-
             <!--  右侧内容区  -->
             <ListBox
                 x:Name="NameFavoritesMedias"
-                Grid.Column="1"
-                Margin="30,0,0,0"
+                Grid.Column="2"
+                Margin="0"
                 ItemsSource="{Binding FavoritesMedias, Mode=TwoWay}"
-                SelectionMode="Multiple,Toggle">
+                SelectionMode="Multiple,Toggle"
+                Background="Transparent">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
@@ -296,9 +225,7 @@
                 </ListBox.ItemsPanel>
                 <ListBox.Template>
                     <ControlTemplate TargetType="{x:Type ListBox}">
-                        <ScrollViewer
-                            HorizontalScrollBarVisibility="Disabled"
-                            VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                             <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
                         </ScrollViewer>
                     </ControlTemplate>
@@ -306,178 +233,146 @@
                 <ListBox.ItemContainerTheme>
                     <ControlTheme TargetType="{x:Type ListBoxItem}" x:DataType="vmp:FavoritesMedia">
                         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+                        <Setter Property="Cursor" Value="Hand" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                                    <Grid Margin="0,10" Background="{DynamicResource BrushBackground}"
-                                          ColumnDefinitions="auto,150,*,auto">
-
+                                    <Grid Margin="0,0,0,12" Background="{TemplateBinding Background}" ColumnDefinitions="32,128,*" Name="PublicMediaRow">
                                         <TextBlock
                                             Grid.Column="0"
-                                            Width="35"
-                                            Margin="0,0,5,0"
+                                            Margin="0,0,8,0"
                                             VerticalAlignment="Center"
                                             FontSize="14"
-                                            Foreground="{DynamicResource BrushTextDark}"
+                                            Foreground="{DynamicResource SpaceInk}"
                                             Text="{Binding Order}" />
-
-                                        <Image Grid.Column="1" Source="{Binding Cover}" />
-
+                                        <Image Name="PublicMediaCover" Grid.Column="1"
+                                               asyncImageLoader:ImageLoader.Source="{Binding Cover}"
+                                               Width="128" Height="80" Stretch="UniformToFill" />
                                         <Border
-                                            x:Name="nameInfoPanel"
+                                            Name="PublicMediaDurationBadge"
                                             Grid.Column="1"
-                                            Width="150"
-                                            Height="95"
-                                            Background="{DynamicResource BrushMask}"
-                                            IsVisible="False">
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="4"
+                                            Padding="5,2"
+                                            Background="{DynamicResource SpaceCarbon}"
+                                            IsHitTestVisible="False">
                                             <TextBlock
-                                                Margin="5,0,0,5"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Bottom"
                                                 FontSize="12"
-                                                Foreground="{DynamicResource BrushText}"
+                                                Foreground="{DynamicResource SpaceCream}"
                                                 Text="{Binding Duration}" />
                                         </Border>
-
-                                        <Image
+                                        <ContentControl
+                                            Theme="{StaticResource PersonalSelectionMark}"
                                             x:Name="nameIsSelected"
                                             Grid.Column="1"
                                             Width="24"
                                             Height="24"
                                             Margin="10"
                                             HorizontalAlignment="Left"
-                                            VerticalAlignment="Top"
-                                            Source="/Resources/checked.png" />
-
-                                        <Grid Grid.Column="2" Margin="20,0" RowDefinitions="*,auto,auto">
-
-                                            <TextBlock
-                                                Grid.Row="0"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Top"
-                                                Classes.unavailable="{Binding IsUnavailable}"
-                                                Cursor="Hand"
-                                                FontSize="14"
-                                                Text="{Binding Title}"
-                                                TextTrimming="CharacterEllipsis"
-                                                ToolTip.Tip="{Binding Title}">
-                                                <Interaction.Behaviors>
-                                                    <EventTriggerBehavior EventName="PointerReleased">
-                                                        <InvokeCommandAction Command="{Binding TitleCommand}" />
-                                                    </EventTriggerBehavior>
-                                                </Interaction.Behaviors>
-                                                <TextBlock.Styles>
-                                                    <Style Selector="TextBlock">
-                                                        <Setter Property="Foreground"
-                                                                Value="{DynamicResource BrushTextDark}" />
-                                                        <Style Selector="^:pointerover">
-                                                            <Setter Property="Foreground"
-                                                                    Value="{DynamicResource BrushPrimary}" />
-                                                        </Style>
-                                                        <Style Selector="^.unavailable">
-                                                            <Setter Property="Cursor" Value="Arrow" />
+                                            VerticalAlignment="Top" />
+                                        <Grid Grid.Column="2" Margin="16,0,0,0" RowDefinitions="*,auto,auto">
+                                            <Button Name="MediaTitleLink" Theme="{StaticResource PersonalMediaLink}" Command="{Binding TitleCommand}" AutomationProperties.Name="{Binding Title}" Grid.Row="0" VerticalAlignment="Top" IsEnabled="{Binding !IsUnavailable}">
+                                                <TextBlock
+                                                    Classes.unavailable="{Binding IsUnavailable}"
+                                                    Cursor="Hand"
+                                                    FontSize="14"
+                                                    Text="{Binding Title}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip.Tip="{Binding Title}"
+                                                    MaxLines="2"
+                                                    TextWrapping="Wrap"
+                                                    FontWeight="SemiBold">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock.unavailable">
                                                             <Setter Property="Foreground" Value="Red" />
                                                             <Setter Property="TextDecorations" Value="Strikethrough" />
                                                         </Style>
-                                                        <Style Selector="^.unavailable:pointerover">
-                                                            <Setter Property="Foreground" Value="Red" />
-                                                        </Style>
-                                                    </Style>
-                                                </TextBlock.Styles>
-                                            </TextBlock>
-
-                                            <StackPanel Grid.Row="1" Orientation="Horizontal">
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                            </Button>
+                                            <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding PlayNumber}" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Play}" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text=" · " />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding DanmakuNumber}" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Danmaku}" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text=" · " />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding FavoriteNumber}" />
+                                                <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Favorite}" />
+                                            </WrapPanel>
+                                            <Button Name="MediaCreatorLink" Theme="{StaticResource PersonalMediaLink}" Command="{Binding VideoUpperCommand}" AutomationProperties.Name="{Binding UpName}" Grid.Row="2" VerticalAlignment="Top">
                                                 <TextBlock
+                                                    Cursor="Hand"
                                                     FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{Binding PlayNumber}" />
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{DynamicResource Play}" />
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text=" · " />
-
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{Binding DanmakuNumber}" />
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{DynamicResource Danmaku}" />
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text=" · " />
-
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{Binding FavoriteNumber}" />
-                                                <TextBlock
-                                                    FontSize="12"
-                                                    Foreground="{DynamicResource BrushTextGrey}"
-                                                    Text="{DynamicResource Favorite}" />
-                                            </StackPanel>
-
-                                            <TextBlock
-                                                Grid.Row="2"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Top"
-                                                Cursor="Hand"
-                                                FontSize="12"
-                                                Text="{Binding UpName, StringFormat={}UP: {0}}">
-                                                <Interaction.Behaviors>
-                                                    <EventTriggerBehavior EventName="PointerReleased">
-                                                        <InvokeCommandAction Command="{Binding VideoUpperCommand}" />
-                                                    </EventTriggerBehavior>
-                                                </Interaction.Behaviors>
-                                                <TextBlock.Styles>
-                                                    <Style Selector="TextBlock">
-                                                        <Setter Property="Foreground"
-                                                                Value="{DynamicResource BrushTextGrey}" />
-                                                        <Style Selector="^:pointerover">
-                                                            <Setter Property="Foreground"
-                                                                    Value="{DynamicResource BrushPrimary}" />
-                                                        </Style>
-                                                    </Style>
-                                                </TextBlock.Styles>
-                                            </TextBlock>
+                                                    Text="{Binding UpName, StringFormat={}UP: {0}}">
+                                                </TextBlock>
+                                            </Button>
                                         </Grid>
                                     </Grid>
                                 </ControlTemplate>
                             </Setter.Value>
                         </Setter>
-                        <Style Selector="^ /template/ Image#nameIsSelected">
+                        <Style Selector="^ /template/ ContentControl#nameIsSelected">
                             <Setter Property="IsVisible" Value="False" />
                         </Style>
-                        <Style Selector="^:selected /template/ Image#nameIsSelected">
+                        <Style Selector="^:selected /template/ ContentControl#nameIsSelected">
                             <Setter Property="IsVisible" Value="True" />
                         </Style>
-                        <Style Selector="^:pointerover /template/ Border#nameInfoPanel">
-                            <Setter Property="IsVisible" Value="True" />
+                        <Style Selector="^:pointerover">
+                            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
                         </Style>
                     </ControlTheme>
                 </ListBox.ItemContainerTheme>
             </ListBox>
-
             <!--  加载gif  -->
             <StackPanel
-                Grid.Column="1"
+                Grid.Column="2"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Vertical"
+                Name="PublicMediaLoading"
                 IsVisible="{Binding MediaLoadingVisibility}">
-                <custom:Loading
-                    Width="40"
-                    Height="40"
-                    Foreground="Gray"
-                    IsActive="{Binding MediaLoading}" />
+                <custom:Loading Width="40" Height="40" Foreground="{DynamicResource SpaceAccent}" IsActive="{Binding MediaLoading}" />
             </StackPanel>
-
+            <Border
+                Name="PublicFavoritesFooter"
+                Grid.Row="1"
+                Grid.ColumnSpan="3"
+                BorderBrush="{DynamicResource SpaceRule}"
+                BorderThickness="0,1,0,0"
+                Padding="0,12,0,0"
+                Margin="0,12,0,0">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <custom:DownloadPreparationStatus
+                        x:Name="PublicFavoritesDownloadPreparationStatus"
+                        CancelCommand="{Binding CancelDownloadPreparationCommand}"
+                        IsActive="{Binding DownloadCommandGate.IsExecuting}" />
+                    <Button
+                        Height="40"
+                        Command="{Binding AddToDownloadCommand}"
+                        Content="{DynamicResource DownloadSelected}"
+                        FontSize="12"
+                        Classes="studio-primary"
+                        MinWidth="128"
+                        Margin="12,0,0,0"
+                        Grid.Column="1" />
+                    <Button
+                        Height="40"
+                        Command="{Binding AddAllToDownloadCommand}"
+                        Content="{DynamicResource AddAllToDownload}"
+                        FontSize="12"
+                        MinWidth="128"
+                        Margin="12,0,0,0"
+                        Grid.Column="2" />
+                </Grid>
+            </Border>
+            <ContentControl
+                Name="PublicMediaEmptyState"
+                Grid.Column="2"
+                Theme="{StaticResource StudioEmptyState}"
+                IsVisible="{Binding MediaNoDataVisibility}" />
         </Grid>
         <!--  加载gif  -->
         <StackPanel
@@ -486,24 +381,10 @@
             VerticalAlignment="Center"
             Orientation="Vertical"
             IsVisible="{Binding LoadingVisibility}">
-            <custom:Loading
-                Width="40"
-                Height="40"
-                Foreground="Gray"
-                IsActive="{Binding Loading}" />
-            <TextBlock
-                Margin="0,10,0,0"
-                FontSize="14"
-                Foreground="{DynamicResource BrushTextDark}"
-                Text="{DynamicResource PublicationWait}" />
+            <custom:Loading Width="40" Height="40" Foreground="{DynamicResource SpaceAccent}" IsActive="{Binding Loading}" />
+            <TextBlock Margin="0,10,0,0" FontSize="14" Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource PublicationWait}" />
         </StackPanel>
-
         <!--  没有数据提示  -->
-        <Image
-            Grid.Row="2"
-            Width="256"
-            Height="256"
-            Source="/Resources/no-data.png"
-            IsVisible="{Binding NoDataVisibility}" />
+        <ContentControl Theme="{StaticResource StudioEmptyState}" Grid.Row="2" IsVisible="{Binding NoDataVisibility}" />
     </Grid>
 </UserControl>

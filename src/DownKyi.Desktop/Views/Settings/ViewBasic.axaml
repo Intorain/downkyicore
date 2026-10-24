@@ -1,38 +1,40 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.Settings.ViewBasic"
-             xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
-             xmlns:settings="clr-namespace:DownKyi.Core.Settings;assembly=DownKyi.Core"
-             x:DataType="vms:ViewBasicViewModel">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
+    xmlns:settings="clr-namespace:DownKyi.Core.Settings;assembly=DownKyi.Core"
+    x:Class="DownKyi.Views.Settings.ViewBasic"
+    x:DataType="vms:ViewBasicViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="50,0" Orientation="Vertical">
+        <StackPanel
+            Margin="24,8,24,28"
+            Orientation="Vertical"
+            MaxWidth="1100"
+            HorizontalAlignment="Stretch">
             <StackPanel Margin="0,20,0,0" Orientation="Horizontal">
-                <TextBlock
-                    FontSize="{DynamicResource DownKyiFontSizeTitle}"
-                    FontWeight="SemiBold"
-                    Foreground="{DynamicResource BrushTextPrimary}"
-                    Text="{DynamicResource Basic}" />
+                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource Basic}" Classes="studio-title" />
             </StackPanel>
-
             <StackPanel Margin="0,20,0,0" Orientation="Vertical" IsVisible="False">
-                <TextBlock
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    Text="{DynamicResource AfterDownloadOperation}" />
-                <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                <TextBlock FontSize="{DynamicResource DownKyiFontSizeBody}" Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource AfterDownloadOperation}" />
+                <WrapPanel Margin="0,10,0,0" Orientation="Horizontal">
                     <RadioButton
                         Command="{Binding AfterDownloadOperationCommand}"
                         CommandParameter="None"
                         GroupName="AfterDownloadOperation"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Content="{StaticResource AfterDownloadOperationNone}"
                         IsChecked="{Binding None}"
-                        Theme="{StaticResource RadioStyle}" />
+                        Theme="{StaticResource RadioStyle}"
+                        Margin="0,0,24,8" />
                     <RadioButton
-                        Margin="20,0,0,0"
+                        Margin="0,0,24,8"
                         GroupName="AfterDownloadOperation"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Command="{Binding AfterDownloadOperationCommand}"
                         CommandParameter="CloseApp"
@@ -40,62 +42,57 @@
                         Content="{StaticResource AfterDownloadOperationCloseApp}"
                         Theme="{StaticResource RadioStyle}" />
                     <RadioButton
-                        Margin="20,0,0,0"
+                        Margin="0,0,24,8"
                         GroupName="AfterDownloadOperation"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Command="{Binding AfterDownloadOperationCommand}"
                         CommandParameter="CloseSystem"
                         IsChecked="{Binding CloseSystem}"
                         Content="{StaticResource AfterDownloadOperationCloseSystem}"
                         Theme="{StaticResource RadioStyle}" />
-                </StackPanel>
+                </WrapPanel>
             </StackPanel>
             <StackPanel Margin="0,20,0,0" Orientation="Vertical">
-                <TextBlock
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    Text="{DynamicResource Theme}" />
-                <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                <TextBlock FontSize="{DynamicResource DownKyiFontSizeBody}" Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource Theme}" />
+                <WrapPanel Margin="0,10,0,0" Orientation="Horizontal">
                     <RadioButton
                         Command="{Binding ThemeCommand}"
                         CommandParameter="{x:Static settings:ThemeMode.Light}"
                         GroupName="Theme"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Content="{StaticResource ThemeLight}"
-                        IsChecked="{Binding ThemeLight}" />
+                        IsChecked="{Binding ThemeLight}"
+                        Margin="0,0,24,8" />
                     <RadioButton
-                        Margin="20,0,0,0"
+                        Margin="0,0,24,8"
                         GroupName="Theme"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Command="{Binding ThemeCommand}"
                         CommandParameter="{x:Static settings:ThemeMode.Dark}"
                         IsChecked="{Binding ThemeDark}"
                         Content="{StaticResource ThemeDark}" />
                     <RadioButton
-                        Margin="20,0,0,0"
+                        Margin="0,0,24,8"
                         GroupName="Theme"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         Command="{Binding ThemeCommand}"
                         CommandParameter="{x:Static settings:ThemeMode.Default}"
                         IsChecked="{Binding ThemeAuto}"
                         Content="{StaticResource ThemeAuto}" />
-                </StackPanel>
+                </WrapPanel>
             </StackPanel>
-            <TextBlock
-                Height="1"
-                Margin="0,20,0,0"
-                Background="{DynamicResource BrushBorder}" />
+            <TextBlock Height="1" Margin="0,20,0,0" Background="{DynamicResource SpaceRule}" />
             <CheckBox
                 Margin="0,20,0,0"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Command="{Binding ListenClipboardCommand}"
                 Content="{DynamicResource ListenClipboard}"
-                Foreground="{DynamicResource BrushTextDark}"
+                Foreground="{DynamicResource SpaceInk}"
                 IsChecked="{Binding ListenClipboard, Mode=TwoWay}" />
             <CheckBox
                 Margin="0,20,0,0"
@@ -103,7 +100,7 @@
                 VerticalAlignment="Top"
                 Command="{Binding RepeatFileAutoAddNumberSuffixCommand}"
                 Content="{DynamicResource RepeatFileAutoAddNumberSuffix}"
-                Foreground="{DynamicResource BrushTextDark}"
+                Foreground="{DynamicResource SpaceInk}"
                 IsChecked="{Binding RepeatFileAutoAddNumberSuffix, Mode=TwoWay}" />
             <StackPanel Margin="10" />
         </StackPanel>

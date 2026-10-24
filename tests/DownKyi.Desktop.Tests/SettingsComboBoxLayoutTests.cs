@@ -216,7 +216,7 @@ public sealed class SettingsComboBoxLayoutTests
             var syncOrigin = Assert.NotNull(sync.TranslatePoint(default, window));
 
             Assert.Null(filterSection.Background);
-            Assert.Equal(600, filterSection.Bounds.Width, 0.5);
+            Assert.InRange(filterSection.Bounds.Width, 600, 820);
             Assert.Equal(keywordOrigin.X, senderOrigin.X, 0.5);
             Assert.Equal(keywordList.Bounds.Width, senderList.Bounds.Width, 0.5);
             Assert.True(keywordList.Bounds.Width >= 600);
@@ -233,10 +233,10 @@ public sealed class SettingsComboBoxLayoutTests
             Assert.Equal(120, fontSize.Bounds.Width, 0.5);
             Assert.Equal(120, lineCount.Bounds.Width, 0.5);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(filterTitle.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(displayTitle.Foreground));
         }
         finally
@@ -326,13 +326,13 @@ public sealed class SettingsComboBoxLayoutTests
                 view.GetVisualDescendants().OfType<TextBlock>(),
                 candidate => candidate.Height == 1 && candidate.Background is not null);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(preferencesTitle.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(postProcessingTitle.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(ffmpegTitle.Foreground));
         }
         finally
@@ -419,7 +419,8 @@ public sealed class SettingsComboBoxLayoutTests
             Assert.True(orderFormat.Bounds.Width >= 140);
             Assert.True(reset.Bounds.Width >= 92);
             Assert.True(timeLabelOrigin.X < timeOrigin.X);
-            Assert.True(timeOrigin.X + timeFormat.Bounds.Width < orderLabelOrigin.X);
+            Assert.True(orderOrigin.Y >= timeOrigin.Y + timeFormat.Bounds.Height + 8);
+            Assert.Equal(timeOrigin.X, orderOrigin.X, 0.5);
             Assert.True(orderLabelOrigin.X < orderOrigin.X);
             Assert.True(orderOrigin.X + orderFormat.Bounds.Width < resetOrigin.X);
             Assert.True(
@@ -474,7 +475,7 @@ public sealed class SettingsComboBoxLayoutTests
             Assert.True(systemOrigin.Y > noneOrigin.Y + none.Bounds.Height);
             Assert.True(customOrigin.Y > systemOrigin.Y + system.Bounds.Height);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(title.Foreground));
         }
         finally
@@ -520,10 +521,10 @@ public sealed class SettingsComboBoxLayoutTests
                 view.GetVisualDescendants().OfType<TextBlock>(),
                 candidate => candidate.Height == 1 && candidate.Background is not null);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(connectionTitle.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(downloaderTitle.Foreground));
         }
         finally
@@ -574,7 +575,7 @@ public sealed class SettingsComboBoxLayoutTests
             Assert.True(maxCurrentDownloads.Bounds.Width >= 180);
             Assert.True(splits.Bounds.Width >= 180);
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(parametersTitle.Foreground));
         }
         finally

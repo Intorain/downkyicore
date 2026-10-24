@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
@@ -85,6 +86,18 @@ public sealed class StartupDiagnosticsDialogLayoutTests
             Assert.True(viewModel.Items[1].IsExpanded);
             Assert.True(issuesScroll.Extent.Height > issuesScroll.Viewport.Height);
             AssertFooterFits(view, footer);
+            foreach (var size in new[] { new Size(360, 260), new Size(480, 360), new Size(760, 680) })
+            {
+                window.Width = size.Width;
+                window.Height = size.Height;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(size, view.Bounds.Size);
+                Assert.True(issuesScroll.Extent.Height > issuesScroll.Viewport.Height);
+                Assert.True(issuesScroll.Extent.Width <= issuesScroll.Viewport.Width + 0.5);
+                AssertFooterFits(view, footer);
+            }
         }
         finally
         {
@@ -96,9 +109,11 @@ public sealed class StartupDiagnosticsDialogLayoutTests
     [Fact]
     public void StartupDiagnosticSizeUsesLogicalWorkingAreaAtHighDpi()
     {
-        var size = AvaloniaDialogService.ConstrainStartupDiagnosticsSize(
+        var size = AvaloniaDialogService.ConstrainDialogSize(
+            AppDialog.StartupDiagnostics,
             new PixelRect(0, 0, 1280, 720),
-            scaling: 2);
+            scaling: 2,
+            ownerSize: new Size(800, 550));
 
         Assert.Equal(new Size(608, 328), size);
     }

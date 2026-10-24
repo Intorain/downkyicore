@@ -66,10 +66,11 @@
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <StyleInclude Source="/Themes/Styles/loading.axaml" />
         <StyleInclude Source="/Themes/Styles/download-preparation-status.axaml" />
+        <StyleInclude Source="/Themes/Styles/StudioChrome.axaml" />
         <Style Selector="Window">
             <Setter Property="FontFamily" Value="{DynamicResource ProgramFont}" />
-            <Setter Property="Background" Value="{DynamicResource BrushSurfaceBase}" />
-            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+            <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
         </Style>
         <Style Selector="TemplatedControl">
             <Setter Property="FontFamily" Value="{DynamicResource ProgramFont}" />

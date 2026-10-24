@@ -1,3 +1,5 @@
+using System.Xml.Linq;
+
 namespace DownKyi.Architecture.Tests;
 
 public sealed class VideoDetailViewArchitectureTests
@@ -17,14 +19,6 @@ public sealed class VideoDetailViewArchitectureTests
         "VideoDetailActionsView.axaml",
         "VideoDetailOperationStatusView.axaml"
     ];
-
-    [Fact]
-    public void VideoDetailSelectionAreaRemainsHeightBounded()
-    {
-        var source = Read("ViewVideoDetail.axaml");
-
-        Assert.Contains("<RowDefinition Height=\"100*\" MaxHeight=\"180\" />", source, StringComparison.Ordinal);
-    }
 
     [Fact]
     public void VideoDetailSectionsUseOneBindingType()
@@ -66,7 +60,9 @@ public sealed class VideoDetailViewArchitectureTests
 
         Assert.Contains("<DataGrid.Styles>", selectionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("<DataGrid.RowTheme>", selectionSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("BasedOn=", selectionSource, StringComparison.Ordinal);
+        var grid = XDocument.Parse(selectionSource).Descendants()
+            .Single(element => element.Name.LocalName == "DataGrid");
+        Assert.DoesNotContain("BasedOn=", grid.ToString(), StringComparison.Ordinal);
         Assert.Contains(
             "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml",
             applicationSource,

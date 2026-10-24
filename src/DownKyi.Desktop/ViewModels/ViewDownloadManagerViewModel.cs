@@ -4,14 +4,21 @@ using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Images;
 using DownKyi.Presentation;
+using DownKyi.Services.Download;
 using DownKyi.Utils;
 using DownKyi.ViewModels.DownloadManager;
+using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels;
 
 internal class ViewDownloadManagerViewModel : ViewModelBase
 {
     public const string Tag = "PageDownloadManager";
+
+    private readonly IDownloadManagerCoordinator _downloadManagerCoordinator;
+    private readonly ILogger<ViewDownloadManagerViewModel> _logger;
+
+    public DownloadListState DownloadLists { get; }
 
     #region 页面属性申明
 
@@ -33,9 +40,16 @@ internal class ViewDownloadManagerViewModel : ViewModelBase
 
     #endregion
 
-    public ViewDownloadManagerViewModel(IDesktopInteractionContext desktopInteractions)
+    public ViewDownloadManagerViewModel(
+        IDesktopInteractionContext desktopInteractions,
+        DownloadListState downloadLists,
+        IDownloadManagerCoordinator downloadManagerCoordinator,
+        ILogger<ViewDownloadManagerViewModel> logger)
         : base(desktopInteractions)
     {
+        DownloadLists = downloadLists ?? throw new ArgumentNullException(nameof(downloadLists));
+        _downloadManagerCoordinator = downloadManagerCoordinator ?? throw new ArgumentNullException(nameof(downloadManagerCoordinator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         ObserveRegion(AppNavigationRegion.DownloadManager);
         #region 属性初始化
 
@@ -114,7 +128,10 @@ internal class ViewDownloadManagerViewModel : ViewModelBase
     {
         base.OnNavigatedTo(navigationContext);
 
-        //// 进入设置页面时显示的设置项
+        RunFireAndForget(_downloadManagerCoordinator.LoadDownloadedHistoryAsync(),
+            nameof(IDownloadManagerCoordinator.LoadDownloadedHistoryAsync), _logger);
+
+        // Enter on the active queue while both tab counts remain live.
         SelectTabId = 0;
 
         PropertyChangeAsync(() =>

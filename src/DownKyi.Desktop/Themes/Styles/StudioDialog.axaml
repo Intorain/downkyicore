@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    <Style Selector=".studio-dialog TextBlock.dialog-heading">
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector=".studio-dialog Button">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style Selector=".studio-dialog Button.dialog-close">
+        <Setter Property="Padding" Value="12" />
+    </Style>
+    <Style Selector=".studio-dialog Border.dialog-footer">
+        <Setter Property="Margin" Value="24,0,24,20" />
+        <Setter Property="Padding" Value="0,16,0,0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector=".studio-dialog Expander">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderThickness" Value="0,1,0,1" />
+    </Style>
+    <Style Selector=".studio-dialog Expander /template/ ToggleButton">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+    </Style>
+</Styles>

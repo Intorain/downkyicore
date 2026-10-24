@@ -13,8 +13,6 @@ namespace DownKyi.Platform;
 
 internal sealed class AvaloniaDialogService : IAppDialogService
 {
-    private const double StartupDiagnosticsWidth = 760;
-    private const double StartupDiagnosticsHeight = 680;
     private const double WorkAreaMargin = 32;
     private readonly DialogContentFactory _contentFactory;
     private readonly AvaloniaDesktopContext _desktopContext;
@@ -55,10 +53,7 @@ internal sealed class AvaloniaDialogService : IAppDialogService
             DataContext = viewModel
         };
         content.DataContext = viewModel;
-        if (request.Dialog == AppDialog.StartupDiagnostics)
-        {
-            ConfigureStartupDiagnosticsWindow(window, content);
-        }
+        ConfigureWindow(window, content, request.Dialog);
 
         var result = new AppDialogResult(
             AppDialogOutcome.Canceled,
@@ -145,33 +140,50 @@ internal sealed class AvaloniaDialogService : IAppDialogService
         return !closeRequested && !forcedCloseRequested && !viewModel.CanCloseDialog();
     }
 
-    private void ConfigureStartupDiagnosticsWindow(Window window, Control content)
+    private void ConfigureWindow(Window window, Control content, AppDialog dialog)
     {
         var owner = _desktopContext.MainWindow;
         var screen = owner.Screens.ScreenFromWindow(owner)
             ?? owner.Screens.ScreenFromPoint(owner.Position)
             ?? owner.Screens.Primary;
-        var size = screen is null
-            ? new Size(StartupDiagnosticsWidth, StartupDiagnosticsHeight)
-            : ConstrainStartupDiagnosticsSize(screen.WorkingArea, screen.Scaling);
-
+        var size = ConstrainDialogSize(
+            dialog,
+            screen?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080),
+            screen?.Scaling ?? 1,
+            owner.ClientSize);
         window.SizeToContent = SizeToContent.Manual;
+        window.CanResize = true;
+        window.MinWidth = Math.Min(dialog == AppDialog.DownloadSettings ? 480 : 360, size.Width);
+        window.MinHeight = Math.Min(dialog == AppDialog.DownloadSettings ? 360 : 260, size.Height);
         window.Width = size.Width;
         window.Height = size.Height;
         content.HorizontalAlignment = HorizontalAlignment.Stretch;
         content.VerticalAlignment = VerticalAlignment.Stretch;
     }
 
-    internal static Size ConstrainStartupDiagnosticsSize(
+    internal static Size ConstrainDialogSize(
+        AppDialog dialog,
         PixelRect workingArea,
-        double scaling)
+        double scaling,
+        Size ownerSize)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(scaling, 0);
+        var preferred = dialog switch
+        {
+            AppDialog.Alert => new Size(520, 320),
+            AppDialog.DownloadSettings => new Size(680, 640),
+            AppDialog.NewVersionAvailable => new Size(720, 600),
+            AppDialog.LegacyUpgrade => new Size(600, 400),
+            AppDialog.StartupDiagnostics => new Size(760, 680),
+            AppDialog.DownloadContentConflict => new Size(680, 560),
+            AppDialog.DownloadDuplicateBatch => new Size(680, 520),
+            _ => throw new ArgumentOutOfRangeException(nameof(dialog), dialog, null)
+        };
         var availableWidth = Math.Max(1, workingArea.Width / scaling - WorkAreaMargin);
         var availableHeight = Math.Max(1, workingArea.Height / scaling - WorkAreaMargin);
         return new Size(
-            Math.Min(StartupDiagnosticsWidth, availableWidth),
-            Math.Min(StartupDiagnosticsHeight, availableHeight));
+            Math.Min(preferred.Width, Math.Min(availableWidth, Math.Max(1, ownerSize.Width - WorkAreaMargin))),
+            Math.Min(preferred.Height, Math.Min(availableHeight, Math.Max(1, ownerSize.Height - WorkAreaMargin))));
     }
 
 }

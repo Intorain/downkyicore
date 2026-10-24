@@ -137,7 +137,7 @@ public sealed class DownloadFinishedHistoryLoadingTests
             "finished",
             null);
 
-    private sealed class RecordingCoordinator(
+    internal sealed class RecordingCoordinator(
         DownloadListState state,
         Func<Task<IReadOnlyList<DownloadedItem>>> readHistory) : IDownloadManagerCoordinator
     {

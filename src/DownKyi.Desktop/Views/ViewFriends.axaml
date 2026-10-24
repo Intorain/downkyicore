@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="DownKyi.Views.ViewFriends"
+             Background="{DynamicResource SpacePaper}"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -9,117 +10,65 @@
              xmlns:vm="clr-namespace:DownKyi.ViewModels"
              xmlns:vmp="clr-namespace:DownKyi.Presentation"
              x:DataType="vm:ViewFriendsViewModel">
-    <Grid RowDefinitions="50,1,*">
-        <Grid Grid.Row="0" ColumnDefinitions="100,*,100">
+    <Grid RowDefinitions="Auto,Auto,*" Margin="24,18,24,20" Background="{DynamicResource SpacePaper}">
+        <Grid Grid.Row="0" Name="PersonalPageHeader" ColumnDefinitions="Auto,*,Auto" MinHeight="124" Background="{DynamicResource SpaceAccent}">
+            <ContentControl Grid.Column="1" Grid.ColumnSpan="2" Width="240"
+                            HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                            Theme="{StaticResource PersonalHeaderArtwork}" />
+
             <Button
                 Grid.Column="0"
-                Margin="10,5,0,5"
+                Margin="12,0"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 Command="{Binding BackSpaceCommand}"
-                Theme="{StaticResource ImageBtnStyle}">
-                <StackPanel Orientation="Horizontal">
+                Theme="{StaticResource PersonalPosterNavigationButton}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
                     <ContentControl Width="24" Height="24">
                         <Path
                             Width="{Binding ArrowBack.Width}"
                             Height="{Binding ArrowBack.Height}"
                             Data="{Binding ArrowBack.Data}"
-                            Fill="{DynamicResource BrushTextDark}"
+                            Fill="{DynamicResource SpaceCarbon}"
                             Stretch="None" />
                     </ContentControl>
                     <TextBlock
                         VerticalAlignment="Center"
-                        FontSize="16"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        FontSize="48"
+                        FontWeight="Black"
+                        Foreground="{DynamicResource SpaceCarbon}"
                         Text="{DynamicResource Friend}" />
                 </StackPanel>
             </Button>
-
-            <!--  顶部Tab  -->
-            <ListBox
-                Name="NameTabHeaders"
-                Grid.Column="1"
-                BorderThickness="0"
-                ItemsSource="{Binding TabHeaders}"
-                ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-                ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                SelectedIndex="{Binding SelectTabId, Mode=TwoWay}">
-                <Interaction.Behaviors>
-                    <EventTriggerBehavior EventName="SelectionChanged">
-                        <InvokeCommandAction Command="{Binding TabHeadersCommand}"
-                                             CommandParameter="{Binding ElementName=NameTabHeaders, Path=SelectedItem}" />
-                    </EventTriggerBehavior>
-                </Interaction.Behaviors>
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemContainerTheme>
-                    <ControlTheme TargetType="{x:Type ListBoxItem}" x:DataType="vmp:TabHeader">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                                    <StackPanel
-                                        x:Name="panel"
-                                        Margin="10,0"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Cursor="Hand">
-                                        <TextBlock
-                                            x:Name="NameText"
-                                            Padding="0,0,0,3"
-                                            Text="{Binding Title}" />
-                                        <TextBlock Name="NameIndicator" Height="1.5" />
-                                    </StackPanel>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style Selector="^ /template/ TextBlock#NameText">
-                            <Setter Property="Foreground" Value="{DynamicResource BrushTextDark}" />
-                        </Style>
-                        <Style Selector="^ /template/ TextBlock#NameIndicator">
-                            <Setter Property="Background" Value="{DynamicResource BrushTextDark}" />
-                            <Setter Property="IsVisible" Value="False" />
-                        </Style>
-                        <Style Selector="^:pointerover /template/ TextBlock#NameText">
-                            <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
-                        </Style>
-                        <Style Selector="^:selected /template/ TextBlock#NameText">
-                            <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
-                        </Style>
-                        <Style Selector="^:selected /template/ TextBlock#NameIndicator">
-                            <Setter Property="IsVisible" Value="True" />
-                            <Setter Property="Background" Value="{DynamicResource BrushPrimary}" />
-                        </Style>
-                    </ControlTheme>
-                </ListBox.ItemContainerTheme>
-                <ListBox.Theme>
-                    <ControlTheme TargetType="ListBox">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBox">
-                                    <Border
-                                        x:Name="Bd"
-                                        Padding="0"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}">
-                                        <ScrollViewer Focusable="False">
-                                            <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
-                                        </ScrollViewer>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </ControlTheme>
-                </ListBox.Theme>
-            </ListBox>
         </Grid>
-        <TextBlock Grid.Row="1" Background="{DynamicResource BrushBorder}" />
+        <!--  顶部Tab  -->
+        <ListBox
+            Name="NameTabHeaders"
+            Theme="{StaticResource PersonalTabs}"
+            ItemContainerTheme="{StaticResource PersonalTabItem}"
+            Margin="0,8,0,12"
+            VerticalAlignment="Center"
+            Grid.Row="1"
+            BorderThickness="0"
+            ItemsSource="{Binding TabHeaders}"
+            ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+            ScrollViewer.VerticalScrollBarVisibility="Disabled"
+            SelectedIndex="{Binding SelectTabId, Mode=TwoWay}">
+            <Interaction.Behaviors>
+                <EventTriggerBehavior EventName="SelectionChanged">
+                    <InvokeCommandAction Command="{Binding TabHeadersCommand}"
+                                         CommandParameter="{Binding ElementName=NameTabHeaders, Path=SelectedItem}" />
+                </EventTriggerBehavior>
+            </Interaction.Behaviors>
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+        </ListBox>
 
         <!--  内容区  -->
         <ContentControl Grid.Row="2" Content="{Binding RegionContent}" />

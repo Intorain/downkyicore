@@ -1,30 +1,69 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vmp="clr-namespace:DownKyi.Presentation"
-             xmlns:behavior="clr-namespace:DownKyi.CustomAction"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             x:Class="DownKyi.Views.VideoDetailSelectionView"
-             x:DataType="vm:ViewVideoDetailViewModel"
-             mc:Ignorable="d">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vmp="clr-namespace:DownKyi.Presentation"
+    xmlns:behavior="clr-namespace:DownKyi.CustomAction"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    x:Class="DownKyi.Views.VideoDetailSelectionView"
+    x:DataType="vm:ViewVideoDetailViewModel"
+    mc:Ignorable="d"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <UserControl.Resources>
         <ControlTheme TargetType="TextBlock" x:Key="DataGridCellTextBlockTheme">
             <Setter Property="Margin" Value="{DynamicResource DataGridTextColumnCellTextBlockMargin}" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource ColorTextDark}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        </ControlTheme>
+        <ControlTheme
+            x:Key="VideoSectionTab"
+            TargetType="ListBoxItem"
+            x:DataType="vmp:VideoSection">
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceMuted}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border
+                        Name="SectionTab"
+                        Background="Transparent"
+                        Cursor="Hand"
+                        Padding="14,10"
+                        Margin="0,0,4,4"
+                        BorderThickness="0,0,0,3"
+                        BorderBrush="Transparent">
+                        <TextBlock
+                            Text="{Binding Title}"
+                            MaxWidth="240"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip.Tip="{Binding Title}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:selected /template/ Border#SectionTab">
+                <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+            </Style>
+            <Style Selector="^:selected">
+                <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#SectionTab">
+                <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+            </Style>
+            <Style Selector="^:focus-visible /template/ Border#SectionTab">
+                <Setter Property="BorderBrush" Value="{DynamicResource SpaceInk}" />
+            </Style>
         </ControlTheme>
     </UserControl.Resources>
-
     <Grid RowDefinitions="Auto,5,*">
-        <ScrollViewer Grid.Row="0"
-                      MaxHeight="220"
-                      VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="0" MaxHeight="96" VerticalScrollBarVisibility="Auto">
             <ListBox
                 x:Name="NameVideoSections"
-                ItemContainerTheme="{StaticResource TagItemStyle}"
+                ItemContainerTheme="{StaticResource VideoSectionTab}"
                 ItemsSource="{Binding VideoSections, Mode=TwoWay}"
-                Theme="{StaticResource TagStyle}"
+                Theme="{StaticResource PersonalTabs}"
                 SelectionMode="Single">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -38,54 +77,56 @@
                     <DataTriggerBehavior Binding="{Binding VideoSections.Count}" Value="1">
                         <ChangePropertyAction PropertyName="Height" Value="0" />
                     </DataTriggerBehavior>
-                    <DataTriggerBehavior Binding="{Binding VideoSections.Count}"
-                                         ComparisonCondition="GreaterThan"
-                                         Value="1">
+                    <DataTriggerBehavior Binding="{Binding VideoSections.Count}" ComparisonCondition="GreaterThan" Value="1">
                         <ChangePropertyAction PropertyName="Height" Value="Nan" />
                     </DataTriggerBehavior>
                 </Interaction.Behaviors>
             </ListBox>
         </ScrollViewer>
-
-        <GridSplitter Grid.Row="1"
-                      ShowsPreview="True"
-                      ResizeDirection="Rows">
+        <GridSplitter Grid.Row="1" ShowsPreview="True" ResizeDirection="Rows">
             <Interaction.Behaviors>
                 <behavior:ResetGridSplitterBehavior ResetVersion="{Binding UiState.GridResetVersion}" />
             </Interaction.Behaviors>
         </GridSplitter>
-
         <DataGrid
             x:Name="NameVideoPages"
             Grid.Row="2"
             VerticalAlignment="Stretch"
-            Background="{DynamicResource BrushSurfaceSunken}"
-            BorderThickness="1"
-            BorderBrush="{DynamicResource BrushBorderSubtle}"
+            Background="{DynamicResource SpacePaper}"
+            BorderThickness="0,1,0,1"
+            BorderBrush="{DynamicResource SpaceRule}"
             CanUserResizeColumns="True"
             IsReadOnly="True"
             ItemsSource="{ReflectionBinding ElementName=NameVideoSections, Path=SelectedItem.VideoPages, Mode=TwoWay}"
             SelectionMode="Extended"
-            SelectedItem="{Binding UiState.SelectedVideoPage, Mode=TwoWay}">
+            SelectedItem="{Binding UiState.SelectedVideoPage, Mode=TwoWay}"
+            RowHeight="42"
+            AutoGenerateColumns="False"
+            GridLinesVisibility="Horizontal"
+            HorizontalGridLinesBrush="{DynamicResource SpaceRule}">
             <DataGrid.Resources>
-                <SolidColorBrush x:Key="DataGridRowHoveredBackgroundColor"
-                                 Color="{DynamicResource ColorControlFillHover}" />
-                <SolidColorBrush x:Key="DataGridRowSelectedBackgroundBrush"
-                                 Color="{DynamicResource ColorSelectionFill}" />
-                <SolidColorBrush x:Key="DataGridRowSelectedHoveredBackgroundBrush"
-                                 Color="{DynamicResource ColorControlFillPressed}" />
-                <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush"
-                                 Color="{DynamicResource ColorSelectionFill}" />
-                <SolidColorBrush x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush"
-                                 Color="{DynamicResource ColorControlFillPressed}" />
-                <x:Double x:Key="DataGridRowSelectedBackgroundOpacity">1</x:Double>
-                <x:Double x:Key="DataGridRowSelectedHoveredBackgroundOpacity">1</x:Double>
-                <x:Double x:Key="DataGridRowSelectedUnfocusedBackgroundOpacity">1</x:Double>
-                <x:Double x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundOpacity">1</x:Double>
+                <x:Double x:Key="DataGridRowSelectedBackgroundOpacity">
+                    1
+                </x:Double>
+                <x:Double x:Key="DataGridRowSelectedHoveredBackgroundOpacity">
+                    1
+                </x:Double>
+                <x:Double x:Key="DataGridRowSelectedUnfocusedBackgroundOpacity">
+                    1
+                </x:Double>
+                <x:Double x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundOpacity">
+                    1
+                </x:Double>
             </DataGrid.Resources>
             <DataGrid.Styles>
                 <Style Selector="DataGridCell:focus-within:not(:focus) /template/ Grid#FocusVisual">
                     <Setter Property="IsVisible" Value="False" />
+                </Style>
+                <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                    <Setter Property="Fill" Value="{DynamicResource SpaceHover}" />
+                </Style>
+                <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                    <Setter Property="Fill" Value="{DynamicResource SpaceSelection}" />
                 </Style>
             </DataGrid.Styles>
             <DataGrid.ColumnHeaderTheme>
@@ -94,14 +135,11 @@
                     <Setter Property="VerticalContentAlignment" Value="Center" />
                     <Setter Property="Height" Value="30" />
                     <Setter Property="Padding" Value="4" />
-                    <Setter Property="Background" Value="{DynamicResource BrushSurfaceRaised}" />
-                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+                    <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
                     <Setter Property="Template">
                         <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
-                            <Border
-                                x:Name="HeaderBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <Border x:Name="HeaderBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <Grid
                                         Margin="{TemplateBinding Padding}"
@@ -113,38 +151,32 @@
                                             Content="{TemplateBinding Content}"
                                             ContentTemplate="{TemplateBinding ContentTemplate}"
                                             RecognizesAccessKey="True" />
-
-                                        <Path Grid.Column="1"
-                                              Name="SortIcon"
-                                              Width="8"
-                                              Margin="4,0,0,0"
-                                              HorizontalAlignment="Left"
-                                              VerticalAlignment="Center"
-                                              Data="F1 M -5.215,6.099L 5.215,6.099L 0,0L -5.215,6.099 Z "
-                                              Fill="{TemplateBinding Foreground}"
-                                              IsVisible="False"
-                                              Stretch="Uniform" />
+                                        <Path
+                                            Grid.Column="1"
+                                            Name="SortIcon"
+                                            Width="8"
+                                            Margin="4,0,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Data="F1 M -5.215,6.099L 5.215,6.099L 0,0L -5.215,6.099 Z "
+                                            Fill="{TemplateBinding Foreground}"
+                                            IsVisible="False"
+                                            Stretch="Uniform" />
                                     </Grid>
-
                                     <Canvas Grid.Column="1">
                                         <Thumb x:Name="PART_HeaderGripper">
                                             <Thumb.Theme>
                                                 <ControlTheme TargetType="{x:Type Thumb}">
                                                     <Setter Property="Canvas.Right" Value="-9" />
                                                     <Setter Property="Width" Value="18" />
-                                                    <Setter Property="Height"
-                                                            Value="{Binding Bounds.Size.Height, RelativeSource={RelativeSource TemplatedParent}}" />
+                                                    <Setter Property="Height" Value="{Binding Bounds.Size.Height, RelativeSource={RelativeSource TemplatedParent}}" />
                                                     <Setter Property="Padding" Value="0" />
-                                                    <Setter Property="Background" Value="{DynamicResource BrushBorderSubtle}" />
+                                                    <Setter Property="Background" Value="{DynamicResource SpaceRule}" />
                                                     <Setter Property="Template">
                                                         <Setter.Value>
                                                             <ControlTemplate TargetType="{x:Type Thumb}">
-                                                                <Border Padding="{TemplateBinding Padding}"
-                                                                        Background="Transparent">
-                                                                    <Rectangle
-                                                                        Width="1"
-                                                                        HorizontalAlignment="Center"
-                                                                        Fill="{TemplateBinding Background}" />
+                                                                <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                                                    <Rectangle Width="1" HorizontalAlignment="Center" Fill="{TemplateBinding Background}" />
                                                                 </Border>
                                                             </ControlTemplate>
                                                         </Setter.Value>
@@ -157,11 +189,9 @@
                             </Border>
                         </ControlTemplate>
                     </Setter>
-
                     <Style Selector="^:sortascending /template/ Path#SortIcon">
                         <Setter Property="IsVisible" Value="True" />
                     </Style>
-
                     <Style Selector="^:sortdescending /template/ Path#SortIcon">
                         <Setter Property="IsVisible" Value="True" />
                         <Setter Property="RenderTransform">
@@ -180,27 +210,14 @@
                 <DataGridTemplateColumn Width="38">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate DataType="vmp:VideoPage">
-                            <CheckBox
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="{Binding IsSelected, Mode=TwoWay}" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn
-                    Width="50"
-                    Header="{DynamicResource Order}"
-                    Binding="{ReflectionBinding Order}" />
-                <DataGridTextColumn
-                    Width="*"
-                    Binding="{ReflectionBinding Name}"
-                    Header="{DynamicResource Name}" />
-                <DataGridTextColumn
-                    Width="100"
-                    Binding="{ReflectionBinding Duration}"
-                    Header="{DynamicResource Duration}" />
+                <DataGridTextColumn Width="50" Header="{DynamicResource Order}" Binding="{ReflectionBinding Order}" />
+                <DataGridTextColumn Width="*" Binding="{ReflectionBinding Name}" Header="{DynamicResource Name}" />
+                <DataGridTextColumn Width="100" Binding="{ReflectionBinding Duration}" Header="{DynamicResource Duration}" />
             </DataGrid.Columns>
-
         </DataGrid>
     </Grid>
 </UserControl>

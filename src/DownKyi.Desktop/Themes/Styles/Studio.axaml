@@ -1,0 +1,125 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Shared controls for the studio pages; personal space owns the palette. -->
+    <Style Selector=":is(UserControl).studio-page">
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="FontFamily" Value="Microsoft YaHei UI, Microsoft JhengHei UI, Segoe UI" />
+    </Style>
+    <Style Selector=".studio-page TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector=".studio-page TextBlock.studio-title">
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector=".studio-page TextBlock.studio-section">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector=".studio-page TextBox, .studio-page ComboBox">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector=".studio-page TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+    </Style>
+    <Style Selector=".studio-page TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceMuted}" />
+    </Style>
+    <Style Selector=".studio-page TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+    </Style>
+    <Style Selector=".studio-page TextBox.studio-output /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+    </Style>
+    <Style Selector=".studio-page TextBox.studio-output">
+        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Microsoft YaHei UI" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector=".studio-page ComboBox:pointerover /template/ ContentPresenter#ContentPresenter, .studio-page ComboBox:pressed /template/ ContentPresenter#ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceInk}" />
+    </Style>
+    <Style Selector=".studio-page ComboBox /template/ Border#PopupBorder">
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector=".studio-page ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+    </Style>
+    <Style Selector=".studio-page ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+    </Style>
+    <Style Selector=".studio-page ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+    </Style>
+    <Style Selector=".studio-page Button:not(.studio-back):not(.link)">
+        <Setter Property="Theme" Value="{DynamicResource DownloadActionButton}" />
+        <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector=".studio-page Button.studio-primary">
+        <Setter Property="Theme" Value="{DynamicResource PersonalActionButton}" />
+        <Setter Property="Padding" Value="16,8" />
+    </Style>
+    <Style Selector=".studio-page CheckBox">
+        <Setter Property="Theme" Value="{DynamicResource PersonalCheckBox}" />
+    </Style>
+    <Style Selector=".studio-page RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="22,8,*" Background="Transparent">
+                    <Ellipse Width="22" Height="22" Stroke="{DynamicResource SpaceMuted}" StrokeThickness="1" />
+                    <Ellipse Name="StudioRadioDot" Width="12" Height="12" Fill="{DynamicResource SpaceAccent}" IsVisible="False" />
+                    <ContentPresenter Grid.Column="2" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector=".studio-page RadioButton:checked /template/ Ellipse#StudioRadioDot">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector=".studio-page RadioButton:focus-visible /template/ Ellipse">
+        <Setter Property="Stroke" Value="{DynamicResource SpaceAccent}" />
+        <Setter Property="StrokeThickness" Value="2" />
+    </Style>
+    <Style Selector=".studio-page HeaderedContentControl">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="Padding" Value="0,16,0,0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border BorderBrush="{DynamicResource SpaceRule}" BorderThickness="0,1,0,0" Padding="0,20,0,0">
+                    <StackPanel Spacing="14">
+                        <ContentPresenter Content="{TemplateBinding Header}" FontSize="16" FontWeight="SemiBold" />
+                        <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector=".studio-page ListBox.studio-fields /template/ Border">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+    </Style>
+    <Style Selector=".studio-page ListBox.studio-fields ListBoxItem /template/ Border">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+    </Style>
+    <Style Selector=".studio-page ListBox.studio-fields ListBoxItem /template/ TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+    </Style>
+    <Style Selector=".studio-page ListBox.studio-fields ListBoxItem:pointerover /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+    </Style>
+</Styles>

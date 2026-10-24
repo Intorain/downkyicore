@@ -1,38 +1,47 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.Settings.ViewVideo"
-             xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
-             x:DataType="vms:ViewVideoViewModel">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
+    x:Class="DownKyi.Views.Settings.ViewVideo"
+    x:DataType="vms:ViewVideoViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="50,0" Orientation="Vertical">
-
+        <StackPanel
+            Margin="24,8,24,28"
+            Orientation="Vertical"
+            MaxWidth="1100"
+            HorizontalAlignment="Stretch">
             <TextBlock
                 Name="NameVideoPageTitle"
                 Margin="0,20,0,0"
-                FontSize="{DynamicResource DownKyiFontSizeTitle}"
-                FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource Video}" />
-
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource Video}"
+                Classes="studio-title" />
             <TextBlock
                 Name="NameVideoDownloadPreferencesTitle"
                 Margin="0,28,0,0"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
                 FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource VideoDownloadPreferences}" />
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource VideoDownloadPreferences}"
+                Classes=" studio-section" />
             <Grid
                 Name="NameVideoDownloadPreferences"
                 Margin="0,12,0,0"
-                ColumnDefinitions="160,320"
-                RowDefinitions="Auto,Auto,Auto">
+                ColumnDefinitions="160,*"
+                RowDefinitions="Auto,Auto,Auto"
+                MaxWidth="720"
+                HorizontalAlignment="Left" Width="{Binding $parent[StackPanel].Bounds.Width}">
                 <TextBlock
                     Grid.Row="0"
                     Grid.Column="0"
                     Margin="0,0,0,12"
                     VerticalAlignment="Center"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{DynamicResource FirstVideoCodecs}" />
                 <ComboBox
                     Name="NameVideoCodecs"
@@ -46,8 +55,7 @@
                     SelectedValue="{Binding SelectedVideoCodec}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding VideoCodecsCommand}"
-                                                 CommandParameter="{Binding ElementName=NameVideoCodecs,Path=SelectedValue}" />
+                            <InvokeCommandAction Command="{Binding VideoCodecsCommand}" CommandParameter="{Binding ElementName=NameVideoCodecs,Path=SelectedValue}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </ComboBox>
@@ -57,7 +65,7 @@
                     Margin="0,0,0,12"
                     VerticalAlignment="Center"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{DynamicResource FirstVideoQuality}" />
                 <ComboBox
                     Name="NameVideoQualityList"
@@ -71,8 +79,7 @@
                     SelectedItem="{Binding SelectedVideoQuality}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding VideoQualityCommand}"
-                                                 CommandParameter="{Binding ElementName=NameVideoQualityList,Path=SelectedValue}" />
+                            <InvokeCommandAction Command="{Binding VideoQualityCommand}" CommandParameter="{Binding ElementName=NameVideoQualityList,Path=SelectedValue}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </ComboBox>
@@ -82,7 +89,7 @@
                     Margin="0,0,0,12"
                     VerticalAlignment="Center"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{DynamicResource FirstAudioQuality}" />
                 <ComboBox
                     Name="NameAudioQualityList"
@@ -96,20 +103,19 @@
                     SelectedItem="{Binding SelectedAudioQuality}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding AudioQualityCommand}"
-                                                 CommandParameter="{Binding ElementName=NameAudioQualityList,Path=SelectedValue}" />
+                            <InvokeCommandAction Command="{Binding AudioQualityCommand}" CommandParameter="{Binding ElementName=NameAudioQualityList,Path=SelectedValue}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </ComboBox>
             </Grid>
-
             <TextBlock
                 Name="NameVideoPostProcessingTitle"
                 Margin="0,28,0,0"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
                 FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource VideoPostProcessing}" />
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource VideoPostProcessing}"
+                Classes=" studio-section" />
             <StackPanel Name="NameVideoPostProcessing" Margin="0,12,0,0">
                 <CheckBox
                     Name="NameTranscodeFlvToMp4"
@@ -118,7 +124,7 @@
                     Command="{Binding IsTranscodingFlvToMp4Command}"
                     Content="{DynamicResource IsTranscodingFlvToMp4}"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     IsChecked="{Binding IsTranscodingFlvToMp4, Mode=TwoWay}" />
                 <CheckBox
                     Name="NameTranscodeAacToMp3"
@@ -128,29 +134,31 @@
                     Command="{Binding IsTranscodingAacToMp3Command}"
                     Content="{DynamicResource IsTranscodingAacToMp3}"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     IsChecked="{Binding IsTranscodingAacToMp3, Mode=TwoWay}" />
             </StackPanel>
-
             <TextBlock
                 Name="NameVideoFfmpegTitle"
                 Margin="0,28,0,0"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
                 FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource VideoFfmpegSettings}" />
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource VideoFfmpegSettings}"
+                Classes=" studio-section" />
             <Grid
                 Name="NameVideoFfmpegSettings"
                 Margin="0,12,0,0"
-                ColumnDefinitions="160,320"
-                RowDefinitions="Auto,Auto">
+                ColumnDefinitions="160,*"
+                RowDefinitions="Auto,Auto"
+                MaxWidth="720"
+                HorizontalAlignment="Left" Width="{Binding $parent[StackPanel].Bounds.Width}">
                 <TextBlock
                     Grid.Row="0"
                     Grid.Column="0"
                     Margin="0,0,0,12"
                     VerticalAlignment="Center"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{DynamicResource FfmpegHardwareAcceleration}"
                     ToolTip.Tip="{DynamicResource FfmpegHardwareAccelerationTip}" />
                 <ComboBox
@@ -166,8 +174,7 @@
                     ToolTip.Tip="{DynamicResource FfmpegHardwareAccelerationTip}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding FfmpegHardwareAccelerationCommand}"
-                                                 CommandParameter="{Binding ElementName=NameFfmpegHardwareAcceleration,Path=SelectedValue}" />
+                            <InvokeCommandAction Command="{Binding FfmpegHardwareAccelerationCommand}" CommandParameter="{Binding ElementName=NameFfmpegHardwareAcceleration,Path=SelectedValue}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </ComboBox>
@@ -176,7 +183,7 @@
                     Grid.Column="0"
                     VerticalAlignment="Center"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{DynamicResource FfmpegMaxParallelJobs}"
                     ToolTip.Tip="{DynamicResource FfmpegMaxParallelJobsTip}" />
                 <ComboBox
@@ -191,117 +198,114 @@
                     ToolTip.Tip="{DynamicResource FfmpegMaxParallelJobsTip}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="SelectionChanged">
-                            <InvokeCommandAction Command="{Binding FfmpegMaxParallelJobsCommand}"
-                                                 CommandParameter="{Binding ElementName=NameFfmpegMaxParallelJobs,Path=SelectedValue}" />
+                            <InvokeCommandAction Command="{Binding FfmpegMaxParallelJobsCommand}" CommandParameter="{Binding ElementName=NameFfmpegMaxParallelJobs,Path=SelectedValue}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </ComboBox>
             </Grid>
-
-            <StackPanel
-                Margin="0,32,0,0"
-                Orientation="Vertical">
-
-                <StackPanel Orientation="Horizontal">
+            <StackPanel Margin="0,32,0,0" Orientation="Vertical">
+                <WrapPanel Orientation="Horizontal">
                     <TextBlock
                         VerticalAlignment="Center"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{DynamicResource DefaultDirectory}" />
+                        Foreground="{DynamicResource SpaceInk}"
+                        Text="{DynamicResource DefaultDirectory}"
+                        Margin="0,0,20,8" />
                     <TextBlock
-                        Margin="10,0,0,0"
+                        Margin="0,0,20,8"
                         VerticalAlignment="Center"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
-                        Foreground="{DynamicResource BrushTextGrey}"
+                        Foreground="{DynamicResource SpaceMuted}"
                         Text="{DynamicResource DefaultDirectoryTip}" />
-                </StackPanel>
-                <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                </WrapPanel>
+                <Grid Margin="0,10,0,0" ColumnDefinitions="*,Auto">
                     <TextBlock
-                        MaxWidth="600"
+                        MaxWidth="600" HorizontalAlignment="Left"
                         VerticalAlignment="Center"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         Text="{Binding SaveVideoDirectory}"
                         TextTrimming="CharacterEllipsis"
                         ToolTip.Tip="{Binding SaveVideoDirectory}" />
                     <Button
-                        Width="75"
                         Margin="30,0,0,0"
                         Command="{Binding ChangeSaveVideoDirectoryCommand}"
                         Content="{DynamicResource ChangeDirectory}"
-                        FontSize="{DynamicResource DownKyiFontSizeBody}" />
-                </StackPanel>
+                        FontSize="{DynamicResource DownKyiFontSizeBody}"
+                        Grid.Column="1" />
+                </Grid>
             </StackPanel>
-
-            <StackPanel
-                Margin="0,20,0,0"
-                Orientation="Horizontal">
+            <WrapPanel Margin="0,20,0,0" Orientation="Horizontal">
                 <CheckBox
                     Command="{Binding GenerateMovieMetadataCommand }"
                     IsChecked="{Binding GenerateMovieMetadata}"
                     Content="{DynamicResource GenerateVideoMetadata}"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
                     ToolTip.Tip="nfo"
-                    Foreground="{DynamicResource BrushTextDark}" />
-            </StackPanel>
-
+                    Foreground="{DynamicResource SpaceInk}"
+                    Margin="0,0,20,8" />
+            </WrapPanel>
             <HeaderedContentControl
                 Header="{DynamicResource DownloadContent2}"
-                Background="{DynamicResource BrushSurfaceRaised}"
+                Background="Transparent"
                 Margin="0,20,0,0"
-                Foreground="{DynamicResource BrushTextDark}"
-                CornerRadius="10"
+                Foreground="{DynamicResource SpaceInk}"
+                CornerRadius="0"
                 FontSize="{DynamicResource DownKyiFontSizeBody}">
                 <StackPanel Margin="10" Spacing="12">
-                    <StackPanel Orientation="Horizontal">
+                    <WrapPanel Orientation="Horizontal">
                         <CheckBox
                             Command="{Binding DownloadAllCommand}"
                             Content="{DynamicResource DownloadAll}"
-                            Foreground="{DynamicResource BrushTextDark}"
-                            IsChecked="{Binding DownloadAll, Mode=TwoWay}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            IsChecked="{Binding DownloadAll, Mode=TwoWay}"
+                            Margin="0,0,20,8" />
                         <CheckBox
-                            Margin="40,0,0,0"
+                            Margin="0,0,20,8"
                             Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadAudio}"
-                            Foreground="{DynamicResource BrushTextDark}"
+                            Foreground="{DynamicResource SpaceInk}"
                             IsChecked="{Binding DownloadAudio, Mode=TwoWay}" />
                         <CheckBox
-                            Margin="40,0,0,0"
+                            Margin="0,0,20,8"
                             Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadVideo}"
-                            Foreground="{DynamicResource BrushTextDark}"
+                            Foreground="{DynamicResource SpaceInk}"
                             IsChecked="{Binding DownloadVideo, Mode=TwoWay}" />
                         <CheckBox
-                            Margin="40,0,0,0"
+                            Margin="0,0,20,8"
                             Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadDanmaku}"
-                            Foreground="{DynamicResource BrushTextDark}"
+                            Foreground="{DynamicResource SpaceInk}"
                             IsChecked="{Binding DownloadDanmaku, Mode=TwoWay}" />
                         <CheckBox
-                            Margin="40,0,0,0"
+                            Margin="0,0,20,8"
                             Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadSubtitle}"
-                            Foreground="{DynamicResource BrushTextDark}"
+                            Foreground="{DynamicResource SpaceInk}"
                             IsChecked="{Binding DownloadSubtitle, Mode=TwoWay}" />
                         <CheckBox
-                            Margin="40,0,0,0"
+                            Margin="0,0,20,8"
                             Command="{Binding ContentSelectionChangedCommand}"
                             Content="{DynamicResource DownloadCover}"
-                            Foreground="{DynamicResource BrushTextDark}"
+                            Foreground="{DynamicResource SpaceInk}"
                             IsChecked="{Binding DownloadCover, Mode=TwoWay}" />
-                    </StackPanel>
+                    </WrapPanel>
                     <Grid
-                        Margin="24,0,0,0"
-                        ColumnDefinitions="Auto,180,24,Auto,180"
-                        IsEnabled="{Binding DownloadSubtitle}">
+                        Margin="0"
+                        ColumnDefinitions="150,*"
+                        IsEnabled="{Binding DownloadSubtitle}"
+                        RowDefinitions="Auto,Auto"
+                        MaxWidth="720" Width="{Binding $parent[StackPanel].Bounds.Width}" HorizontalAlignment="Left">
                         <TextBlock
                             VerticalAlignment="Center"
-                            Foreground="{DynamicResource BrushTextDark}"
-                            Text="{DynamicResource PreferredSubtitleLanguage}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource PreferredSubtitleLanguage}"
+                            Margin="0,0,12,10" />
                         <ComboBox
                             x:Name="PreferredSubtitleLanguageSelector"
                             Grid.Column="1"
-                            Margin="12,0,0,0"
+                            Margin="0,0,12,10"
                             DisplayMemberBinding="{Binding Name}"
                             ItemsSource="{Binding SubtitleLanguagePreferences}"
                             SelectedItem="{Binding SelectedSubtitleLanguagePreference}">
@@ -312,17 +316,20 @@
                             </Interaction.Behaviors>
                         </ComboBox>
                         <TextBlock
-                            Grid.Column="3"
+                            Grid.Column="0"
                             VerticalAlignment="Center"
-                            Foreground="{DynamicResource BrushTextDark}"
-                            Text="{DynamicResource PreferredSubtitleType}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource PreferredSubtitleType}"
+                            Grid.Row="1"
+                            Margin="0,0,12,10" />
                         <ComboBox
                             x:Name="PreferredSubtitleTypeSelector"
-                            Grid.Column="4"
-                            Margin="12,0,0,0"
+                            Grid.Column="1"
+                            Margin="0,0,12,10"
                             DisplayMemberBinding="{Binding Name}"
                             ItemsSource="{Binding SubtitleTypePreferences}"
-                            SelectedItem="{Binding SelectedSubtitleTypePreference}">
+                            SelectedItem="{Binding SelectedSubtitleTypePreference}"
+                            Grid.Row="1">
                             <Interaction.Behaviors>
                                 <EventTriggerBehavior EventName="SelectionChanged">
                                     <InvokeCommandAction Command="{Binding SubtitlePreferenceCommand}" />
@@ -332,27 +339,26 @@
                     </Grid>
                     <TextBlock
                         Margin="24,0,0,0"
-                        Foreground="{DynamicResource BrushTextGrey}"
+                        Foreground="{DynamicResource SpaceMuted}"
                         Text="{DynamicResource SubtitlePreferenceTip}"
                         TextWrapping="Wrap" />
                 </StackPanel>
             </HeaderedContentControl>
-
             <HeaderedContentControl
                 Header="{DynamicResource FileNameParts}"
-                Background="{DynamicResource BrushSurfaceRaised}"
+                Background="Transparent"
                 Margin="0,20,0,0"
-                Foreground="{DynamicResource BrushTextDark}"
-                CornerRadius="10"
+                Foreground="{DynamicResource SpaceInk}"
+                CornerRadius="0"
                 FontSize="{DynamicResource DownKyiFontSizeBody}">
                 <Grid ColumnDefinitions="100,*" RowDefinitions="*,*,*" Margin="10">
                     <TextBlock
                         Grid.Row="0"
                         Grid.Column="0"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         Text="{DynamicResource OptionalFields}" />
-                    <ListBox
+                    <ListBox Classes="studio-fields"
                         Name="NameOptionalFields"
                         Grid.Row="0"
                         Grid.Column="1"
@@ -364,19 +370,17 @@
                         Theme="{StaticResource Tag2Style}">
                         <Interaction.Behaviors>
                             <EventTriggerBehavior EventName="SelectionChanged">
-                                <InvokeCommandAction Command="{Binding OptionalFieldsCommand}"
-                                                     CommandParameter="{Binding ElementName=NameOptionalFields, Path=SelectedItem}" />
+                                <InvokeCommandAction Command="{Binding OptionalFieldsCommand}" CommandParameter="{Binding ElementName=NameOptionalFields, Path=SelectedItem}" />
                             </EventTriggerBehavior>
                         </Interaction.Behaviors>
                     </ListBox>
-
                     <TextBlock
                         Grid.Row="1"
                         Grid.Column="0"
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
-                        Foreground="{DynamicResource BrushTextDark}"
+                        Foreground="{DynamicResource SpaceInk}"
                         Text="{DynamicResource FileName}" />
-                    <ListBox
+                    <ListBox Classes="studio-fields"
                         x:Name="NameSelectedFileName"
                         Grid.Row="1"
                         Grid.Column="1"
@@ -386,8 +390,7 @@
                         Theme="{StaticResource Tag2Style}">
                         <Interaction.Behaviors>
                             <EventTriggerBehavior EventName="DoubleTapped">
-                                <InvokeCommandAction Command="{Binding SelectedFileNameRightCommand}"
-                                                     CommandParameter="{Binding ElementName=NameSelectedFileName, Path=SelectedItem}" />
+                                <InvokeCommandAction Command="{Binding SelectedFileNameRightCommand}" CommandParameter="{Binding ElementName=NameSelectedFileName, Path=SelectedItem}" />
                             </EventTriggerBehavior>
                         </Interaction.Behaviors>
                         <ListBox.ItemContainerTheme>
@@ -403,20 +406,22 @@
                             </ControlTheme>
                         </ListBox.ItemContainerTheme>
                     </ListBox>
-
                     <Grid
                         Name="NameFileNameEditorOptions"
                         Grid.Row="2"
                         Grid.Column="1"
                         Margin="0,20,0,0"
-                        ColumnDefinitions="Auto,140,24,Auto,140,*,Auto">
+                        ColumnDefinitions="120,*,Auto"
+                        RowDefinitions="Auto,Auto"
+                        >
                         <TextBlock
                             Name="NameFileNamePartTimeFormatLabel"
                             Grid.Column="0"
                             VerticalAlignment="Center"
                             FontSize="{DynamicResource DownKyiFontSizeBody}"
-                            Foreground="{DynamicResource BrushTextDark}"
-                            Text="{DynamicResource FileNameTimeFormat}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource FileNameTimeFormat}"
+                            Margin="0,0,12,12" />
                         <ComboBox
                             Name="NameFileNamePartTimeFormat"
                             Grid.Column="1"
@@ -424,49 +429,52 @@
                             VerticalAlignment="Center"
                             VerticalContentAlignment="Center"
                             ItemsSource="{Binding FileNamePartTimeFormatList}"
-                            SelectedItem="{Binding SelectedFileNamePartTimeFormat}">
+                            SelectedItem="{Binding SelectedFileNamePartTimeFormat}"
+                            Margin="0,0,12,12">
                             <Interaction.Behaviors>
                                 <EventTriggerBehavior EventName="SelectionChanged">
-                                    <InvokeCommandAction Command="{Binding FileNamePartTimeFormatCommand}"
-                                                         CommandParameter="{Binding ElementName=NameFileNamePartTimeFormat, Path=SelectedItem}" />
+                                    <InvokeCommandAction Command="{Binding FileNamePartTimeFormatCommand}" CommandParameter="{Binding ElementName=NameFileNamePartTimeFormat, Path=SelectedItem}" />
                                 </EventTriggerBehavior>
                             </Interaction.Behaviors>
                         </ComboBox>
                         <TextBlock
                             Name="NameOrderFormatLabel"
-                            Grid.Column="3"
+                            Grid.Column="0"
                             VerticalAlignment="Center"
                             FontSize="{DynamicResource DownKyiFontSizeBody}"
-                            Foreground="{DynamicResource BrushTextDark}"
-                            Text="{DynamicResource OrderFormat}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource OrderFormat}"
+                            Grid.Row="1"
+                            Margin="0,0,12,12" />
                         <ComboBox
                             Name="NameOrderFormat"
-                            Grid.Column="4"
+                            Grid.Column="1"
                             Width="140"
                             VerticalAlignment="Center"
                             VerticalContentAlignment="Center"
                             DisplayMemberBinding="{Binding Name}"
                             ItemsSource="{Binding OrderFormatList}"
-                            SelectedItem="{Binding OrderFormatDisplay}">
+                            SelectedItem="{Binding OrderFormatDisplay}"
+                            Grid.Row="1"
+                            Margin="0,0,12,12">
                             <Interaction.Behaviors>
                                 <EventTriggerBehavior EventName="SelectionChanged">
-                                    <InvokeCommandAction Command="{Binding OrderFormatCommand}"
-                                                         CommandParameter="{Binding ElementName=NameOrderFormat, Path=SelectedItem}" />
+                                    <InvokeCommandAction Command="{Binding OrderFormatCommand}" CommandParameter="{Binding ElementName=NameOrderFormat, Path=SelectedItem}" />
                                 </EventTriggerBehavior>
                             </Interaction.Behaviors>
                         </ComboBox>
                         <Button
                             Name="NameResetFileNameButton"
-                            Grid.Column="6"
+                            Grid.Column="2"
                             MinWidth="92"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Command="{Binding ResetCommand}"
                             Content="{DynamicResource Reset}"
                             FontSize="{DynamicResource DownKyiFontSizeBody}"
-                            Theme="{StaticResource BtnBorderStyle}" />
+                            Grid.RowSpan="2"
+                            Margin="0,0,12,12" />
                     </Grid>
-
                 </Grid>
             </HeaderedContentControl>
         </StackPanel>

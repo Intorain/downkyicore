@@ -1,41 +1,36 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:settings="clr-namespace:DownKyi.Core.Settings;assembly=DownKyi.Core"
-             xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
-             x:Class="DownKyi.Views.Settings.NetworkGeneralSettingsView"
-             x:DataType="vms:ViewNetworkViewModel">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:settings="clr-namespace:DownKyi.Core.Settings;assembly=DownKyi.Core"
+    xmlns:vms="clr-namespace:DownKyi.ViewModels.Settings"
+    x:Class="DownKyi.Views.Settings.NetworkGeneralSettingsView"
+    x:DataType="vms:ViewNetworkViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <StackPanel Orientation="Vertical">
         <TextBlock
             Name="NameNetworkPageTitle"
             Margin="0,20,0,0"
-            FontSize="{DynamicResource DownKyiFontSizeTitle}"
-            FontWeight="SemiBold"
-            Foreground="{DynamicResource BrushTextPrimary}"
-            Text="{DynamicResource Network}" />
-
-        <StackPanel
-            Name="NameNetworkConnectionSection"
-            Margin="0,28,0,0">
+            Foreground="{DynamicResource SpaceInk}"
+            Text="{DynamicResource Network}"
+            Classes="studio-title" />
+        <StackPanel Name="NameNetworkConnectionSection" Margin="0,28,0,0">
             <TextBlock
                 Name="NameNetworkConnectionTitle"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
                 FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource NetworkConnectionSection}" />
-
-            <StackPanel
-                Name="NameNetworkProxySection"
-                Margin="0,12,0,0"
-                HorizontalAlignment="Left">
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource NetworkConnectionSection}"
+                Classes=" studio-section" />
+            <StackPanel Name="NameNetworkProxySection" Margin="0,12,0,0" HorizontalAlignment="Left">
                 <TextBlock
                     Name="NameNetworkProxyTitle"
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextPrimary}"
+                    Foreground="{DynamicResource SpaceInk}"
                     Text="{StaticResource NetworkProxySetting}" />
-                <StackPanel
-                    Name="NameNetworkProxyChoices"
-                    Margin="0,8,0,0"
-                    Spacing="4">
+                <StackPanel Name="NameNetworkProxyChoices" Margin="0,8,0,0" Spacing="4">
                     <RadioButton
                         Name="NameNetworkProxyNone"
                         IsChecked="{Binding NetworkProxy,Converter={x:Static ObjectConverters.Equal},ConverterParameter={x:Static settings:NetworkProxy.None}}"
@@ -66,7 +61,7 @@
                             <TextBlock
                                 VerticalAlignment="Center"
                                 FontSize="{DynamicResource DownKyiFontSizeBody}"
-                                Foreground="{DynamicResource BrushTextDark}"
+                                Foreground="{DynamicResource SpaceInk}"
                                 Text="{DynamicResource HttpProxy}" />
                             <TextBox
                                 Name="CustomNetworkProxy"
@@ -74,48 +69,34 @@
                                 VerticalContentAlignment="Center"
                                 Text="{Binding CustomNetworkProxy}">
                                 <TextBox.KeyBindings>
-                                    <KeyBinding
-                                        Command="{Binding CustomNetworkProxyCommand}"
-                                        CommandParameter="{Binding #CustomNetworkProxy.Text}"
-                                        Gesture="Enter" />
+                                    <KeyBinding Command="{Binding CustomNetworkProxyCommand}" CommandParameter="{Binding #CustomNetworkProxy.Text}" Gesture="Enter" />
                                 </TextBox.KeyBindings>
                             </TextBox>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
-
             <StackPanel Margin="0,18,0,0">
-                <TextBlock
-                    FontSize="{DynamicResource DownKyiFontSizeBody}"
-                    Foreground="{DynamicResource BrushTextDark}"
-                    Text="{DynamicResource UserAgent}" />
-
+                <TextBlock FontSize="{DynamicResource DownKyiFontSizeBody}" Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource UserAgent}" />
                 <TextBox
                     Name="NameUserAgent"
                     Margin="0,8,0,0"
                     HorizontalAlignment="Stretch"
                     Text="{Binding UserAgent}">
                     <TextBox.KeyBindings>
-                        <KeyBinding
-                            Command="{Binding UserAgentCommand}"
-                            CommandParameter="{Binding #NameUserAgent.Text}"
-                            Gesture="Enter" />
+                        <KeyBinding Command="{Binding UserAgentCommand}" CommandParameter="{Binding #NameUserAgent.Text}" Gesture="Enter" />
                     </TextBox.KeyBindings>
                 </TextBox>
             </StackPanel>
         </StackPanel>
-
-        <StackPanel
-            Name="NameDownloaderSection"
-            Margin="0,32,0,0">
+        <StackPanel Name="NameDownloaderSection" Margin="0,32,0,0">
             <TextBlock
                 Name="NameDownloaderTitle"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
                 FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource DownloaderSection}" />
-
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource DownloaderSection}"
+                Classes=" studio-section" />
             <CheckBox
                 Name="NameHighSpeedDownloadMode"
                 Margin="0,14,0,0"
@@ -124,7 +105,7 @@
                 Command="{Binding HighSpeedDownloadModeCommand}"
                 Content="{DynamicResource HighSpeedDownloadMode}"
                 FontSize="{DynamicResource DownKyiFontSizeBody}"
-                Foreground="{DynamicResource BrushTextDark}"
+                Foreground="{DynamicResource SpaceInk}"
                 IsChecked="{Binding HighSpeedDownloadMode, Mode=TwoWay}"
                 ToolTip.Tip="{DynamicResource HighSpeedDownloadModeTip}" />
         </StackPanel>

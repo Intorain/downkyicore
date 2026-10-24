@@ -931,6 +931,11 @@ public sealed class VideoTagLoadingTests : IDisposable
                 subtitlePath,
                 TestContext.Current.CancellationToken));
         Assert.Single(context.ListState.Downloading);
+        var alert = Assert.Single(context.Dialogs.Requests, request => request.Dialog == AppDialog.Alert);
+        var message = Assert.IsType<string>(alert.Parameters!["message"]);
+        Assert.Equal(DictionaryResource.GetString("DownloadOutputCollision"), message);
+        Assert.DoesNotContain(logicalDirectory, message, StringComparison.Ordinal);
+        Assert.DoesNotContain(physicalDirectory, message, StringComparison.Ordinal);
     }
 
     [Fact]

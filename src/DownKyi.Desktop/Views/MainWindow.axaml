@@ -8,7 +8,7 @@
         MinWidth="800"
         MinHeight="550"
         Opacity="0"
-        Background="{DynamicResource BrushSurfaceBase}"
+        Background="{DynamicResource SpacePaper}"
         Title="{DynamicResource AppName}"
         Icon="/Resources/favicon.ico">
 
@@ -33,31 +33,34 @@
 
         <Border
             x:Name="StartupReadinessIndicator"
-            Width="30"
-            Height="30"
+            Width="40"
+            Height="4"
             Margin="0,0,0,20"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Background="{DynamicResource BrushBackgroundDark}"
-            CornerRadius="15"
+            Background="{DynamicResource SpaceAccent}"
             IsHitTestVisible="False" />
 
         <Border
-            MinHeight="30"
-            Margin="0,0,0,20"
+            Name="NotificationToast"
+            MaxWidth="680"
+            MinHeight="40"
+            Margin="24,0,24,20"
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
-            Background="{DynamicResource BrushBackgroundDark}"
-            CornerRadius="15"
+            Background="{DynamicResource SpaceCarbon}"
+            BorderBrush="{DynamicResource SpaceAccent}"
+            BorderThickness="4,0,0,0"
             IsVisible="{Binding MessageVisibility, FallbackValue=False}">
             <TextBlock
-                Margin="15,5,15,5"
+                Margin="16,12"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Background="{x:Null}"
-                FontSize="12"
-                Foreground="{DynamicResource BrushForegroundDark}"
+                FontSize="14"
+                Foreground="{DynamicResource SpaceCream}"
                 Text="{Binding Message}"
+                TextWrapping="Wrap"
                 TextAlignment="Center" />
         </Border>
     </Grid>

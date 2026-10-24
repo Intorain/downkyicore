@@ -62,7 +62,7 @@ public sealed class UiThemeArchitectureTests
             StringComparison.Ordinal);
         Assert.DoesNotContain(">Simsun,", appSource, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
-            "Background=\"{DynamicResource BrushSurfaceBase}\"",
+            "Background=\"{DynamicResource SpacePaper}\"",
             windowSource,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -117,8 +117,8 @@ public sealed class UiThemeArchitectureTests
         Assert.DoesNotContain("BrushPrimaryTranslucent", buttonTheme, StringComparison.Ordinal);
         Assert.Contains("BrushSelectionFill", navigationTheme, StringComparison.Ordinal);
         Assert.DoesNotContain("SelectionIndicator", navigationTheme, StringComparison.Ordinal);
-        Assert.Contains("BrushControlStrokeFocus", indexView, StringComparison.Ordinal);
-        Assert.Contains("BrushTextSecondary", indexView, StringComparison.Ordinal);
+        Assert.Contains("SpaceAccent", indexView, StringComparison.Ordinal);
+        Assert.Contains("SpaceMuted", indexView, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public sealed class UiThemeArchitectureTests
         Assert.DoesNotContain("Background=\"LightGray\"", settingsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FontSize=\"12\"", settingsSource, StringComparison.Ordinal);
         Assert.Contains("DownKyiFontSizeBody", settingsSource, StringComparison.Ordinal);
-        Assert.Contains("DownKyiFontSizeTitle", settingsSource, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"studio-title\"", settingsSource, StringComparison.Ordinal);
         Assert.Contains("<system:String x:Key=\"FontName\">弹幕字体：</system:String>", languageSource, StringComparison.Ordinal);
     }
 
@@ -174,7 +174,9 @@ public sealed class UiThemeArchitectureTests
 
         Assert.All(
             toolboxViews,
-            source => Assert.Contains("BrushSurfaceBase", source, StringComparison.Ordinal));
+            source => Assert.Contains("/Themes/Styles/Studio.axaml", source, StringComparison.Ordinal));
+        Assert.Contains("{DynamicResource SpacePaper}",
+            ReadSource("src", "DownKyi.Desktop", "Themes", "Styles", "Studio.axaml"), StringComparison.Ordinal);
 
         var combinedSource = string.Join(Environment.NewLine, toolboxViews);
         Assert.DoesNotContain("Background=\"LightGray\"", combinedSource, StringComparison.Ordinal);

@@ -5,6 +5,8 @@
         <ResourceInclude Source="/Themes/ColorBrush.axaml" />
         <ResourceInclude Source="/Themes/Styles/StyleBtn.axaml" />
         <ResourceInclude Source="/Themes/Styles/StyleImageBtn.axaml" />
+        <ResourceInclude Source="/Themes/Styles/PersonalSpace.axaml" />
+        <ResourceInclude Source="/Themes/Styles/DownloadManager.axaml" />
         <ResourceInclude Source="/Themes/Styles/StyleSystemBtn.axaml" />
         <ResourceInclude Source="/Themes/Styles/StyleCheckBox.axaml" />
         <ResourceInclude Source="/Themes/Styles/StyleListBox.axaml" />

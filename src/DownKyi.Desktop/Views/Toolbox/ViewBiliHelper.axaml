@@ -1,37 +1,38 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.Toolbox.ViewBiliHelper"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
-             x:DataType="vm:ViewBiliHelperViewModel"
-             Background="{DynamicResource BrushSurfaceBase}"
-             Foreground="{DynamicResource BrushTextPrimary}">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
+    x:Class="DownKyi.Views.Toolbox.ViewBiliHelper"
+    x:DataType="vm:ViewBiliHelperViewModel"
+    Background="{DynamicResource SpacePaper}"
+    Foreground="{DynamicResource SpaceInk}"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="48,28,48,32">
+        <StackPanel Margin="24,8,24,28" MaxWidth="1100" HorizontalAlignment="Stretch">
             <TextBlock
                 Name="NameBiliHelperTitle"
-                FontSize="{DynamicResource DownKyiFontSizeTitle}"
-                FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource BiliHelper}" />
-
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource BiliHelper}"
+                Classes="studio-title" />
             <Border
                 Name="NameConversionSection"
                 Margin="0,24,0,0"
                 Padding="0,0,0,28"
-                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                BorderBrush="{DynamicResource SpaceRule}"
                 BorderThickness="0,0,0,1">
                 <StackPanel>
                     <TextBlock
                         FontSize="{DynamicResource DownKyiFontSizeBody}"
                         FontWeight="SemiBold"
-                        Foreground="{DynamicResource BrushTextPrimary}"
-                        Text="{DynamicResource AvidAndBvidConversion}" />
-
+                        Foreground="{DynamicResource SpaceInk}"
+                        Text="{DynamicResource AvidAndBvidConversion}"
+                        Classes=" studio-section" />
                     <Grid Margin="0,16,0,0" ColumnDefinitions="*,Auto,*,Auto">
                         <StackPanel Grid.Column="0">
-                            <TextBlock
-                                Foreground="{DynamicResource BrushTextPrimary}"
-                                Text="{DynamicResource Avid}" />
+                            <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource Avid}" />
                             <TextBox
                                 Name="NameAvid"
                                 Height="36"
@@ -40,27 +41,21 @@
                                 Text="{Binding Avid, Mode=TwoWay}">
                                 <Interaction.Behaviors>
                                     <EventTriggerBehavior EventName="TextChanged">
-                                        <InvokeCommandAction
-                                            Command="{Binding AvidCommand}"
-                                            CommandParameter="{Binding ElementName=NameAvid, Path=Text}" />
+                                        <InvokeCommandAction Command="{Binding AvidCommand}" CommandParameter="{Binding ElementName=NameAvid, Path=Text}" />
                                     </EventTriggerBehavior>
                                 </Interaction.Behaviors>
                             </TextBox>
                         </StackPanel>
-
                         <TextBlock
                             Name="NameConversionDirection"
                             Grid.Column="1"
                             Margin="12,27,12,0"
                             VerticalAlignment="Center"
                             FontSize="18"
-                            Foreground="{DynamicResource BrushTextSecondary}"
+                            Foreground="{DynamicResource SpaceMuted}"
                             Text="⇄" />
-
                         <StackPanel Grid.Column="2">
-                            <TextBlock
-                                Foreground="{DynamicResource BrushTextPrimary}"
-                                Text="{DynamicResource Bvid}" />
+                            <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource Bvid}" />
                             <TextBox
                                 Name="NameBvid"
                                 Height="36"
@@ -69,14 +64,11 @@
                                 Text="{Binding Bvid, Mode=TwoWay}">
                                 <Interaction.Behaviors>
                                     <EventTriggerBehavior EventName="TextChanged">
-                                        <InvokeCommandAction
-                                            Command="{Binding BvidCommand}"
-                                            CommandParameter="{Binding ElementName=NameBvid, Path=Text}" />
+                                        <InvokeCommandAction Command="{Binding BvidCommand}" CommandParameter="{Binding ElementName=NameBvid, Path=Text}" />
                                     </EventTriggerBehavior>
                                 </Interaction.Behaviors>
                             </TextBox>
                         </StackPanel>
-
                         <Button
                             Name="NameGotoWebButton"
                             Grid.Column="3"
@@ -85,29 +77,21 @@
                             Margin="12,0,0,0"
                             VerticalAlignment="Bottom"
                             Command="{Binding GotoWebCommand}"
-                            Content="{DynamicResource GotoWeb}"
-                            Theme="{StaticResource BtnBorderStyle}" />
+                            Content="{DynamicResource GotoWeb}" />
                     </Grid>
-
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        Foreground="{DynamicResource BrushTextSecondary}"
-                        Text="{DynamicResource AvidAndBvidConversionTip}" />
+                    <TextBlock Margin="0,10,0,0" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource AvidAndBvidConversionTip}" />
                 </StackPanel>
             </Border>
-
             <StackPanel Name="NameDanmakuSection" Margin="0,28,0,0">
                 <TextBlock
                     FontSize="{DynamicResource DownKyiFontSizeBody}"
                     FontWeight="SemiBold"
-                    Foreground="{DynamicResource BrushTextPrimary}"
-                    Text="{DynamicResource Danmaku}" />
-
+                    Foreground="{DynamicResource SpaceInk}"
+                    Text="{DynamicResource Danmaku}"
+                    Classes=" studio-section" />
                 <Grid Margin="0,16,0,0" ColumnDefinitions="*,Auto,180">
                     <StackPanel Grid.Column="0">
-                        <TextBlock
-                            Foreground="{DynamicResource BrushTextPrimary}"
-                            Text="{DynamicResource DanmakuUserID}" />
+                        <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource DanmakuUserID}" />
                         <TextBox
                             Name="NameUserId"
                             Height="36"
@@ -115,7 +99,6 @@
                             VerticalContentAlignment="Center"
                             Text="{Binding DanmakuUserId, Mode=TwoWay}" />
                     </StackPanel>
-
                     <Button
                         Name="NameFindDanmakuSenderButton"
                         Grid.Column="1"
@@ -124,21 +107,16 @@
                         Margin="12,0,0,0"
                         VerticalAlignment="Bottom"
                         Command="{Binding FindDanmakuSenderCommand}"
-                        Content="{DynamicResource FindDanmakuSender}"
-                        Theme="{StaticResource BtnBorderStyle}" />
-
+                        Content="{DynamicResource FindDanmakuSender}" />
                     <StackPanel Grid.Column="2" Margin="12,0,0,0">
-                        <TextBlock
-                            Foreground="{DynamicResource BrushTextPrimary}"
-                            Text="{DynamicResource UserSpace}" />
+                        <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource UserSpace}" />
                         <Button
                             Name="NameUserSpaceButton"
                             Height="36"
                             Margin="0,8,0,0"
                             HorizontalContentAlignment="Left"
                             Command="{Binding VisitUserSpaceCommand}"
-                            Content="{Binding UserMid, TargetNullValue=—}"
-                            Theme="{StaticResource BtnBorderStyle}" />
+                            Content="{Binding UserMid, TargetNullValue=—}" />
                     </StackPanel>
                 </Grid>
             </StackPanel>
