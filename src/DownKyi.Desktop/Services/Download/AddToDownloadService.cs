@@ -259,7 +259,7 @@ internal sealed class AddToDownloadService : IAddToDownloadSession
                     var alert = new AlertService(_dialogService);
                     await alert
                         .ShowError(
-                            DictionaryResource.GetString("DirectoryError"),
+                            DownloadActivityPresenter.CreateAdmissionError(exception),
                             cancellationToken)
                     .ConfigureAwait(true);
                 }

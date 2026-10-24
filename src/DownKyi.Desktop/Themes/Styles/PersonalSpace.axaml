@@ -1,0 +1,324 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vmp="clr-namespace:DownKyi.Presentation">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Default">
+            <SolidColorBrush x:Key="SpacePaper">#F2EFE6</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceInk">#191B1A</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceMuted">#55564F</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceRule">#C7C4B9</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceHover">#E6E2D8</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceSelection">#F6D1BC</SolidColorBrush>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="SpacePaper">#191B1A</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceInk">#F2EFE6</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceMuted">#B3B2A9</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceRule">#4A4C45</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceHover">#30322F</SolidColorBrush>
+            <SolidColorBrush x:Key="SpaceSelection">#503124</SolidColorBrush>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+    <SolidColorBrush x:Key="SpaceAccent">#EF592D</SolidColorBrush>
+    <SolidColorBrush x:Key="SpaceCarbon">#191B1A</SolidColorBrush>
+    <SolidColorBrush x:Key="SpaceCream">#F2EFE6</SolidColorBrush>
+
+    <!-- Shared poster palette and artwork for the personal library section. -->
+    <ControlTheme x:Key="PersonalHeaderArtwork" TargetType="ContentControl">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{DynamicResource SpaceCarbon}" ClipToBounds="True">
+                    <Viewbox Stretch="UniformToFill">
+                        <Canvas Width="240" Height="124">
+                            <Ellipse Width="142" Height="142" Canvas.Left="100" Canvas.Top="-54" Fill="{DynamicResource SpaceCream}" />
+                            <Polygon Points="-14,98 65,19 144,98 65,177" Fill="{DynamicResource SpaceAccent}" />
+                            <Path Data="M 20,124 L 144,0 M 98,124 L 222,0" Stroke="{DynamicResource SpaceCream}" StrokeThickness="1" />
+                        </Canvas>
+                    </Viewbox>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalSelectionMark" TargetType="ContentControl">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{DynamicResource SpaceAccent}">
+                    <Path Width="14" Height="12" Data="M 1,6 L 5,10 L 13,1" Stroke="{DynamicResource SpaceCarbon}"
+                          StrokeThickness="2" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalNavigationButton" TargetType="Button" BasedOn="{StaticResource ImageBtnStyle}">
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="MinWidth" Value="40" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="PersonalPosterNavigationButton" TargetType="Button" BasedOn="{StaticResource PersonalNavigationButton}">
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SpaceCream}" />
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource SpaceCream}" />
+        </Style>
+        <Style Selector="^:focus-visible">
+            <Setter Property="Background" Value="{DynamicResource SpaceCream}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceCarbon}" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="PersonalTabs" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalTabItem" TargetType="ListBoxItem" x:DataType="vmp:TabHeader">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="TabSurface" Margin="0,0,4,0" Padding="24,12"
+                        BorderThickness="0,0,0,2"
+                        CornerRadius="0">
+                    <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^ /template/ Border#TabSurface">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="^ /template/ TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#TabSurface">
+            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#TabSurface">
+            <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceCarbon}" />
+        </Style>
+        <Style Selector="^:selected /template/ TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceCarbon}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#TabSurface">
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+    </ControlTheme>
+
+    <!-- Collection items retain their layout while sharing all interaction states. -->
+    <ControlTheme x:Key="PersonalCollectionItem" TargetType="ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ItemSurface" Margin="6" Padding="16"
+                        BorderThickness="1"
+                        CornerRadius="0">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^ /template/ Border#ItemSurface">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#ItemSurface">
+            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#ItemSurface">
+            <Setter Property="BoxShadow" Value="inset 4 0 0 0 #EF592D" />
+            <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#ItemSurface">
+            <Setter Property="BoxShadow" Value="inset 0 0 0 2 #EF592D" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+    </ControlTheme>
+    <!-- A real button gives media links a padded hit target and keyboard activation. -->
+    <ControlTheme x:Key="PersonalMediaLink" TargetType="Button">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="MediaLinkSurface" Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="0,0,0,1">
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover, ^:focus-visible">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+        </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalActionButton" TargetType="Button" BasedOn="{StaticResource BtnStyle}">
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceCarbon}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                    <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^.secondary">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        </Style>
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SpaceInk}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpacePaper}" />
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource SpaceCarbon}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceCream}" />
+        </Style>
+        <Style Selector="^:focus-visible">
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceInk}" />
+        </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalCheckBox" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="22,8,*" Background="Transparent">
+                    <Border Name="CheckSurface" Height="22" BorderThickness="1" BorderBrush="{DynamicResource SpaceMuted}"
+                            VerticalAlignment="Center">
+                        <Grid>
+                            <Path Name="CheckMark" Width="14" Height="12" Data="M 1,6 L 5,10 L 13,1" Stroke="{DynamicResource SpaceCarbon}"
+                                  StrokeThickness="2" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+                            <Rectangle Name="MixedMark" Width="10" Height="2" Fill="{DynamicResource SpaceCarbon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+                        </Grid>
+                    </Border>
+                    <ContentPresenter Grid.Column="2" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked /template/ Border#CheckSurface, ^:indeterminate /template/ Border#CheckSurface">
+            <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+        <Style Selector="^:checked /template/ Path#CheckMark">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:indeterminate /template/ Rectangle#MixedMark">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#CheckSurface">
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceInk}" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#CheckSurface">
+            <Setter Property="BoxShadow" Value="0 0 0 2 #EF592D" />
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.38" />
+        </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalPagerButton" TargetType="Button" BasedOn="{StaticResource PersonalActionButton}">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="MinWidth" Value="34" />
+        <Setter Property="Height" Value="34" />
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalSidebarItem" TargetType="ListBoxItem" x:DataType="vmp:TabHeader">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="SidebarEntry" Margin="0,0,16,0" Padding="14,16" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Foreground="{Binding $parent[ListBoxItem].Foreground}" Name="SidebarTitle" FontSize="16" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                        <TextBlock Grid.Column="1" Text="{Binding SubTitle}" Margin="8,0,0,0" FontSize="12"
+                                   VerticalAlignment="Center" Foreground="{Binding $parent[ListBoxItem].Foreground}" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^ /template/ Border#SidebarEntry">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#SidebarEntry">
+            <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+        </Style>
+        <Style Selector="^:selected /template/ Border#SidebarEntry">
+            <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceCarbon}" />
+        </Style>
+        <Style Selector="^:selected /template/ TextBlock#SidebarTitle">
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="^:selected">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceCarbon}" />
+        </Style>
+        <Style Selector="^:focus-visible /template/ Border#SidebarEntry">
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+        </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="PersonalSidebar" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="StudioEmptyState" TargetType="ContentControl">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Margin="24" Spacing="12" MaxWidth="320">
+                    <Border Width="40" Height="4" Background="{DynamicResource SpaceAccent}" HorizontalAlignment="Left" />
+                    <TextBlock Text="{DynamicResource EmptyStateTitle}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource SpaceInk}" TextWrapping="Wrap" />
+                    <TextBlock Text="{DynamicResource EmptyStateDescription}" Foreground="{DynamicResource SpaceMuted}" TextWrapping="Wrap" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

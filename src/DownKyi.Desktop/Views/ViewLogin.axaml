@@ -1,138 +1,149 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             d:DesignWidth="840"
-             d:DesignHeight="620"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             x:Class="DownKyi.Views.ViewLogin"
-             x:DataType="vm:ViewLoginViewModel">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="40" />
-            <RowDefinition Height="106" />
-            <RowDefinition Height="150*" MinHeight="200" />
-            <RowDefinition Height="100*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0" ColumnDefinitions="100,*,100">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    x:Class="DownKyi.Views.ViewLogin"
+    x:DataType="vm:ViewLoginViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
+    <Grid Margin="24,18,24,20" RowDefinitions="Auto,1,*,Auto">
+        <Grid Margin="0,0,0,16" ColumnDefinitions="*,Auto">
             <Button
-                Grid.Column="0"
-                Margin="10,5,0,5"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
+                Classes="studio-back"
+                Theme="{StaticResource PersonalNavigationButton}"
                 Command="{Binding BackSpaceCommand}"
-                Theme="{StaticResource ImageBtnStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <ContentControl Width="24" Height="24">
-                        <Path
-                            Theme="{StaticResource NavigationIcon.ArrowBack}"
-                            Width="24"
-                            Height="24"
-                            Fill="{DynamicResource ColorTextDark}" />
-                    </ContentControl>
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="16"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{DynamicResource Login}" />
+                Padding="8"
+                HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Path
+                        Theme="{StaticResource NavigationIcon.ArrowBack}"
+                        Width="24"
+                        Height="24"
+                        Fill="{DynamicResource SpaceInk}"
+                        VerticalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource Login}" FontSize="24" FontWeight="Bold" />
                 </StackPanel>
             </Button>
-
-        </Grid>
-
-        <StackPanel
-            Grid.Row="1"
-            Height="86"
-            VerticalAlignment="Top"
-            Background="#FF00A0D8" />
-
-        <Image
-            Grid.Row="1"
-            Width="980"
-            Height="106"
-            Source="/Resources/login/login_top_bar.png" />
-
-        <Image
-            Name="NameLoginQrCode"
-            Grid.Row="2"
-            Width="200"
-            Height="200"
-            Opacity="{Binding LoginQrCodeOpacity}"
-            Source="{Binding LoginQrCode}" />
-
-        <Image
-            Name="NameLoginQrCodeStatus"
-            Grid.Row="2"
-            Width="80"
-            Height="80"
-            Source="/Resources/login/scan_succeed.png"
-            IsVisible="{Binding LoginQrCodeStatus}" />
-
-        <Image
-            IsVisible="False"
-            Name="NameLoginQrCodeTip"
-            Grid.Row="2"
-            MaxHeight="300"
-            Source="/Resources/login/qrcode_login_tip.png">
-            <Interaction.Behaviors>
-                <DataTriggerBehavior
-                    Binding="{Binding Path=IsPointerOver, ElementName=NameLoginQrCode}"
-                    Value="True">
-                    <ChangePropertyAction PropertyName="IsVisible" Value="True" TargetObject="NameLoginQrCodeTip" />
-                </DataTriggerBehavior>
-                <DataTriggerBehavior
-                    Binding="{Binding Path=IsPointerOver, ElementName=NameLoginQrCodeTip}"
-                    Value="False">
-                    <ChangePropertyAction PropertyName="IsVisible" Value="False" TargetObject="NameLoginQrCodeTip" />
-                </DataTriggerBehavior>
-                <DataTriggerBehavior
-                    Binding="{Binding Path=IsVisible, ElementName=NameLoginQrCodeStatus}"
-                    Value="True">
-                    <ChangePropertyAction PropertyName="IsVisible" Value="False" TargetObject="NameLoginQrCodeTip" />
-                </DataTriggerBehavior>
-            </Interaction.Behaviors>
-        </Image>
-
-
-        <Image
-            Grid.Row="3"
-            MaxHeight="160"
-            Margin="0,0,0,10"
-            Source="/Resources/login/qrcode_login_2233.png" />
-
-        <StackPanel Grid.Row="3" Margin="0,30,0,0">
             <TextBlock
-                FontSize="18"
-                Foreground="{DynamicResource BrushTextDark}"
-                Text="{DynamicResource ScanToLogin}"
-                TextAlignment="Center" />
-            <TextBlock
-                Margin="0,10,0,0"
-                FontSize="14"
-                Foreground="{DynamicResource BrushTextDark}"
-                Text="{DynamicResource ScanLoginTip}"
-                TextAlignment="Center" />
-        </StackPanel>
-
-        <Grid
-            Grid.Row="4"
-            Margin="120,0,120,18"
-            ColumnDefinitions="*,Auto">
-            <TextBox
-                Grid.Column="0"
-                MinHeight="36"
-                PasswordChar="●"
-                PlaceholderText="{DynamicResource BrowserCookieWatermark}"
-                Text="{Binding BrowserCookieHeader, Mode=TwoWay}" />
-            <Button
                 Grid.Column="1"
-                MinWidth="150"
-                Margin="8,0,0,0"
-                Command="{Binding BrowserCookieLoginCommand}"
-                Content="{DynamicResource BrowserCookieLogin}" />
+                Text="DownKyi"
+                Foreground="{DynamicResource SpaceMuted}"
+                VerticalAlignment="Center" />
         </Grid>
+        <Border Grid.Row="1" Background="{DynamicResource SpaceInk}" />
+        <ScrollViewer
+            Name="LoginBodyScroll"
+            Grid.Row="2"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalContentAlignment="Center">
+            <Grid
+                Name="LoginComposition"
+                MaxWidth="1100"
+                Margin="24"
+                ColumnDefinitions="3*,2*"
+                RowDefinitions="Auto,Auto"
+                VerticalAlignment="Center">
+                <StackPanel
+                    Name="LoginIntro"
+                    Spacing="18"
+                    VerticalAlignment="Center"
+                    Margin="0,0,32,0">
+                    <TextBlock
+                        Text="01 / BILIBILI"
+                        FontFamily="Cascadia Mono,Consolas"
+                        FontSize="12"
+                        Foreground="{DynamicResource SpaceMuted}" />
+                    <TextBlock
+                        Name="LoginHeadline"
+                        Text="{DynamicResource LoginStudioHeadline}"
+                        FontSize="44"
+                        FontWeight="Bold" />
+                    <Border
+                        Width="56"
+                        Height="4"
+                        Background="{DynamicResource SpaceAccent}"
+                        HorizontalAlignment="Left" />
+                    <TextBlock Text="{DynamicResource ScanLoginTip}" Foreground="{DynamicResource SpaceMuted}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel
+                    Name="LoginScanPanel"
+                    Grid.Column="1"
+                    Spacing="16"
+                    HorizontalAlignment="Center">
+                    <Border Name="LoginQrPaper" Background="White" Padding="16">
+                        <Grid Width="200" Height="200">
+                            <Image
+                                Name="NameLoginQrCode"
+                                Width="200"
+                                Height="200"
+                                Source="{Binding LoginQrCode}"
+                                Opacity="{Binding LoginQrCodeOpacity}"
+                                RenderOptions.BitmapInterpolationMode="None" />
+                            <Border
+                                Name="NameLoginQrCodeStatus"
+                                IsVisible="{Binding LoginQrCodeStatus}"
+                                Background="{DynamicResource SpaceCarbon}"
+                                Width="56"
+                                Height="56">
+                                <Path
+                                    Data="M4,12 L10,18 L22,5"
+                                    Stroke="{DynamicResource SpaceCream}"
+                                    StrokeThickness="3"
+                                    Width="28"
+                                    Height="28"
+                                    Stretch="Uniform" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <Grid Width="264">
+                        <TextBlock
+                            Text="{DynamicResource ScanToLogin}"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            TextAlignment="Center"
+                            IsVisible="{Binding !LoginQrCodeStatus}" />
+                        <TextBlock
+                            Name="LoginScannedMessage"
+                            Text="{DynamicResource LoginScannedConfirmation}"
+                            TextAlignment="Center"
+                            IsVisible="{Binding LoginQrCodeStatus}" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+        <Border
+            Grid.Row="3"
+            BorderBrush="{DynamicResource SpaceRule}"
+            BorderThickness="0,1,0,0"
+            Padding="0,16,0,0">
+            <StackPanel Spacing="12">
+                <TextBlock Text="{DynamicResource BrowserCookieLogin}" FontSize="14" FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox
+                        Name="BrowserCookieInput"
+                        PasswordChar="●"
+                        Height="40"
+                        VerticalContentAlignment="Center"
+                        PlaceholderText="{DynamicResource BrowserCookieWatermark}"
+                        Text="{Binding BrowserCookieHeader, Mode=TwoWay}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding BrowserCookieLoginCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button
+                        Name="BrowserCookieLoginButton"
+                        Grid.Column="1"
+                        Classes="studio-primary"
+                        MinWidth="104"
+                        Height="40"
+                        Margin="12,0,0,0"
+                        Command="{Binding BrowserCookieLoginCommand}"
+                        Content="{DynamicResource Login}" />
+                </Grid>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

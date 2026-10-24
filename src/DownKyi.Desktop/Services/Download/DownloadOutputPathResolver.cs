@@ -46,7 +46,7 @@ internal static class DownloadOutputPathResolver
         if (!autoAddNumberSuffix)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            throw new IOException("The selected output path is already in use.");
+            throw new DownloadOutputCollisionException();
         }
 
         occupiedPaths.UnionWith(await getReservationKeysAsync(cancellationToken).ConfigureAwait(false));
@@ -59,11 +59,6 @@ internal static class DownloadOutputPathResolver
                 && !hasExistingOutputClaimConflict(candidate))
             {
                 return candidate;
-            }
-
-            if (!autoAddNumberSuffix)
-            {
-                throw new IOException("The selected output path is already in use.");
             }
         }
     }

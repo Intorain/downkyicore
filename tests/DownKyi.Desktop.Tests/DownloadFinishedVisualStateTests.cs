@@ -142,7 +142,7 @@ public sealed class DownloadFinishedVisualStateTests
             Assert.Equal(40, iconFrame.Bounds.Width);
             Assert.Equal(40, iconFrame.Bounds.Height);
             Assert.Equal("2026-09-27 15:25:32", finishedTime.Text);
-            Assert.Equal(124, finishedTime.Bounds.Width);
+            Assert.Equal(144, finishedTime.Bounds.Width);
             Assert.Contains("42.5 MB", metadata.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("2.62 MB/s", metadata.Text, StringComparison.Ordinal);
             Assert.True(LeftInView(title, view) < LeftInView(finishedTime, view));
@@ -155,44 +155,44 @@ public sealed class DownloadFinishedVisualStateTests
                 var chrome = Assert.Single(
                     button.GetVisualDescendants().OfType<Border>());
                 Assert.Equal(
-                    ResourceColor(application, "BrushControlFill", theme),
+                    ResourceColor(application, "SpacePaper", theme),
                     SolidColor(chrome.Background));
             }
 
             foreach (var button in new[] { openFolder, openVideo })
             {
                 Assert.Equal(
-                    ResourceColor(application, "BrushTextPrimary", theme),
+                    ResourceColor(application, "SpaceInk", theme),
                     SolidColor(button.Foreground));
                 Assert.NotEqual(
-                    ResourceColor(application, "BrushPrimary", theme),
+                    ResourceColor(application, "SpaceAccent", theme),
                     SolidColor(button.Foreground));
             }
 
             Assert.Equal(
-                ResourceColor(application, "BrushWarning", theme),
+                ResourceColor(application, "DownloadWarning", theme),
                 SolidColor(remove.Foreground));
             Assert.Equal(
-                ResourceColor(application, "BrushWarning", theme),
+                ResourceColor(application, "DownloadWarning", theme),
                 SolidColor(Named<ShapePath>(remove, null).Fill));
             Assert.Equal(
-                ResourceColor(application, "BrushPrimaryTranslucent3", theme),
+                ResourceColor(application, "SpaceHover", theme),
                 SolidColor(iconFrame.Background));
 
             Assert.Equal(58, toolbar.Bounds.Height);
             Assert.Equal(new Thickness(16, 0), toolbar.Padding);
             Assert.Equal(
-                ResourceColor(application, "BrushSurfaceRaised", theme),
+                ResourceColor(application, "SpacePaper", theme),
                 SolidColor(toolbar.Background));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(count.Foreground));
             Assert.NotEqual(
-                ResourceColor(application, "BrushPrimary", theme),
+                ResourceColor(application, "SpaceAccent", theme),
                 SolidColor(count.Foreground));
             Assert.Equal(104, clear.MinWidth);
             Assert.Equal(
-                ResourceColor(application, "BrushWarning", theme),
+                ResourceColor(application, "DownloadWarning", theme),
                 SolidColor(clear.Foreground));
             Assert.True(RightInView(summary, view) < LeftInView(sort, view));
             Assert.True(RightInView(sort, view) < LeftInView(divider, view));
@@ -220,7 +220,7 @@ public sealed class DownloadFinishedVisualStateTests
             window.UpdateLayout();
             Assert.True(container.IsPointerOver);
             Assert.Equal(
-                ResourceColor(application, "BrushSurfaceRaised", theme),
+                ResourceColor(application, "SpaceHover", theme),
                 SolidColor(row.Background));
         }
         finally

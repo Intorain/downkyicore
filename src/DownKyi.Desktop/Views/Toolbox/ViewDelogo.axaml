@@ -1,24 +1,25 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
-             xmlns:customControl="clr-namespace:DownKyi.CustomControl"
-             x:Class="DownKyi.Views.Toolbox.ViewDelogo"
-             x:DataType="vm:ViewDelogoViewModel"
-             Background="{DynamicResource BrushSurfaceBase}"
-             Foreground="{DynamicResource BrushTextPrimary}">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
+    xmlns:customControl="clr-namespace:DownKyi.CustomControl"
+    x:Class="DownKyi.Views.Toolbox.ViewDelogo"
+    x:DataType="vm:ViewDelogoViewModel"
+    Background="{DynamicResource SpacePaper}"
+    Foreground="{DynamicResource SpaceInk}"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="48,28,48,32">
+        <StackPanel Margin="24,8,24,28" MaxWidth="1100" HorizontalAlignment="Stretch">
             <TextBlock
                 Name="NameDelogoTitle"
-                FontSize="{DynamicResource DownKyiFontSizeTitle}"
-                FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource Delogo}" />
-
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource Delogo}"
+                Classes="studio-title" />
             <StackPanel Margin="0,24,0,0">
-                <TextBlock
-                    Foreground="{DynamicResource BrushTextPrimary}"
-                    Text="{DynamicResource VideoFilePath}" />
+                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource VideoFilePath}" />
                 <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
                     <TextBox
                         Name="NameVideoPath"
@@ -35,18 +36,20 @@
                         MinWidth="112"
                         Margin="12,0,0,0"
                         Command="{Binding SelectVideoCommand}"
-                        Content="{DynamicResource SelectVideo}"
-                        Theme="{StaticResource BtnStyle}" />
+                        Content="{DynamicResource SelectVideo}" />
                 </Grid>
             </StackPanel>
-
-            <Grid Margin="0,24,0,0" ColumnDefinitions="*,312">
+            <Grid
+                Margin="0,24,0,0"
+                ColumnDefinitions="*,312"
+                Name="DelogoWorkspace"
+                RowDefinitions="Auto,Auto">
                 <Border
                     Name="NameVideoPreview"
                     Grid.Column="0"
                     Height="328"
                     Background="{DynamicResource BrushMediaCanvas}"
-                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderBrush="{DynamicResource SpaceRule}"
                     BorderThickness="1">
                     <customControl:VideoFramePreview
                         EdgeThreshold="5"
@@ -56,40 +59,34 @@
                         WatermarkRect="{Binding WatermarkArea, Mode=TwoWay}"
                         WatermarkThickness="2" />
                 </Border>
-
                 <Border
                     Name="NameLogoGeometryPanel"
                     Grid.Column="1"
                     Margin="24,0,0,0"
-                    Padding="16"
-                    Background="{DynamicResource BrushSurfaceRaised}"
-                    BorderBrush="{DynamicResource BrushBorderSubtle}"
-                    BorderThickness="1"
-                    CornerRadius="{DynamicResource DownKyiRadiusMedium}">
+                    Padding="20,0,0,0"
+                    Background="{DynamicResource SpacePaper}"
+                    BorderBrush="{DynamicResource SpaceRule}"
+                    BorderThickness="1,0,0,0"
+                    CornerRadius="0">
                     <StackPanel>
                         <StackPanel>
                             <TextBlock
                                 Name="NameLogoGeometryTitle"
                                 FontWeight="SemiBold"
-                                Foreground="{DynamicResource BrushTextPrimary}"
-                                Text="{DynamicResource LogoSizeAndLocation}" />
+                                Foreground="{DynamicResource SpaceInk}"
+                                Text="{DynamicResource LogoSizeAndLocation}"
+                                Classes=" studio-section" />
                             <TextBlock
                                 Name="NameLogoGeometryTip"
                                 Margin="0,4,0,0"
                                 FontSize="{DynamicResource DownKyiFontSizeCaption}"
-                                Foreground="{DynamicResource BrushTextSecondary}"
+                                Foreground="{DynamicResource SpaceMuted}"
                                 Text="{DynamicResource LogoSizeAndLocationTip}"
                                 TextWrapping="Wrap" />
                         </StackPanel>
-
-                        <Grid
-                            Margin="0,12,0,0"
-                            ColumnDefinitions="*,12,*"
-                            RowDefinitions="Auto,12,Auto">
+                        <Grid Margin="0,12,0,0" ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto">
                             <StackPanel Grid.Row="0" Grid.Column="0">
-                                <TextBlock
-                                    Foreground="{DynamicResource BrushTextPrimary}"
-                                    Text="{DynamicResource LogoWidth}" />
+                                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource LogoWidth}" />
                                 <TextBox
                                     Name="NameLogoWidth"
                                     Height="34"
@@ -97,11 +94,8 @@
                                     VerticalContentAlignment="Center"
                                     Text="{Binding LogoWidth, Mode=TwoWay}" />
                             </StackPanel>
-
                             <StackPanel Grid.Row="0" Grid.Column="2">
-                                <TextBlock
-                                    Foreground="{DynamicResource BrushTextPrimary}"
-                                    Text="{DynamicResource LogoHeight}" />
+                                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource LogoHeight}" />
                                 <TextBox
                                     Name="NameLogoHeight"
                                     Height="34"
@@ -109,11 +103,8 @@
                                     VerticalContentAlignment="Center"
                                     Text="{Binding LogoHeight, Mode=TwoWay}" />
                             </StackPanel>
-
                             <StackPanel Grid.Row="2" Grid.Column="0">
-                                <TextBlock
-                                    Foreground="{DynamicResource BrushTextPrimary}"
-                                    Text="{DynamicResource LogoX}" />
+                                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource LogoX}" />
                                 <TextBox
                                     Name="NameLogoX"
                                     Height="34"
@@ -121,11 +112,8 @@
                                     VerticalContentAlignment="Center"
                                     Text="{Binding LogoX, Mode=TwoWay}" />
                             </StackPanel>
-
                             <StackPanel Grid.Row="2" Grid.Column="2">
-                                <TextBlock
-                                    Foreground="{DynamicResource BrushTextPrimary}"
-                                    Text="{DynamicResource LogoY}" />
+                                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource LogoY}" />
                                 <TextBox
                                     Name="NameLogoY"
                                     Height="34"
@@ -134,11 +122,8 @@
                                     Text="{Binding LogoY, Mode=TwoWay}" />
                             </StackPanel>
                         </Grid>
-
                         <StackPanel Margin="0,16,0,0">
-                            <TextBlock
-                                Foreground="{DynamicResource BrushTextPrimary}"
-                                Text="边框色：" />
+                            <TextBlock Foreground="{DynamicResource SpaceInk}" Text="边框色：" />
                             <ComboBox
                                 Name="NameBorderColor"
                                 Height="34"
@@ -148,15 +133,11 @@
                                 SelectedItem="{Binding SelectedColor, Mode=TwoWay}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border
-                                            Width="100"
-                                            Height="20"
-                                            Background="{Binding}" />
+                                        <Border Width="100" Height="20" Background="{Binding}" />
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                         </StackPanel>
-
                         <Button
                             Name="NameDelogoButton"
                             Height="36"
@@ -164,31 +145,27 @@
                             HorizontalAlignment="Stretch"
                             Command="{Binding DelogoCommand}"
                             Content="{DynamicResource Delogo}"
-                            Theme="{StaticResource BtnStyle}" />
+                            Classes="studio-primary" />
                     </StackPanel>
                 </Border>
             </Grid>
-
             <StackPanel Margin="0,24,0,0">
-                <TextBlock
-                    Foreground="{DynamicResource BrushTextPrimary}"
-                    Text="{DynamicResource OutputInfo}" />
+                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource OutputInfo}" />
                 <TextBox
                     Name="NameStatus"
                     Height="140"
                     Margin="0,8,0,0"
-                    Background="{DynamicResource BrushSurfaceSunken}"
-                    BorderBrush="{DynamicResource BrushBorderSubtle}"
-                    Foreground="{DynamicResource BrushTextPrimary}"
+                    Background="{DynamicResource SpaceHover}"
+                    BorderBrush="{DynamicResource SpaceRule}"
+                    Foreground="{DynamicResource SpaceInk}"
                     IsReadOnly="True"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                    Text="{Binding Status, Mode=TwoWay}">
+                    Text="{Binding Status, Mode=TwoWay}"
+                    Classes="studio-output">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="TextChanged">
-                            <InvokeCommandAction
-                                Command="{Binding StatusCommand}"
-                                CommandParameter="{Binding #NameStatus}" />
+                            <InvokeCommandAction Command="{Binding StatusCommand}" CommandParameter="{Binding #NameStatus}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </TextBox>

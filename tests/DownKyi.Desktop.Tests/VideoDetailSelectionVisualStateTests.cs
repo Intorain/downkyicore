@@ -51,7 +51,7 @@ public sealed class VideoDetailSelectionVisualStateTests
     }
 
     [AvaloniaFact]
-    public Task ToolbarSearchKeepsOneRoundedFocusOutlineAcrossThemes()
+    public Task ToolbarSearchKeepsOneSquareFocusOutlineAcrossThemes()
     {
         return AvaloniaTestDispatcher.RunAsync(() =>
         {
@@ -84,10 +84,10 @@ public sealed class VideoDetailSelectionVisualStateTests
                         border => border.Name == "PART_BorderElement");
                     Assert.True(shell.IsKeyboardFocusWithin);
                     Assert.Equal(default, shell.BorderThickness);
-                    Assert.Equal(new CornerRadius(16), focusBorder.CornerRadius);
+                    Assert.Equal(new CornerRadius(0), focusBorder.CornerRadius);
                     Assert.Equal(new Thickness(1), focusBorder.BorderThickness);
                     Assert.Equal(
-                        ResourceColor(application, "BrushControlStrokeFocus", theme),
+                        ResourceColor(application, "SpaceAccent", theme),
                         SolidColor(focusBorder.BorderBrush));
                 }
             }
@@ -126,7 +126,7 @@ public sealed class VideoDetailSelectionVisualStateTests
             var actions = new VideoDetailActionsView();
             var host = new Grid();
             host.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-            host.RowDefinitions.Add(new RowDefinition(new GridLength(52)));
+            host.RowDefinitions.Add(new RowDefinition(new GridLength(56)));
             Grid.SetRow(selection, 0);
             Grid.SetRow(actions, 1);
             host.Children.Add(selection);
@@ -153,21 +153,21 @@ public sealed class VideoDetailSelectionVisualStateTests
                     Assert.True(row.IsSelected);
                     Assert.True(selectionFill.IsVisible);
                     Assert.Equal(
-                        ResourceColor(application, "BrushSelectionFill", theme),
+                        ResourceColor(application, "SpaceSelection", theme),
                         SolidColor(selectionFill.Fill));
                     Assert.NotEqual(
                         ResourceColor(application, "BrushPrimary", theme),
                         SolidColor(selectionFill.Fill));
                     Assert.Equal(
-                        ResourceColor(application, "BrushSurfaceSunken", theme),
+                        ResourceColor(application, "SpacePaper", theme),
                         SolidColor(dataGrid.Background));
                     Assert.Equal(
-                        ResourceColor(application, "BrushBorderSubtle", theme),
+                        ResourceColor(application, "SpaceRule", theme),
                         SolidColor(dataGrid.BorderBrush));
 
                     var actionSurface = Assert.IsType<Border>(actions.Content);
                     Assert.Equal(
-                        ResourceColor(application, "BrushSurfaceRaised", theme),
+                        ResourceColor(application, "SpacePaper", theme),
                         SolidColor(actionSurface.Background));
                     var actionButtons = actions
                         .GetVisualDescendants()
@@ -178,7 +178,7 @@ public sealed class VideoDetailSelectionVisualStateTests
                     Assert.All(
                         actionButtons,
                         button => Assert.Equal(
-                            ResourceColor(application, "BrushTextPrimary", theme),
+                            ResourceColor(application, button.Classes.Contains("studio-primary") ? "SpaceCarbon" : "SpaceInk", theme),
                             SolidColor(button.Foreground)));
                     Assert.All(actionButtons, button => Assert.True(button.Bounds.Height >= 36));
                     Assert.All(

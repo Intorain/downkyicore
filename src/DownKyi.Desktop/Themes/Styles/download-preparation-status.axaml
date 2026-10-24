@@ -6,22 +6,25 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Template">
             <ControlTemplate>
-                <StackPanel
+                <WrapPanel
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     IsVisible="{TemplateBinding IsActive}"
-                    Orientation="{TemplateBinding Orientation}"
-                    Spacing="8">
-                    <ProgressBar Width="60" IsIndeterminate="True" />
+                    Orientation="{TemplateBinding Orientation}">
+                    <ProgressBar Width="48" Height="4" Margin="8" Background="{DynamicResource SpaceRule}" Foreground="{DynamicResource SpaceAccent}" IsIndeterminate="True" />
                     <TextBlock
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
+                        Margin="0,8,8,8"
+                        Foreground="{DynamicResource SpaceInk}"
                         Text="{DynamicResource PreparingDownloads}" />
                     <Button
                         HorizontalAlignment="Center"
                         Command="{TemplateBinding CancelCommand}"
+                        Theme="{StaticResource DownloadActionButton}"
+                        Margin="0,4"
                         Content="{DynamicResource CancelDownloadPreparation}" />
-                </StackPanel>
+                </WrapPanel>
             </ControlTemplate>
         </Setter>
     </Style>

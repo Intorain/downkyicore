@@ -67,8 +67,8 @@ public sealed class DownloadBatchToolbarLayoutTests
             var window = new Window
             {
                 Content = manager,
-                Width = 960,
-                Height = 855
+                Width = 800,
+                Height = 550
             };
 
             try
@@ -76,11 +76,7 @@ public sealed class DownloadBatchToolbarLayoutTests
                 window.Show();
                 window.UpdateLayout();
 
-                var regionHost = Assert.Single(
-                    manager.GetVisualDescendants().OfType<ContentControl>(),
-                    candidate => Grid.GetColumn(candidate) == 1 &&
-                                 candidate.Bounds.Width > 500 &&
-                                 candidate.Bounds.Height > 500);
+                var regionHost = Assert.IsType<ContentControl>(manager.FindControl<ContentControl>("DownloadRegion"));
                 regionHost.ContentTemplate = new FuncDataTemplate<object>(
                     (_, _) => downloading);
                 regionHost.Content = new object();
@@ -171,13 +167,13 @@ public sealed class DownloadBatchToolbarLayoutTests
             Assert.Equal(host.Bounds.Height, content.Height);
             Assert.Equal(new Thickness(16, 0), toolbar.Padding);
             Assert.Equal(
-                ResourceColor(application, "BrushSurfaceRaised", theme),
+                ResourceColor(application, "SpacePaper", theme),
                 SolidColor(toolbar.Background));
             Assert.Equal(
-                ResourceColor(application, "BrushTextPrimary", theme),
+                ResourceColor(application, "SpaceInk", theme),
                 SolidColor(count.Foreground));
             Assert.NotEqual(
-                ResourceColor(application, "BrushPrimary", theme),
+                ResourceColor(application, "SpaceAccent", theme),
                 SolidColor(count.Foreground));
 
             Assert.Same(safeActions, pause.Parent);
@@ -203,7 +199,7 @@ public sealed class DownloadBatchToolbarLayoutTests
                 Assert.True(button.Bounds.Width >= presenter.Bounds.Width + 24);
                 Assert.NotNull(icon.Data);
                 Assert.Equal(
-                    ResourceColor(application, "BrushControlFill", theme),
+                    ResourceColor(application, button == resume ? "SpaceAccent" : "SpacePaper", theme),
                     SolidColor(chrome.Background));
             }
 
@@ -213,18 +209,18 @@ public sealed class DownloadBatchToolbarLayoutTests
                 delete.GetVisualDescendants().OfType<ContentPresenter>());
             var deleteIcon = Assert.Single(
                 delete.GetVisualDescendants().OfType<ShapePath>());
-            var warning = ResourceColor(application, "BrushWarning", theme);
-            var onWarning = ResourceColor(application, "BrushWarningForeground", theme);
+            var warning = ResourceColor(application, "DownloadWarning", theme);
+            var paper = ResourceColor(application, "SpacePaper", theme);
             Assert.True(delete.Bounds.Width >= deletePresenter.Bounds.Width + 24);
             Assert.NotNull(deleteIcon.Data);
-            Assert.Equal(warning, SolidColor(deleteChrome.Background));
+            Assert.Equal(paper, SolidColor(deleteChrome.Background));
             Assert.Equal(
-                onWarning,
+                warning,
                 SolidColor(delete.Foreground));
             Assert.Equal(
-                onWarning,
+                warning,
                 SolidColor(deleteIcon.Fill));
-            Assert.True(ContrastRatio(onWarning, warning) >= 4.5);
+            Assert.True(ContrastRatio(warning, paper) >= 4.5);
             Assert.True(delete.Bounds.Right <= view.Bounds.Right);
             Assert.True(
                 BottomInHost(toolbar, host) <= host.Bounds.Height,

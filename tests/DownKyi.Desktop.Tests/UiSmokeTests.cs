@@ -592,26 +592,26 @@ public sealed class UiSmokeTests
 
                 application.RequestedThemeVariant = ThemeVariant.Light;
                 window.UpdateLayout();
-                Assert.Equal(Colors.Black, Assert.IsType<SolidColorBrush>(arrow.Fill).Color);
+                Assert.Equal(Color.Parse("#191B1A"), Assert.IsAssignableFrom<ISolidColorBrush>(arrow.Fill).Color);
                 Assert.Equal(
-                    Color.Parse("#FF065FD4"),
-                    Assert.IsType<SolidColorBrush>(download.Fill).Color);
+                    Color.Parse("#191B1A"),
+                    Assert.IsAssignableFrom<ISolidColorBrush>(download.Fill).Color);
 
                 application.RequestedThemeVariant = ThemeVariant.Dark;
                 window.UpdateLayout();
                 Assert.Equal(
-                    Color.Parse("#FFC7C7C7"),
-                    Assert.IsType<SolidColorBrush>(arrow.Fill).Color);
+                    Color.Parse("#F2EFE6"),
+                    Assert.IsAssignableFrom<ISolidColorBrush>(arrow.Fill).Color);
                 Assert.Equal(
-                    Color.Parse("#FF3EA6FF"),
-                    Assert.IsType<SolidColorBrush>(download.Fill).Color);
+                    Color.Parse("#F2EFE6"),
+                    Assert.IsAssignableFrom<ISolidColorBrush>(download.Fill).Color);
 
                 application.RequestedThemeVariant = ThemeVariant.Light;
                 window.UpdateLayout();
-                Assert.Equal(Colors.Black, Assert.IsType<SolidColorBrush>(arrow.Fill).Color);
+                Assert.Equal(Color.Parse("#191B1A"), Assert.IsAssignableFrom<ISolidColorBrush>(arrow.Fill).Color);
                 Assert.Equal(
-                    Color.Parse("#FF065FD4"),
-                    Assert.IsType<SolidColorBrush>(download.Fill).Color);
+                    Color.Parse("#191B1A"),
+                    Assert.IsAssignableFrom<ISolidColorBrush>(download.Fill).Color);
             }
             finally
             {
@@ -955,6 +955,7 @@ public sealed class UiSmokeTests
     {
         await AvaloniaTestDispatcher.RunAsync(async () =>
         {
+            DesktopTestResources.EnsureProductThemeResources();
             AssertPrismRuntimeIsNotLoaded();
             AssertVideoPageSelectionBehavior();
 
@@ -1030,7 +1031,7 @@ public sealed class UiSmokeTests
                 Assert.Collection(
                     videoDetailRoot.Children,
                     child => Assert.IsType<VideoDetailToolbarView>(child),
-                    child => Assert.IsType<TextBlock>(child),
+                    child => Assert.IsType<Border>(child),
                     child =>
                     {
                         var content = Assert.IsType<Grid>(child);
@@ -1046,7 +1047,7 @@ public sealed class UiSmokeTests
                                     actions => Assert.IsType<VideoDetailActionsView>(actions));
                             });
                     },
-                    child => Assert.IsType<Image>(child),
+                    child => Assert.IsType<StackPanel>(child),
                     child => Assert.IsType<VideoDetailOperationStatusView>(child));
 
                 host.Services

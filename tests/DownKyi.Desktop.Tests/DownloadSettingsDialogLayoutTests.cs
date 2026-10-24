@@ -1,7 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
 using DownKyi.Core.Settings;
@@ -28,7 +31,9 @@ public sealed class DownloadSettingsDialogLayoutTests
         var view = new ViewDownloadSetter { DataContext = viewModel };
         var window = new DialogWindow
         {
+            Width = 680,
             Height = 500,
+            SizeToContent = SizeToContent.Manual,
             Content = view,
             DataContext = viewModel
         };
@@ -53,8 +58,8 @@ public sealed class DownloadSettingsDialogLayoutTests
                 view.FindControl<Grid>("DownloadContentSection"));
             Assert.Equal(5, contentSection.GetVisualDescendants().OfType<CheckBox>().Count());
 
-            var contentOptions = Assert.IsType<Grid>(
-                view.FindControl<Grid>("DownloadContentOptions"));
+            var contentOptions = Assert.IsType<WrapPanel>(
+                view.FindControl<WrapPanel>("DownloadContentOptions"));
             var subtitleLabel = Assert.IsType<TextBlock>(
                 view.FindControl<TextBlock>("SubtitleSectionLabel"));
             var subtitleBorder = Assert.IsType<Border>(
@@ -64,8 +69,7 @@ public sealed class DownloadSettingsDialogLayoutTests
             var subtitleHeading = Assert.Single(
                 subtitleLabel.GetVisualAncestors().OfType<StackPanel>(),
                 panel => panel.Children.Contains(subtitleHelp));
-            var subtitleScrollViewer = Assert.Single(
-                selector.GetVisualAncestors().OfType<ScrollViewer>());
+            var subtitleScrollViewer = Assert.IsType<ScrollViewer>(view.FindControl<ScrollViewer>("SubtitleTrackScrollViewer"));
 
             Assert.True(window.Bounds.Width <= 680);
             Assert.InRange(
@@ -76,18 +80,17 @@ public sealed class DownloadSettingsDialogLayoutTests
                 Math.Abs(contentOptions.Bounds.Left - subtitleBorder.Bounds.Left),
                 0,
                 0.5);
-            Assert.InRange(
-                Math.Abs(subtitleHeading.Bounds.Center.Y - subtitleBorder.Bounds.Center.Y),
-                0,
-                0.5);
-            Assert.InRange(
-                Math.Abs(subtitleLabel.Bounds.Center.Y - subtitleHelp.Bounds.Center.Y),
-                0,
-                0.5);
             Assert.True(subtitleHelp.IsVisible);
             Assert.IsType<Flyout>(subtitleHelp.Flyout);
-            Assert.True(subtitleHeading.Bounds.Right <= subtitleBorder.Bounds.Left);
-            Assert.True(subtitleScrollViewer.Bounds.Top >= subtitleBorder.Bounds.Top);
+            Assert.True(subtitleHeading.Bounds.Bottom <= subtitleBorder.Bounds.Top);
+            var track = Assert.IsType<SubtitleTrackItem>(trackCheckbox.DataContext);
+            var formScroll = view.FindControl<ScrollViewer>("DownloadOptionsScroll")!;
+            formScroll.ScrollToEnd();
+            window.UpdateLayout();
+            var click = trackCheckbox.TranslatePoint(new Point(11, trackCheckbox.Bounds.Height / 2), window)!.Value;
+            window.MouseDown(click, MouseButton.Left);
+            window.MouseUp(click, MouseButton.Left);
+            Assert.True(track.IsSelected);
 
             AssertAppearsBelow(view, "TransferIllustration", "DirectorySection");
             AssertAppearsBelow(view, "DirectorySection", "DownloadContentSection");
@@ -114,6 +117,7 @@ public sealed class DownloadSettingsDialogLayoutTests
         {
             Width = 670,
             Height = 500,
+            SizeToContent = SizeToContent.Manual,
             Content = view,
             DataContext = viewModel
         };
@@ -125,8 +129,7 @@ public sealed class DownloadSettingsDialogLayoutTests
 
             var selector = Assert.IsType<ItemsControl>(
                 view.FindControl<ItemsControl>("SubtitleTrackSelector"));
-            var scrollViewer = Assert.Single(
-                selector.GetVisualAncestors().OfType<ScrollViewer>());
+            var scrollViewer = Assert.IsType<ScrollViewer>(view.FindControl<ScrollViewer>("SubtitleTrackScrollViewer"));
 
             Assert.Equal(10, selector.Items.Count);
             Assert.True(scrollViewer.Bounds.Height <= 144);
@@ -173,7 +176,7 @@ public sealed class DownloadSettingsDialogLayoutTests
         var viewModel = fixture.CreateViewModel();
         viewModel.OnDialogOpened(DownloadSettingsDialog.CreateRequest([]));
         var view = new ViewDownloadSetter { DataContext = viewModel };
-        var window = new DialogWindow { Content = view, DataContext = viewModel };
+        var window = new DialogWindow { Content = view, DataContext = viewModel, Width = 480, Height = 420, SizeToContent = SizeToContent.Manual };
 
         try
         {
@@ -192,6 +195,72 @@ public sealed class DownloadSettingsDialogLayoutTests
             window.Close();
             application.Styles.Remove(fluentTheme);
         }
+    }
+
+    [AvaloniaFact]
+    public void ResizingKeepsActionsVisibleAndSubtitleSelectionIntact()
+    {
+        var application = DesktopTestResources.EnsureProductThemeResources();
+        var fluentTheme = new FluentTheme();
+        application.Styles.Insert(0, fluentTheme);
+        using var fixture = new ViewModelFixture(downloadSubtitle: false);
+        var viewModel = fixture.CreateViewModel();
+        viewModel.OnDialogOpened(CreateRequest(subtitleCount: 10));
+        var longDirectory = "C:\\Videos\\" + string.Join("\\", Enumerable.Repeat("LongDownloadDirectory", 12));
+        viewModel.DirectoryList.Add(longDirectory);
+        viewModel.Directory = longDirectory;
+        var view = new ViewDownloadSetter { DataContext = viewModel };
+        var window = new DialogWindow { Content = view, SizeToContent = SizeToContent.Manual, Width = 680, Height = 640 };
+        try
+        {
+            window.Show();
+            var selected = viewModel.SubtitleTracks[0];
+            selected.IsSelected = true;
+            selected.IsDefault = true;
+            var scroll = view.FindControl<ScrollViewer>("DownloadOptionsScroll")!;
+            var footer = view.FindControl<StackPanel>("DownloadOptionsActions")!;
+            foreach (var size in new[] { new Size(480, 360), new Size(680, 518), new Size(960, 800), new Size(480, 420) })
+            {
+                window.Width = size.Width;
+                window.Height = size.Height;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                foreach (var offset in new[] { Vector.Zero, new Vector(0, double.MaxValue) })
+                {
+                    scroll.Offset = offset;
+                    window.UpdateLayout();
+                    var footerTop = footer.TranslatePoint(default, view)!.Value.Y;
+                    Assert.True(scroll.Bounds.Bottom <= footerTop);
+                    Assert.True(footerTop + footer.Bounds.Height <= view.Bounds.Height);
+                    Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
+                    foreach (var button in footer.Children.OfType<Button>())
+                    {
+                        var position = button.TranslatePoint(default, view)!.Value;
+                        Assert.InRange(position.X, 0, view.Bounds.Width - button.Bounds.Width);
+                        Assert.True(button.IsEffectivelyEnabled);
+                        Assert.True(button.Bounds.Height >= 40);
+                    }
+                    Assert.True(selected.IsSelected);
+                    Assert.True(selected.IsDefault);
+                }
+            }
+        }
+        finally
+        {
+            window.Close();
+            application.Styles.Remove(fluentTheme);
+        }
+    }
+
+    [Theory]
+    [InlineData(1920, 1080, 1, 1440, 900, 680, 640)]
+    [InlineData(1920, 1080, 1.5, 800, 550, 680, 518)]
+    [InlineData(1280, 720, 2, 800, 550, 608, 328)]
+    public void DownloadOptionsFitTheOwnerAndScaledWorkingArea(int width, int height, double scaling, double ownerWidth, double ownerHeight, double expectedWidth, double expectedHeight)
+    {
+        var size = AvaloniaDialogService.ConstrainDialogSize(AppDialog.DownloadSettings, new PixelRect(0, 0, width, height), scaling, new Size(ownerWidth, ownerHeight));
+        Assert.Equal(new Size(expectedWidth, expectedHeight), size);
     }
 
     private static void AssertAppearsBelow(Control view, string upperName, string lowerName)

@@ -224,7 +224,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             SelectedSubtitleTrackIds = [11]
         };
 
-        await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
+        await Assert.ThrowsAsync<DownloadOutputCollisionException>(() => admission.AdmitAsync(
             subtitle,
             autoAddNumberSuffix: false,
             cancellationToken: TestContext.Current.CancellationToken));
@@ -399,7 +399,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             TestContext.Current.CancellationToken);
         var item = CreateItem("rejected", basePath);
 
-        await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
+        await Assert.ThrowsAsync<DownloadOutputCollisionException>(() => admission.AdmitAsync(
             item,
             false,
             TestContext.Current.CancellationToken));
@@ -431,7 +431,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         await admission.AdmitAsync(CreateItem("first", basePath), true, TestContext.Current.CancellationToken);
         var rejected = CreateItem("rejected", basePath);
 
-        await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
+        await Assert.ThrowsAsync<DownloadOutputCollisionException>(() => admission.AdmitAsync(
             rejected, false, TestContext.Current.CancellationToken));
 
         Assert.Equal(basePath, rejected.DownloadBase.FilePath);

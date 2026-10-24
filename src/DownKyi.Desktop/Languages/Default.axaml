@@ -9,6 +9,9 @@
     <system:String x:Key="Close">关闭</system:String>
 
     <!--  Index  -->
+    <system:String x:Key="IndexPosterInputHint">粘贴 B 站链接或 BV / av 号</system:String>
+    <system:String x:Key="IndexParse">解析</system:String>
+    <system:String x:Key="IndexCategory">视频下载工具</system:String>
     <system:String x:Key="Login">登录</system:String>
     <system:String x:Key="IndexHintText">请输入B站网址链接或av、BV号等……</system:String>
     <system:String x:Key="IndexHintTextSimple">请输入B站视频播放地址……</system:String>
@@ -18,6 +21,10 @@
     <system:String x:Key="Toolbox">工具箱</system:String>
 
     <!--  Login  -->
+    <system:String x:Key="LoginStudioHeadline" xml:space="preserve">登录&#x000A;你的空间</system:String>
+    <system:String x:Key="LoginScannedConfirmation">已扫码，请在手机上确认</system:String>
+    <system:String x:Key="MigrationHeading">数据迁移</system:String>
+
     <system:String x:Key="ScanToLogin">扫描二维码登录</system:String>
     <system:String x:Key="ScanLoginTip" xml:space="preserve">请使用哔哩哔哩客户端&#x000A;扫码登录&#x000A;或扫码下载APP</system:String>
     <system:String x:Key="GetLoginUrlFailed">获取登录链接失败！</system:String>
@@ -30,6 +37,12 @@
     <system:String x:Key="BrowserCookieInvalid">没有找到有效的浏览器 Cookie</system:String>
 
     <!--  MySpace  -->
+    <system:String x:Key="PersonalLibrary">我的内容</system:String>
+    <system:String x:Key="PersonalSpaceHeadline">我的空间</system:String>
+    <system:String x:Key="PersonalCoinBalance">硬币</system:String>
+    <system:String x:Key="PersonalMoneyBalance">B 币</system:String>
+    <system:String x:Key="PersonalEmailBound">邮箱已绑定</system:String>
+    <system:String x:Key="PersonalPhoneBound">手机已绑定</system:String>
     <system:String x:Key="MySpace">我的个人空间</system:String><system:String x:Key="Logout">退出登录</system:String>
     <system:String x:Key="BilibiliDynamics">Bilibili 动态</system:String>
     <system:String x:Key="MySpaceWait">请稍等，马上就好~</system:String>
@@ -106,6 +119,8 @@
     <system:String x:Key="FollowerWait">请稍等，马上就好~</system:String>
     <system:String x:Key="AllFollowing">全部关注</system:String>
     
+    <system:String x:Key="VideoDetailHeading">视频解析</system:String>
+    <system:String x:Key="DownloadOptionsHeading">下载选项</system:String>
     <!--  VideoDetail  -->
     <system:String x:Key="CopyCoverUrl">复制封面URL</system:String>
     <system:String x:Key="Play">播放</system:String>
@@ -156,6 +171,17 @@
     <system:String x:Key="TipAddDownloadingSkipped">跳过了 {1} 个不可用项目，没有添加下载项。</system:String>
     
     <!--  DownloadManager  -->
+    <system:String x:Key="DownloadTaskColumn">视频与规格</system:String>
+    <system:String x:Key="DownloadTransferColumn">进度 / 传输</system:String>
+    <system:String x:Key="DownloadCompletedColumn">完成时间</system:String>
+    <system:String x:Key="DownloadActionsColumn">操作</system:String>
+    <system:String x:Key="DownloadQueueLabel">队列</system:String>
+    <system:String x:Key="DownloadCompletedLabel">已完成</system:String>
+    <system:String x:Key="DownloadTaskUnit">项</system:String>
+    <system:String x:Key="DownloadQueueEmptyTitle">队列为空</system:String>
+    <system:String x:Key="DownloadQueueEmptyHint">下载完成的任务会移到右上角「已下载」。若刚刚添加了影片，请在那里查看或打开文件。</system:String>
+    <system:String x:Key="DownloadHistoryEmptyTitle">还没有已完成的下载</system:String>
+    <system:String x:Key="DownloadHistoryEmptyHint">下载完成后，可以在这里播放视频、打开文件夹或整理记录。</system:String>
     <system:String x:Key="Downloading">正在下载</system:String>
     <system:String x:Key="DownloadFinished">已下载</system:String>
     <system:String x:Key="DownloadSuccess">下载完成</system:String>
@@ -411,6 +437,7 @@
     <system:String x:Key="ConfirmDelete">您确定要删除吗？</system:String>
     <system:String x:Key="SelectDirectory">请选择文件夹</system:String>
     <system:String x:Key="DirectoryError">路径错误！</system:String>
+    <system:String x:Key="DownloadOutputCollision">目标文件名已存在或正在被其他下载任务使用。请选择其他下载文件夹，或到「设置 → 基本」开启「重复文件自动添加数字序号后缀」后重试。</system:String>
     
     
     <!--  ViewDownloadSetter  -->
@@ -482,4 +509,6 @@
     <!-- CustomControl -->
     <system:String x:Key="Page">页</system:String>
     <system:String x:Key="JumpTo">跳至</system:String>
+    <system:String x:Key="EmptyStateTitle">暂无内容</system:String>
+    <system:String x:Key="EmptyStateDescription">这里还没有可显示的内容。</system:String>
 </ResourceDictionary>

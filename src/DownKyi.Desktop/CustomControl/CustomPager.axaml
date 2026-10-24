@@ -6,6 +6,45 @@
              xmlns:action="clr-namespace:DownKyi.CustomAction"
              x:CompileBindings="True">
 
+    <UserControl.Styles>
+        <Style Selector="Border#CurrentPage">
+            <Setter Property="Background" Value="#FF00A1D6" />
+        </Style>
+        <Style Selector="TextBlock#CurrentPageText">
+            <Setter Property="Foreground" Value="{DynamicResource BrushText}" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="Theme" Value="{DynamicResource PagerButton}" />
+        </Style>
+        <Style Selector="vmc|CustomPager.personal Button">
+            <Setter Property="Theme" Value="{DynamicResource PersonalPagerButton}" />
+        </Style>
+        <Style Selector="vmc|CustomPager.personal Border#CurrentPage">
+            <Setter Property="Background" Value="{DynamicResource SpaceAccent}" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+        </Style>
+        <Style Selector="vmc|CustomPager.personal TextBlock#CurrentPageText">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceCarbon}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="vmc|CustomPager.personal TextBox#JumpPageNumberTextBox">
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        </Style>
+        <Style Selector="TextBox#JumpPageNumberTextBox">
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="TextBlock#PageCount">
+            <Setter Property="Foreground" Value="#666666" />
+        </Style>
+        <Style Selector="vmc|CustomPager.personal TextBlock#PageCount">
+            <Setter Property="Foreground" Value="{DynamicResource SpaceMuted}" />
+        </Style>
+    </UserControl.Styles>
     <UserControl.Resources>
         <DrawingImage x:Key="ToLeftDrawingImage">
             <DrawingImage.Drawing>
@@ -94,7 +133,6 @@
             x:Name="NamePrevious"
             Margin="0,0,8,0"
             Command="{Binding PreviousCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding PreviousVisibility}">
             <Image
                 Width="16"
@@ -108,7 +146,6 @@
             x:Name="NameFirst"
             Margin="0,0,4,0"
             Command="{Binding FirstCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding FirstVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -134,7 +171,6 @@
             x:Name="NamePreviousSecond"
             Margin="0,0,4,0"
             Command="{Binding PreviousSecondCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding PreviousSecondVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -148,7 +184,6 @@
             x:Name="NamePreviousFirst"
             Margin="0,0,4,0"
             Command="{Binding PreviousFirstCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding PreviousFirstVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -158,22 +193,21 @@
                 Text="{Binding PreviousFirst, Mode=TwoWay}" />
         </Button>
         <Border
+            Name="CurrentPage"
             Margin="0,0,4,0"
-            Background="#FF00A1D6"
             Theme="{StaticResource PagerBorder}"
             BorderThickness="0">
             <TextBlock
+                Name="CurrentPageText"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 FontSize="14"
-                Foreground="{DynamicResource BrushText}"
                 Text="{Binding Current, Mode=TwoWay}" />
         </Border>
         <Button
             x:Name="NameNextFirst"
             Margin="0,0,4,0"
             Command="{Binding NextFirstCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding NextFirstVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -187,7 +221,6 @@
             x:Name="NameNextSecond"
             Margin="0,0,4,0"
             Command="{Binding NextSecondCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding NextSecondVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -213,7 +246,6 @@
             x:Name="NameLast"
             Margin="0,0,4,0"
             Command="{Binding LastCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding LastVisibility}">
             <TextBlock
                 Padding="10,0"
@@ -226,7 +258,6 @@
             x:Name="NameNext"
             Margin="4,0,4,0"
             Command="{Binding NextCommand}"
-            Theme="{StaticResource PagerButton}"
             IsVisible="{Binding NextVisibility}">
             <Image
                 Width="16"
@@ -244,7 +275,6 @@
                      VerticalAlignment="Center"  
                      MaxLength="5"
                      PlaceholderText="{DynamicResource JumpTo}"
-                     CornerRadius="4"
                      Width="65">
                      <Interaction.Behaviors>
                          <ExecuteCommandOnKeyDownBehavior 
@@ -255,10 +285,9 @@
                      </Interaction.Behaviors>
                  </TextBox>
                  
-                 <TextBlock
+                 <TextBlock Name="PageCount"
                      Margin="5,0,0,0"
-                     VerticalAlignment="Center"
-                            Foreground="#666">
+                     VerticalAlignment="Center">
                      <Run>/</Run>
                      <Run Text="{Binding Count}" ></Run>
                      <Run Text="{DynamicResource Page}"></Run>

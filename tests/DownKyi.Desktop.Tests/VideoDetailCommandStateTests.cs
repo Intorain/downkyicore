@@ -1,10 +1,16 @@
 using System.Collections.Generic;
 using System.Threading;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
 using DownKyi.Commands;
 using DownKyi.Core.Settings;
+using DownKyi.Platform;
+using DownKyi.Presentation;
 using DownKyi.Services;
 using DownKyi.Services.Download;
 using DownKyi.Services.Video;
@@ -17,6 +23,87 @@ namespace DownKyi.Desktop.Tests;
 
 public sealed class VideoDetailCommandStateTests
 {
+    [AvaloniaFact]
+    public void ResizingKeepsVideoSelectionAndActionsAccessible()
+    {
+        var application = DesktopTestResources.EnsureProductThemeResources();
+        var fluentTheme = new FluentTheme();
+        var gridStyles = new StyleInclude(new Uri("avares://DownKyi.Desktop.Tests/"))
+        {
+            Source = new Uri("avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml")
+        };
+        application.Styles.Insert(0, fluentTheme);
+        application.Styles.Insert(1, gridStyles);
+        using var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), $"video-resize-{Guid.NewGuid():N}.json"));
+        using var workflow = new VideoDetailWorkflowCoordinatorStub();
+        using var viewModel = new ViewVideoDetailViewModel(
+            new DesktopInteractionContextStub(), new ClipboardServiceStub(), settings, workflow,
+            new VideoDetailDownloadCoordinatorStub(), NullLogger<ViewVideoDetailViewModel>.Instance);
+        viewModel.UiState.VideoInfoView = new VideoInfoView
+        {
+            Title = string.Concat(Enumerable.Repeat("很长的影片标题与布局检查", 8)),
+            Description = string.Join(Environment.NewLine, Enumerable.Repeat("长简介仍然可以滚动阅读。", 40)),
+            UpName = "作者名称",
+            VideoZone = "知识 · 设计",
+            CreateTime = "2026-10-23"
+        };
+        var pages = Enumerable.Range(1, 80).Select(i => new VideoPage { Order = i, Cid = i, Name = $"影片 {i}", Duration = "24:30" }).ToList();
+        viewModel.VideoSections.Add(new VideoSection { Title = "第一季", IsSelected = true, VideoPages = pages });
+        viewModel.VideoSections.Add(new VideoSection { Title = "第二季", VideoPages = [] });
+        viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
+        var view = new ViewVideoDetail { DataContext = viewModel };
+        var window = new Window { Content = view, Width = 1440, Height = 900 };
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var input = view.GetVisualDescendants().OfType<TextBox>().Single(x => x.Name == "DetailInput");
+            input.Text = "BV17x411w7KC";
+            Assert.True(input.Focus());
+            var grid = view.GetVisualDescendants().OfType<DataGrid>().Single();
+            grid.SelectedItem = pages[2];
+            foreach (var size in new[] { new Size(798, 518), new Size(800, 550), new Size(960, 1000), new Size(1179, 700), new Size(1180, 700), new Size(1920, 1080), new Size(800, 550) })
+            {
+                window.Width = size.Width;
+                window.Height = size.Height;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(input.IsFocused);
+                Assert.Equal("BV17x411w7KC", viewModel.UiState.InputText);
+                Assert.True(pages[2].IsSelected);
+                Assert.True(viewModel.VideoSections[0].IsSelected);
+                Assert.True(grid.Bounds.Height >= 130);
+                Assert.True(grid.Bounds.Width >= 500);
+                Assert.True(input.Bounds.Width >= 250);
+                var summary = view.FindControl<VideoDetailSummaryView>("DetailSummary")!;
+                var workspace = view.FindControl<Grid>("DetailWorkspace")!;
+                Assert.True(summary.Bounds.Right <= workspace.Bounds.Left || summary.Bounds.Bottom <= workspace.Bounds.Top);
+                foreach (var control in view.GetVisualDescendants().OfType<Control>().Where(c => c is Button or TextBox))
+                {
+                    var point = control.TranslatePoint(default, view)!.Value;
+                    Assert.InRange(point.X, -0.5, view.Bounds.Width - control.Bounds.Width + 0.5);
+                }
+                var actions = view.FindControl<VideoDetailActionsView>("DetailActions")!;
+                var bottom = actions.TranslatePoint(new Point(0, actions.Bounds.Height), view)!.Value.Y;
+                Assert.True(bottom <= view.Bounds.Height);
+            }
+            viewModel.UiState.DisplayState = VideoDetailDisplayState.Busy;
+            window.UpdateLayout();
+            var parse = view.GetVisualDescendants().OfType<Button>().Single(x => x.Name == "DetailParseButton");
+            Assert.False(parse.IsEffectivelyEnabled);
+            viewModel.UiState.DisplayState = VideoDetailDisplayState.Content;
+            window.UpdateLayout();
+            Assert.True(parse.IsEffectivelyEnabled);
+        }
+        finally
+        {
+            window.Close();
+            application.Styles.Remove(gridStyles);
+            application.Styles.Remove(fluentTheme);
+        }
+    }
+
     [AvaloniaFact]
     public void BusyRecoveryInvalidatesEveryBusyDependentCommand()
     {
@@ -106,6 +193,33 @@ public sealed class VideoDetailCommandStateTests
         {
             window.Close();
         }
+    }
+
+    [AvaloniaFact]
+    public async Task NavigatingToDownloadsWhileAddIsPendingKeepsTheOperationAlive()
+    {
+        EnsureProductLanguageResources();
+        using var settings = new SettingsStore(Path.Combine(Path.GetTempPath(), $"download-navigation-{Guid.NewGuid():N}.json"));
+        using var workflow = new VideoDetailWorkflowCoordinatorStub();
+        var coordinator = new VideoDetailDownloadCoordinatorStub { WaitForRelease = true };
+        ViewVideoDetailViewModel? viewModel = null;
+        using var navigation = new AvaloniaNavigationService(
+            route => route == AppRoute.VideoDetail ? viewModel! : new object(), action => action());
+        var interactions = new DesktopInteractionContextStub { Navigation = navigation };
+        using var ownedViewModel = viewModel = new ViewVideoDetailViewModel(interactions,
+            new ClipboardServiceStub(), settings, workflow, coordinator, NullLogger<ViewVideoDetailViewModel>.Instance);
+        navigation.Navigate(new AppNavigationRequest(AppRoute.VideoDetail));
+        viewModel.UiState.VideoInfoView = new VideoInfoView();
+        var completion = WaitUntilExecutableAfterDisabled(viewModel.AddToDownloadCommand);
+        viewModel.AddToDownloadCommand.Execute(null);
+        await coordinator.AddRequested.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        viewModel.DownloadManagerCommand.Execute(null);
+        Assert.NotSame(viewModel, navigation.GetActiveView(AppNavigationRegion.Main));
+        Assert.True(navigation.CanGoBack(AppNavigationRegion.Main));
+        coordinator.ReleaseAdd();
+        await completion.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+        Assert.Equal(VideoDetailOperationStatus.Success, viewModel.UiState.OperationStatus);
+        Assert.Equal(1, coordinator.AddRequestCount);
     }
 
     [AvaloniaFact]
@@ -539,7 +653,7 @@ public sealed class VideoDetailCommandStateTests
 
         public IUserNotificationService Notifications => RecordedNotifications;
 
-        public IAppNavigationService Navigation { get; } = new NavigationServiceStub();
+        public IAppNavigationService Navigation { get; init; } = new NavigationServiceStub();
 
         public IAppDialogService Dialogs { get; }
     }

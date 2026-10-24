@@ -3,21 +3,34 @@
              x:Class="DownKyi.Views.DownloadManager.ViewDownloadFinished"
              xmlns:images="clr-namespace:DownKyi.Images"
              xmlns:vmdm="clr-namespace:DownKyi.ViewModels.DownloadManager"
-             x:DataType="vmdm:ViewDownloadFinishedViewModel">
+             x:DataType="vmdm:ViewDownloadFinishedViewModel"
+             Background="{DynamicResource SpacePaper}">
+    <UserControl.Styles>
+        <Style Selector="ComboBox#NameFinishedSort">
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+            <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        </Style>
+        <Style Selector="ComboBox#NameFinishedSort:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource SpaceInk}" />
+        </Style>
+    </UserControl.Styles>
     <UserControl.Resources>
         <ControlTheme x:Key="DownloadedStyle" TargetType="{x:Type ListBoxItem}" x:DataType="vmdm:DownloadedItem">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ListBoxItem}">
                         <Border
                             Name="NameFinishedTaskRow"
-                            Width="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListBox}}, Path=Bounds.Width}"
                             Height="86"
                             Padding="14,0"
+                            BorderBrush="{DynamicResource SpaceRule}" BorderThickness="0,0,0,1"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="{DynamicResource DownKyiRadiusSmall}">
-                            <Grid ColumnDefinitions="52,*,140,136">
+                            CornerRadius="0">
+                            <Grid ColumnDefinitions="52,*,160,136">
 
                                 <Border
                                     Name="NameFinishedZoneIconFrame"
@@ -26,8 +39,8 @@
                                     Height="40"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center"
-                                    Background="{DynamicResource BrushPrimaryTranslucent3}"
-                                    CornerRadius="{DynamicResource DownKyiRadiusSmall}">
+                                    Background="{DynamicResource SpaceHover}"
+                                    CornerRadius="0">
                                     <Image
                                         Width="32"
                                         Height="32"
@@ -42,9 +55,9 @@
 
                                     <TextBlock
                                         Name="NameFinishedTaskTitle"
-                                        FontSize="14"
-                                        FontWeight="SemiBold"
-                                        Foreground="{DynamicResource BrushTextPrimary}"
+                                        FontSize="16"
+                                        FontWeight="Bold"
+                                        Foreground="{DynamicResource SpaceInk}"
                                         TextTrimming="CharacterEllipsis">
                                         <ToolTip.Tip>
                                             <TextBlock>
@@ -68,7 +81,7 @@
                                     <TextBlock
                                         Name="NameFinishedTaskMetadata"
                                         FontSize="12"
-                                        Foreground="{DynamicResource BrushTextSecondary}"
+                                        Foreground="{DynamicResource SpaceMuted}"
                                         TextTrimming="CharacterEllipsis">
                                         <TextBlock.Text>
                                             <MultiBinding StringFormat="{}{0} · {1} · {2} · {3} · {4}">
@@ -84,13 +97,14 @@
 
                                 <TextBlock
                                     Name="NameFinishedTime"
+                                            FontFamily="Cascadia Mono,Consolas,monospace"
                                     Grid.Column="2"
-                                    Width="124"
+                                    Width="144"
                                     Margin="0,0,12,0"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
                                     FontSize="12"
-                                    Foreground="{DynamicResource BrushTextSecondary}"
+                                    Foreground="{DynamicResource SpaceMuted}"
                                     Text="{Binding FinishedTime}" />
 
                                 <StackPanel
@@ -109,7 +123,7 @@
                                         Padding="0"
                                         Command="{Binding ElementName=DownloadedList,Path=((vmdm:ViewDownloadFinishedViewModel)DataContext).OpenFolderCommand}"
                                         CommandParameter="{Binding}"
-                                        Theme="{StaticResource BtnStyle}"
+                                        Theme="{StaticResource DownloadActionButton}"
                                         ToolTip.Tip="{DynamicResource OpenFolder}">
                                         <ContentControl Width="18" Height="18">
                                             <Path
@@ -130,7 +144,7 @@
                                         Padding="0"
                                         Command="{Binding ElementName=DownloadedList,Path=((vmdm:ViewDownloadFinishedViewModel)DataContext).OpenVideoCommand}"
                                         CommandParameter="{Binding}"
-                                        Theme="{StaticResource BtnStyle}"
+                                        Theme="{StaticResource DownloadActionButton}"
                                         ToolTip.Tip="{DynamicResource OpenVideo}">
                                         <ContentControl Width="18" Height="18">
                                             <Path
@@ -151,8 +165,9 @@
                                         Padding="0"
                                         Command="{Binding ElementName=DownloadedList,Path=((vmdm:ViewDownloadFinishedViewModel)DataContext).RemoveVideoCommand}"
                                         CommandParameter="{Binding}"
-                                        Foreground="{DynamicResource BrushWarning}"
-                                        Theme="{StaticResource BtnStyle}"
+                                        Classes="danger"
+                                        Foreground="{DynamicResource DownloadWarning}"
+                                        Theme="{StaticResource DownloadActionButton}"
                                         ToolTip.Tip="{DynamicResource DeleteDownload}">
                                         <ContentControl Width="18" Height="18">
                                             <Path
@@ -170,7 +185,7 @@
                 </Setter.Value>
             </Setter>
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="{DynamicResource BrushSurfaceRaised}" />
+                <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
             </Style>
         </ControlTheme>
     </UserControl.Resources>
@@ -178,12 +193,22 @@
         <Grid
             Name="NameDownloadedContent"
             Height="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}, Path=Bounds.Height}"
-            RowDefinitions="*,1,58"
+            RowDefinitions="32,*,1,58"
             IsVisible="{Binding DownloadedList.Count}">
+
+            <Grid Name="DownloadColumnHeader" Margin="14,0,26,0" ColumnDefinitions="52,*,160,136">
+                <TextBlock Grid.Column="1" Text="{DynamicResource DownloadTaskColumn}" FontSize="12"
+                           Foreground="{DynamicResource SpaceMuted}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{DynamicResource DownloadCompletedColumn}" FontSize="12"
+                           Foreground="{DynamicResource SpaceMuted}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{DynamicResource DownloadActionsColumn}" FontSize="12"
+                           Foreground="{DynamicResource SpaceMuted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
 
             <ListBox
                 Name="DownloadedList"
-                Grid.Row="0"
+                Grid.Row="1"
+                Margin="0,0,12,0"
                 BorderThickness="0"
                 ItemContainerTheme="{StaticResource DownloadedStyle}"
                 ItemsSource="{Binding DownloadedList}">
@@ -204,7 +229,7 @@
                                         BorderThickness="{TemplateBinding BorderThickness}">
                                         <ScrollViewer
                                             Focusable="False"
-                                            HorizontalScrollBarVisibility="Hidden"
+                                            HorizontalScrollBarVisibility="Disabled"
                                             VerticalScrollBarVisibility="Auto">
                                             <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}"
                                                             Width="{TemplateBinding Width}"
@@ -218,13 +243,13 @@
                 </ListBox.Theme>
             </ListBox>
 
-            <TextBlock Grid.Row="1" Background="{DynamicResource BrushBorderTranslucent}" />
+            <TextBlock Grid.Row="2" Background="{DynamicResource SpaceRule}" />
 
             <Border
                 Name="NameFinishedActionBar"
-                Grid.Row="2"
+                Grid.Row="3"
                 Padding="16,0"
-                Background="{DynamicResource BrushSurfaceRaised}">
+                Background="{DynamicResource SpacePaper}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel
                         Name="NameFinishedSummary"
@@ -235,21 +260,21 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             FontSize="14"
-                            Foreground="{DynamicResource BrushTextPrimary}"
-                            Text="{DynamicResource TotalDownloaded1}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource DownloadCompletedLabel}" />
                         <TextBlock
                             Name="NameDownloadedCount"
                             Margin="4,0"
                             VerticalAlignment="Center"
-                            FontSize="14"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource BrushTextPrimary}"
+                            FontSize="22" FontFamily="Cascadia Mono,Consolas,monospace"
+                            FontWeight="Bold"
+                            Foreground="{DynamicResource SpaceInk}"
                             Text="{Binding DownloadedList.Count}" />
                         <TextBlock
                             VerticalAlignment="Center"
                             FontSize="14"
-                            Foreground="{DynamicResource BrushTextPrimary}"
-                            Text="{DynamicResource TotalDownloaded2}" />
+                            Foreground="{DynamicResource SpaceInk}"
+                            Text="{DynamicResource DownloadTaskUnit}" />
                     </StackPanel>
 
                     <StackPanel
@@ -279,16 +304,17 @@
                             Width="1"
                             Height="24"
                             VerticalAlignment="Center"
-                            Background="{DynamicResource BrushBorderSubtle}" />
+                            Background="{DynamicResource SpaceRule}" />
 
                         <Button
                             Name="NameClearAllDownloadedButton"
+                            Classes="danger"
                             MinWidth="104"
-                            Background="{DynamicResource BrushControlFill}"
+                            Background="{DynamicResource SpacePaper}"
                             Command="{Binding ClearAllDownloadedCommand}"
                             FontSize="12"
-                            Foreground="{DynamicResource BrushWarning}"
-                            Theme="{StaticResource BtnStyle}">
+                            Foreground="{DynamicResource DownloadWarning}"
+                            Theme="{StaticResource DownloadActionButton}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Path
                                     Width="16"
@@ -306,11 +332,13 @@
             </Border>
         </Grid>
 
-        <!--  TODO 没有数据时显示图片或文字  -->
-        <Image
-            Width="256"
-            Height="256"
-            Source="/Resources/nodata02.png"
-            IsVisible="{Binding !DownloadedList.Count}" />
+        <StackPanel Name="DownloadEmptyState" MaxWidth="400" Margin="32" Spacing="12"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !DownloadedList.Count}">
+            <Border Width="40" Height="4" HorizontalAlignment="Left" Background="{DynamicResource SpaceAccent}" />
+            <TextBlock Text="{DynamicResource DownloadHistoryEmptyTitle}" FontSize="26" FontWeight="Bold"
+                       Foreground="{DynamicResource SpaceInk}" TextWrapping="Wrap" />
+            <TextBlock Text="{DynamicResource DownloadHistoryEmptyHint}" FontSize="14" LineHeight="24"
+                       Foreground="{DynamicResource SpaceMuted}" TextWrapping="Wrap" />
+        </StackPanel>
     </Grid>
 </UserControl>

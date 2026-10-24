@@ -43,9 +43,9 @@ public sealed class ViewExtractMediaVisualStateTests
                     window.MouseMove(new Point(1, 1));
                     window.UpdateLayout();
 
-                    Assert.True(application.TryGetResource("BrushSurfaceSunken", theme, out var background));
+                    Assert.True(application.TryGetResource("SpaceHover", theme, out var background));
                     var expectedBackground = Assert.IsAssignableFrom<ISolidColorBrush>(background).Color;
-                    Assert.True(application.TryGetResource("BrushTextPrimary", theme, out var foreground));
+                    Assert.True(application.TryGetResource("SpaceInk", theme, out var foreground));
                     var expectedForeground = Assert.IsAssignableFrom<ISolidColorBrush>(foreground).Color;
 
                     var outputBorder = Assert.Single(

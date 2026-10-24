@@ -1,7 +1,10 @@
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
+using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.CustomControl;
 using DownKyi.Views.Dialogs;
@@ -166,7 +169,10 @@ public sealed class ReleaseNotesMarkdownViewTests
     [AvaloniaFact]
     public void UpdateDialogAppliesReleaseNoteHierarchyAndSurfaceStyles()
     {
-        DesktopTestResources.EnsureProductThemeResources();
+        var application = DesktopTestResources.EnsureProductThemeResources();
+        DesktopTestResources.EnsureDownloadProjectionResources();
+        var fluent = new FluentTheme();
+        application.Styles.Insert(0, fluent);
         var dialog = new NewVersionAvailableDialog();
         var window = new Window
         {
@@ -204,10 +210,32 @@ public sealed class ReleaseNotesMarkdownViewTests
             Assert.Equal(FontWeight.Bold, heading.FontWeight);
             Assert.NotNull(quote.Background);
             Assert.NotNull(code.Background);
+            releaseNotes.Markdown += string.Concat(Enumerable.Repeat("\n\n较长的更新说明，用来确认小窗口仍可阅读完整内容。", 40));
+            var scroll = dialog.FindControl<ScrollViewer>("DialogBodyScroll")!;
+            var footer = dialog.FindControl<Border>("DialogFooter")!;
+            Assert.NotEmpty(footer.GetVisualDescendants().OfType<Button>());
+            foreach (var size in new[] { new Size(360, 260), new Size(480, 360), new Size(720, 600) })
+            {
+                window.Width = size.Width;
+                window.Height = size.Height;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(scroll.Extent.Height > scroll.Viewport.Height,
+                    $"Requested={size}, Window={window.Bounds}, Dialog={dialog.Bounds}, Extent={scroll.Extent}, Viewport={scroll.Viewport}, Markdown={releaseNotes.Bounds}, Children={releaseNotes.Children.Count}");
+                Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 0.5);
+                foreach (var button in footer.GetVisualDescendants().OfType<Button>())
+                {
+                    var origin = button.TranslatePoint(default, dialog)!.Value;
+                    Assert.InRange(origin.X, 0, dialog.Bounds.Width - button.Bounds.Width + 0.5);
+                    Assert.InRange(origin.Y, 0, dialog.Bounds.Height - button.Bounds.Height + 0.5);
+                }
+            }
         }
         finally
         {
             window.Close();
+            application.Styles.Remove(fluent);
         }
     }
 

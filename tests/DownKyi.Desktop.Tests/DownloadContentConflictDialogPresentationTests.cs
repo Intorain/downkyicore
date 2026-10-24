@@ -63,6 +63,9 @@ public sealed class DownloadContentConflictDialogPresentationTests
             };
             var window = new DialogWindow
             {
+                SizeToContent = Avalonia.Controls.SizeToContent.Manual,
+                Width = 680,
+                Height = 520,
                 Content = view
             };
 

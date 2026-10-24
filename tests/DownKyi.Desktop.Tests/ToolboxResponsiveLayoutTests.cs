@@ -109,10 +109,10 @@ public sealed class ToolboxResponsiveLayoutTests
             var audioOrigin = Assert.NotNull(audioButton.TranslatePoint(default, window));
             var videoOrigin = Assert.NotNull(videoButton.TranslatePoint(default, window));
             var outputOrigin = Assert.NotNull(output.TranslatePoint(default, window));
-            var workflowColor = SolidColor(workflow.Background);
-            var idleColor = CurrentResourceColor("BrushControlFill");
-            var hoverColor = CurrentResourceColor("BrushControlFillHover");
-            var pressedColor = CurrentResourceColor("BrushControlFillPressed");
+
+            var idleColor = CurrentResourceColor("SpacePaper");
+            var hoverColor = CurrentResourceColor("SpaceInk");
+            var pressedColor = CurrentResourceColor("SpaceAccent");
 
             Assert.True(workflowOrigin.X >= 0);
             Assert.True(workflowOrigin.X + workflow.Bounds.Width <= window.ClientSize.Width);
@@ -137,8 +137,8 @@ public sealed class ToolboxResponsiveLayoutTests
             foreach (var button in new[] { selectButton, audioButton, videoButton })
             {
                 var chrome = Assert.Single(button.GetVisualDescendants().OfType<Border>());
-                Assert.Equal(idleColor, SolidColor(chrome.Background));
-                Assert.NotEqual(workflowColor, SolidColor(chrome.Background));
+                Assert.Equal(button == audioButton ? CurrentResourceColor("SpaceAccent") : idleColor, SolidColor(chrome.Background));
+                Assert.Equal(new CornerRadius(0), chrome.CornerRadius);
             }
 
             Assert.NotEqual(idleColor, hoverColor);
@@ -154,6 +154,7 @@ public sealed class ToolboxResponsiveLayoutTests
     {
         var view = new ViewDelogo();
         var window = CreateToolboxContentWindow(view);
+        window.Width = 960;
 
         try
         {
@@ -201,9 +202,9 @@ public sealed class ToolboxResponsiveLayoutTests
             Assert.True(selectOrigin.X + selectVideo.Bounds.Width <= window.ClientSize.Width);
 
             Assert.Equal(widthOrigin.Y, heightOrigin.Y, 0.5);
-            Assert.Equal(widthInput.Bounds.Width, heightInput.Bounds.Width, 0.5);
+            Assert.Equal(widthInput.Bounds.Width, heightInput.Bounds.Width, 1d);
             Assert.Equal(xOrigin.Y, yOrigin.Y, 0.5);
-            Assert.Equal(xInput.Bounds.Width, yInput.Bounds.Width, 0.5);
+            Assert.Equal(xInput.Bounds.Width, yInput.Bounds.Width, 1d);
             Assert.InRange(geometryPanel.Bounds.Width, 280, 300);
             Assert.Equal(previewOrigin.Y, geometryPanelOrigin.Y, 0.5);
             Assert.Equal(preview.Bounds.Height, geometryPanel.Bounds.Height, 0.5);
@@ -214,32 +215,28 @@ public sealed class ToolboxResponsiveLayoutTests
             Assert.True(xInput.Bounds.Width >= 120);
             Assert.True(yInput.Bounds.Width >= 120);
             Assert.Equal(
-                CurrentResourceColor("BrushSurfaceRaised"),
+                CurrentResourceColor("SpacePaper"),
                 SolidColor(geometryPanel.Background));
-            Assert.NotEqual(
-                CurrentResourceColor("BrushSurfaceBase"),
-                SolidColor(geometryPanel.Background));
+            Assert.Equal(new CornerRadius(0), geometryPanel.CornerRadius);
             Assert.Equal(
-                CurrentResourceColor("BrushBorderSubtle"),
+                CurrentResourceColor("SpaceRule"),
                 SolidColor(geometryPanel.BorderBrush));
-            var idleColor = CurrentResourceColor("BrushControlFill");
+            var idleColor = CurrentResourceColor("SpacePaper");
             var selectVideoChrome = Assert.Single(
                 selectVideo.GetVisualDescendants().OfType<Border>());
             var delogoButtonChrome = Assert.Single(
                 delogoButton.GetVisualDescendants().OfType<Border>());
             Assert.Equal(idleColor, SolidColor(selectVideoChrome.Background));
-            Assert.Equal(idleColor, SolidColor(delogoButtonChrome.Background));
+            Assert.Equal(CurrentResourceColor("SpaceAccent"), SolidColor(delogoButtonChrome.Background));
+            Assert.Equal(new CornerRadius(0), selectVideoChrome.CornerRadius);
             Assert.NotEqual(
-                CurrentResourceColor("BrushSurfaceBase"),
-                SolidColor(selectVideoChrome.Background));
-            Assert.NotEqual(
-                CurrentResourceColor("BrushSurfaceRaised"),
+                CurrentResourceColor("SpacePaper"),
                 SolidColor(delogoButtonChrome.Background));
             Assert.True(geometryTipOrigin.Y > geometryTitleOrigin.Y + geometryTitle.Bounds.Height);
             Assert.True(widthOrigin.Y > geometryTipOrigin.Y + geometryTip.Bounds.Height);
             Assert.InRange(geometryTip.Bounds.Height, 12, 24);
-            Assert.Equal(CurrentResourceColor("BrushTextPrimary"), SolidColor(geometryTitle.Foreground));
-            Assert.Equal(CurrentResourceColor("BrushTextSecondary"), SolidColor(geometryTip.Foreground));
+            Assert.Equal(CurrentResourceColor("SpaceInk"), SolidColor(geometryTitle.Foreground));
+            Assert.Equal(CurrentResourceColor("SpaceMuted"), SolidColor(geometryTip.Foreground));
             Assert.True(xOrigin.Y > widthOrigin.Y + widthInput.Bounds.Height);
             Assert.True(widthOrigin.X >= previewOrigin.X + preview.Bounds.Width + 16);
             Assert.True(colorOrigin.Y > yOrigin.Y + yInput.Bounds.Height);

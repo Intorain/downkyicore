@@ -1,37 +1,37 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.Toolbox.ViewExtractMedia"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
-             x:DataType="vm:ViewExtractMediaViewModel"
-             Background="{DynamicResource BrushSurfaceBase}"
-             Foreground="{DynamicResource BrushTextPrimary}">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels.Toolbox"
+    x:Class="DownKyi.Views.Toolbox.ViewExtractMedia"
+    x:DataType="vm:ViewExtractMediaViewModel"
+    Background="{DynamicResource SpacePaper}"
+    Foreground="{DynamicResource SpaceInk}"
+    Classes="studio-page">
     <UserControl.Styles>
-        <Style Selector="TextBox.extract-media-output /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{DynamicResource BrushSurfaceSunken}" />
-        </Style>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
     </UserControl.Styles>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid Margin="48,28,48,32" RowDefinitions="Auto,Auto,Auto">
+        <Grid
+            Margin="24,8,24,28"
+            RowDefinitions="Auto,Auto,Auto"
+            MaxWidth="1100"
+            HorizontalAlignment="Stretch">
             <TextBlock
                 Name="NameExtractMediaTitle"
-                FontSize="{DynamicResource DownKyiFontSizeTitle}"
-                FontWeight="SemiBold"
-                Foreground="{DynamicResource BrushTextPrimary}"
-                Text="{DynamicResource ExtractMedia}" />
-
+                Foreground="{DynamicResource SpaceInk}"
+                Text="{DynamicResource ExtractMedia}"
+                Classes="studio-title" />
             <Border
                 Name="NameExtractionWorkflow"
                 Grid.Row="1"
                 Margin="0,24,0,0"
-                Padding="20"
-                Background="{DynamicResource BrushSurfaceRaised}"
-                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                BorderThickness="1"
-                CornerRadius="{DynamicResource DownKyiRadiusMedium}">
+                Padding="0,20,0,24"
+                Background="{DynamicResource SpacePaper}"
+                BorderBrush="{DynamicResource SpaceRule}"
+                BorderThickness="0,1,0,1"
+                CornerRadius="0">
                 <StackPanel>
-                    <TextBlock
-                        Foreground="{DynamicResource BrushTextPrimary}"
-                        Text="{DynamicResource VideoFilePath}" />
+                    <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource VideoFilePath}" />
                     <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
                         <TextBox
                             Name="NameVideoPaths"
@@ -50,13 +50,9 @@
                             Margin="12,0,0,0"
                             VerticalAlignment="Center"
                             Command="{Binding SelectVideoCommand}"
-                            Content="{DynamicResource SelectVideo}"
-                            Theme="{StaticResource BtnStyle}" />
+                            Content="{DynamicResource SelectVideo}" />
                     </Grid>
-                    <Grid
-                        Name="NameExtractActions"
-                        Margin="0,16,0,0"
-                        ColumnDefinitions="*,12,*">
+                    <Grid Name="NameExtractActions" Margin="0,16,0,0" ColumnDefinitions="*,12,*">
                         <Button
                             Name="NameExtractAudioButton"
                             Grid.Column="0"
@@ -64,40 +60,34 @@
                             HorizontalAlignment="Stretch"
                             Command="{Binding ExtractAudioCommand}"
                             Content="{DynamicResource ExtractAudio}"
-                            Theme="{StaticResource BtnStyle}" />
+                            Classes="studio-primary" />
                         <Button
                             Name="NameExtractVideoButton"
                             Grid.Column="2"
                             Height="40"
                             HorizontalAlignment="Stretch"
                             Command="{Binding ExtractVideoCommand}"
-                            Content="{DynamicResource ExtractVideo}"
-                            Theme="{StaticResource BtnStyle}" />
+                            Content="{DynamicResource ExtractVideo}" />
                     </Grid>
                 </StackPanel>
             </Border>
-
             <StackPanel Grid.Row="2" Margin="0,24,0,0">
-                <TextBlock
-                    Foreground="{DynamicResource BrushTextPrimary}"
-                    Text="{DynamicResource OutputInfo}" />
+                <TextBlock Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource OutputInfo}" />
                 <TextBox
                     Name="NameStatus"
-                    Classes="extract-media-output"
+                    Classes="studio-output"
                     Height="200"
                     Margin="0,8,0,0"
-                    Background="{DynamicResource BrushSurfaceSunken}"
-                    BorderBrush="{DynamicResource BrushBorderSubtle}"
-                    Foreground="{DynamicResource BrushTextPrimary}"
+                    Background="{DynamicResource SpaceHover}"
+                    BorderBrush="{DynamicResource SpaceRule}"
+                    Foreground="{DynamicResource SpaceInk}"
                     IsReadOnly="True"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.VerticalScrollBarVisibility="Auto"
                     Text="{Binding Status, Mode=TwoWay}">
                     <Interaction.Behaviors>
                         <EventTriggerBehavior EventName="TextChanged">
-                            <InvokeCommandAction
-                                Command="{Binding StatusCommand}"
-                                CommandParameter="{Binding $self}" />
+                            <InvokeCommandAction Command="{Binding StatusCommand}" CommandParameter="{Binding $self}" />
                         </EventTriggerBehavior>
                     </Interaction.Behaviors>
                 </TextBox>

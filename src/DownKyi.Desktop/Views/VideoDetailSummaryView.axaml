@@ -1,168 +1,114 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             x:Class="DownKyi.Views.VideoDetailSummaryView"
-             x:DataType="vm:ViewVideoDetailViewModel"
-             mc:Ignorable="d">
-    <DockPanel Margin="10,0">
-        <Image
-            MinWidth="150"
-            MaxWidth="300"
-            VerticalAlignment="Top"
-            DockPanel.Dock="Left"
-            asyncImageLoader:ImageLoader.Source="{Binding UiState.VideoInfoView.CoverUrl}">
-            <Image.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Command="{Binding CopyCoverUrlCommand}" Header="{DynamicResource CopyCoverUrl}" />
-                </ContextMenu>
-            </Image.ContextMenu>
-        </Image>
-
-        <Grid
-            Margin="10,0,0,0"
-            VerticalAlignment="Stretch"
-            DockPanel.Dock="Left"
-            RowDefinitions="70,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,120">
-                <Grid Grid.Row="0" RowDefinitions="3*,2*,2*">
-                    <SelectableTextBlock
-                        Grid.Row="0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        FontSize="16"
-                        FontWeight="Bold"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{Binding UiState.VideoInfoView.Title}"
-                        TextTrimming="CharacterEllipsis" />
-                    <StackPanel
-                        Grid.Row="1"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                        <TextBlock
-                            Margin="0,0,10,0"
-                            Foreground="{DynamicResource BrushTextGrey}"
-                            Text="{Binding UiState.VideoInfoView.VideoZone}" />
-                        <TextBlock Foreground="{DynamicResource BrushTextGrey}"
-                                   Text="{Binding UiState.VideoInfoView.CreateTime}" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="2" VerticalAlignment="Center" Orientation="Horizontal">
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.PlayNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Play}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.DanmakuNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Danmaku}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.LikeNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Like}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.CoinNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Coin}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.FavoriteNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Favorite}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.ShareNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Share}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{Binding UiState.VideoInfoView.ReplyNumber}" />
-                            <TextBlock
-                                FontSize="12"
-                                Foreground="{DynamicResource BrushTextGrey}"
-                                Text="{DynamicResource Reply}" />
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-
-                <StackPanel
-                    Name="NameUp"
-                    Grid.Column="1"
-                    Cursor="Hand">
-                    <Interaction.Behaviors>
-                        <EventTriggerBehavior EventName="PointerReleased">
-                            <InvokeCommandAction Command="{Binding UpperCommand}" />
-                        </EventTriggerBehavior>
-                    </Interaction.Behaviors>
-                    <Image
-                        Width="48"
-                        Height="48"
-                        asyncImageLoader:ImageLoader.Source="{Binding UiState.VideoInfoView.UpHeader}">
-                        <Image.Clip>
-                            <EllipseGeometry
-                                Center="24,24"
-                                RadiusX="24"
-                                RadiusY="24" />
-                        </Image.Clip>
-                    </Image>
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        HorizontalAlignment="Center"
-                        FontSize="12"
-                        Foreground="{DynamicResource BrushTextDark}"
-                        Text="{Binding UiState.VideoInfoView.UpName}"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-            </Grid>
-            <ScrollViewer
-                Grid.Row="1"
-                Margin="0,5,0,0"
-                VerticalScrollBarVisibility="Auto">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    xmlns:asyncImageLoader="clr-namespace:DownKyi.CustomControl.AsyncImageLoader"
+    x:Class="DownKyi.Views.VideoDetailSummaryView"
+    x:DataType="vm:ViewVideoDetailViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid Name="SummaryLayout" ColumnDefinitions="220,*" RowDefinitions="Auto,Auto">
+            <Border
+                Name="SummaryCover"
+                Grid.RowSpan="2"
+                Height="172"
+                VerticalAlignment="Top"
+                Background="{DynamicResource SpaceCarbon}"
+                ClipToBounds="True">
+                <Image Name="SummaryCoverImage" Stretch="UniformToFill" asyncImageLoader:ImageLoader.Source="{Binding UiState.VideoInfoView.CoverUrl}">
+                    <Image.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Command="{Binding CopyCoverUrlCommand}" Header="{DynamicResource CopyCoverUrl}" />
+                        </ContextMenu>
+                    </Image.ContextMenu>
+                </Image>
+            </Border>
+            <StackPanel
+                Name="SummaryMetadata"
+                Grid.Column="1"
+                Margin="24,0,0,0"
+                Spacing="8">
                 <SelectableTextBlock
-                    Background="{x:Null}"
+                    Name="SummaryTitle"
+                    FontSize="26"
+                    FontWeight="Bold"
+                    MaxLines="2"
+                    Text="{Binding UiState.VideoInfoView.Title}"
+                    Foreground="{DynamicResource SpaceInk}"
+                    TextWrapping="Wrap"
+                    TextTrimming="CharacterEllipsis"
+                    ToolTip.Tip="{Binding UiState.VideoInfoView.Title}" />
+                <WrapPanel>
+                    <TextBlock Margin="0,0,16,4" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.VideoZone}" />
+                    <TextBlock Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.CreateTime}" />
+                </WrapPanel>
+                <WrapPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.PlayNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Play}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.DanmakuNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Danmaku}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.LikeNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Like}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.CoinNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Coin}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.FavoriteNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Favorite}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.ShareNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Share}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{Binding UiState.VideoInfoView.ReplyNumber}" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource Reply}" />
+                    </StackPanel>
+                </WrapPanel>
+                <Button
+                    Name="NameUp"
+                    Classes="studio-back"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    Theme="{StaticResource PersonalNavigationButton}"
+                    Command="{Binding UpperCommand}"
+                    MinHeight="32">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Image Width="28" Height="28" asyncImageLoader:ImageLoader.Source="{Binding UiState.VideoInfoView.UpHeader}">
+                            <Image.Clip>
+                                <EllipseGeometry Center="14,14" RadiusX="14" RadiusY="14" />
+                            </Image.Clip>
+                        </Image>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Text="{Binding UiState.VideoInfoView.UpName}"
+                            TextTrimming="CharacterEllipsis"
+                            MaxWidth="200" />
+                        <TextBlock Text="↗" VerticalAlignment="Center" Foreground="{DynamicResource SpaceMuted}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <Border
+                Name="SummaryDescription"
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="24,10,0,0">
+                <SelectableTextBlock
                     FontSize="12"
-                    Foreground="{DynamicResource BrushTextDark}"
+                    Foreground="{DynamicResource SpaceMuted}"
                     Text="{Binding UiState.VideoInfoView.Description}"
-                    TextWrapping="WrapWithOverflow" />
-            </ScrollViewer>
+                    TextWrapping="Wrap" />
+            </Border>
         </Grid>
-    </DockPanel>
+    </ScrollViewer>
 </UserControl>

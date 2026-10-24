@@ -1,21 +1,26 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:custom="clr-namespace:DownKyi.CustomControl"
-             xmlns:vm="clr-namespace:DownKyi.ViewModels"
-             x:Class="DownKyi.Views.VideoDetailOperationStatusView"
-             x:DataType="vm:ViewVideoDetailViewModel"
-             mc:Ignorable="d">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:custom="clr-namespace:DownKyi.CustomControl"
+    xmlns:vm="clr-namespace:DownKyi.ViewModels"
+    x:Class="DownKyi.Views.VideoDetailOperationStatusView"
+    x:DataType="vm:ViewVideoDetailViewModel"
+    mc:Ignorable="d"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <Border
         x:Name="OperationStatusBar"
         MinHeight="38"
-        Margin="10,0,10,10"
-        Padding="10,7"
-        Background="{DynamicResource BrushSurfaceRaised}"
-        BorderBrush="{DynamicResource BrushBorderSubtle}"
-        BorderThickness="1"
-        CornerRadius="{DynamicResource DownKyiRadiusMedium}"
+        Margin="0,12,0,0"
+        Padding="10,8"
+        Background="{DynamicResource SpaceHover}"
+        BorderBrush="{DynamicResource SpaceAccent}"
+        BorderThickness="3,0,0,0"
+        CornerRadius="0"
         IsVisible="{Binding UiState.IsOperationStatusVisible}">
         <Grid ColumnDefinitions="24,*">
             <custom:Loading
@@ -24,7 +29,7 @@
                 Height="18"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
-                Foreground="{DynamicResource BrushPrimary}"
+                Foreground="{DynamicResource SpaceAccent}"
                 IsActive="True"
                 IsVisible="{Binding UiState.IsOperationRunning}" />
             <Path
@@ -40,8 +45,10 @@
             <TextBlock
                 Grid.Column="1"
                 VerticalAlignment="Center"
-                Foreground="{DynamicResource BrushTextPrimary}"
+                Foreground="{DynamicResource SpaceInk}"
                 Text="{Binding UiState.OperationStatusText}"
+                ToolTip.Tip="{Binding UiState.OperationStatusText}"
+                MaxLines="2"
                 TextTrimming="CharacterEllipsis"
                 TextWrapping="Wrap" />
         </Grid>

@@ -1,0 +1,30 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="ContextMenu, MenuFlyoutPresenter, FlyoutPresenter, ToolTip">
+        <Setter Property="Background" Value="{DynamicResource SpacePaper}" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="MenuItem:pointerover, MenuItem:selected">
+        <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+        <Setter Property="Foreground" Value="{DynamicResource SpaceInk}" />
+    </Style>
+    <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot, MenuItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ToolTip">
+        <Setter Property="MaxWidth" Value="400" />
+        <Setter Property="Padding" Value="12,8" />
+    </Style>
+    <Style Selector="ToolTip TextBlock, MenuItem TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+</Styles>

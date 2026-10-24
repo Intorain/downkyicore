@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Domain.Downloads;
@@ -324,6 +325,14 @@ internal sealed class DownloadActivityPresenter
     public static string CreateDirectoryError(string path)
     {
         return $"{path}{DictionaryResource.GetString("DirectoryError")}";
+    }
+
+    public static string CreateAdmissionError(IOException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        return DictionaryResource.GetString(exception is DownloadOutputCollisionException
+            ? "DownloadOutputCollision"
+            : "DirectoryError");
     }
 
     private void ShowTransferActivity(

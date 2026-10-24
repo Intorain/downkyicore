@@ -1,19 +1,26 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="DownKyi.Views.UserSpace.ViewArchive"
-             xmlns:vmu="clr-namespace:DownKyi.ViewModels.UserSpace"
-             x:DataType="vmu:ViewArchiveViewModel">
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vmu="clr-namespace:DownKyi.ViewModels.UserSpace"
+    x:Class="DownKyi.Views.UserSpace.ViewArchive"
+    x:DataType="vmu:ViewArchiveViewModel"
+    Classes="studio-page">
+    <UserControl.Styles>
+        <StyleInclude Source="/Themes/Styles/Studio.axaml" />
+    </UserControl.Styles>
     <Grid RowDefinitions="*">
-
-        <ListBox Name="NamePublicationZones"
-                 Margin="30,0,0,0"
-                 ItemsSource="{Binding PublicationZones}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 SelectedIndex="{Binding SelectedItem}">
+        <ListBox
+            Name="NamePublicationZones"
+            Margin="0"
+            ItemsSource="{Binding PublicationZones}"
+            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+            SelectedIndex="{Binding SelectedItem}"
+            Background="Transparent">
             <Interaction.Behaviors>
                 <EventTriggerBehavior EventName="SelectionChanged">
-                    <InvokeCommandAction Command="{Binding PublicationZonesCommand}"
-                                         CommandParameter="{Binding ElementName=NamePublicationZones, Path=SelectedItem}" />
+                    <InvokeCommandAction
+                        Command="{Binding PublicationZonesCommand}"
+                        CommandParameter="{Binding ElementName=NamePublicationZones, Path=SelectedItem}" />
                 </EventTriggerBehavior>
             </Interaction.Behaviors>
             <ListBox.ItemsPanel>
@@ -46,37 +53,29 @@
             </ListBox.Theme>
             <ListBox.ItemContainerTheme>
                 <ControlTheme TargetType="ListBoxItem">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource SpaceRule}" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="{x:Type ListBoxItem}" x:DataType="vmu:PublicationZone">
-                                <StackPanel
-                                    Margin="0,20,30,0"
-                                    HorizontalAlignment="Left"
-                                    Cursor="Hand"
-                                    Orientation="Vertical">
-                                    <Image
-                                        Name="nameZoneIcon"
-                                        Width="64"
-                                        Height="64"
-                                        HorizontalAlignment="Center"
-                                        Source="{Binding Icon}" />
-                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                        <TextBlock
-                                            Name="nameZoneName"
-                                            Foreground="{DynamicResource BrushTextDark}"
-                                            Text="{Binding Name}" />
-                                        <TextBlock
-                                            Name="nameZoneCount"
-                                            Margin="5,0,0,0"
-                                            Foreground="{DynamicResource BrushTextGrey2}"
-                                            Text="{Binding Count}" />
+                                <Border Margin="0,12,24,20" Width="208" Padding="12" Cursor="Hand"
+                                        Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0,0,0,1">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Count}" FontSize="30" FontWeight="Bold" FontFamily="Cascadia Mono,Consolas" Foreground="{DynamicResource SpaceInk}" Margin="0,0,0,12" />
+                                        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                            <TextBlock Name="nameZoneName" FontSize="16" Foreground="{DynamicResource SpaceInk}" Text="{Binding Name}" />
+                                        </StackPanel>
                                     </StackPanel>
-                                </StackPanel>
+                                </Border>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
-                    <Style Selector="^:pointerover /template/ TextBlock#nameZoneName">
-                        <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+                    <Style Selector="^:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource SpaceHover}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource SpaceAccent}" />
+                    </Style>
+                    <Style Selector="^:focus-visible">
+                        <Setter Property="Background" Value="{DynamicResource SpaceSelection}" />
                     </Style>
                 </ControlTheme>
             </ListBox.ItemContainerTheme>
