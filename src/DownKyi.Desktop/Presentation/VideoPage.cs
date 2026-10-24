@@ -12,6 +12,8 @@ namespace DownKyi.Presentation;
 
 internal class VideoPage : ObservableObject
 {
+    public string PlaybackAddress { get; set; } = string.Empty;
+
     public PlayUrlAvailability? PlaybackAvailability { get; internal set; }
 
     public bool HasPlayback => PlaybackAvailability?.HasPlayableMedia == true;

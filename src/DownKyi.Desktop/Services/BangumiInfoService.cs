@@ -227,12 +227,19 @@ internal class BangumiInfoService : IInfoService
 
                 // 标题
                 var name = !string.IsNullOrEmpty(episode.LongTitle) ? $"{episode.Title} {episode.LongTitle}" : episode.Title;
+                var isOrdinaryVideo = PlayStreamTypeResolver.ResolvePlayStreamType(episode.Link)
+                    is PlayStreamType.Video;
                 var page = new VideoPage
                 {
+                    PlaybackAddress = isOrdinaryVideo ? episode.Link : string.Empty,
                     Avid = episode.Aid,
-                    Bvid = episode.Bvid,
+                    Bvid = isOrdinaryVideo
+                        ? ParseEntrance.GetBvId(episode.Link)
+                        : episode.Bvid,
                     Cid = episode.Cid,
-                    EpisodeId = ResolveEpisodeId(episode),
+                    EpisodeId = isOrdinaryVideo
+                        ? -1
+                        : ResolveEpisodeId(episode),
                     FirstFrame = episode.Cover,
                     Order = order,
                     Name = name,
