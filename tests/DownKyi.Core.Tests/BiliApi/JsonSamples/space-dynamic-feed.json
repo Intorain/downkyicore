@@ -1,0 +1,65 @@
+{
+  "code": 0,
+  "message": "0",
+  "data": {
+    "has_more": true,
+    "offset": "next.offset.2",
+    "items": [
+      {
+        "type": "DYNAMIC_TYPE_AV",
+        "modules": {
+          "module_author": {
+            "mid": 42,
+            "pub_ts": "1720000000"
+          },
+          "module_dynamic": {
+            "major": {
+              "type": "MAJOR_TYPE_ARCHIVE",
+              "archive": {
+                "aid": "100",
+                "bvid": "BV1T6PQzQEUf",
+                "title": "direct dynamic video",
+                "cover": "https://i0.hdslb.com/bfs/archive/cover.jpg",
+                "duration_text": "03:12",
+                "stat": {
+                  "play": "1.2万"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "DYNAMIC_TYPE_FORWARD",
+        "modules": {
+          "module_author": {
+            "mid": 42,
+            "pub_ts": 1720000001
+          },
+          "module_dynamic": {
+            "major": null
+          }
+        },
+        "orig": {
+          "type": "DYNAMIC_TYPE_AV",
+          "modules": {
+            "module_author": {
+              "mid": 99,
+              "pub_ts": 1710000000
+            },
+            "module_dynamic": {
+              "major": {
+                "type": "MAJOR_TYPE_ARCHIVE",
+                "archive": {
+                  "aid": 200,
+                  "bvid": "BV17x411w7KC",
+                  "title": "forwarded video"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

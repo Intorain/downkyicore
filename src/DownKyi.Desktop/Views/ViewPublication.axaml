@@ -108,7 +108,7 @@
                         Fill="{DynamicResource SpaceInk}"
                         Stretch="Uniform" />
                     <StackPanel Grid.Column="2" Spacing="2">
-                        <TextBlock Text="{DynamicResource Publication}" FontSize="24" FontWeight="Bold" />
+                        <TextBlock Text="{Binding PageTitle}" FontSize="24" FontWeight="Bold" />
                     </StackPanel>
                 </Grid>
             </Button>
@@ -154,7 +154,7 @@
                 </Interaction.Behaviors>
             </ListBox>
             <Grid Name="NameMediaPanel" Grid.Column="1" RowDefinitions="Auto,*,1,Auto" Grid.RowSpan="2">
-                <Grid Grid.Row="0" Margin="0,0,0,12" ColumnDefinitions="*,80">
+                <Grid Grid.Row="0" Margin="0,0,0,12" ColumnDefinitions="*,80" IsVisible="{Binding SearchVisibility}">
                     <TextBox
                         Grid.Column="0"
                         IsEnabled="{Binding IsEnabled}"

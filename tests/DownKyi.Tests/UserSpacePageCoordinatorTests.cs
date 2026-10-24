@@ -59,6 +59,37 @@ public sealed class UserSpacePageCoordinatorTests
     }
 
     [Fact]
+    public void DynamicVideoMappingKeepsOnlyDirectVideosFromTheRequestedCreator()
+    {
+        var page = new SpaceDynamicPage
+        {
+            HasMore = true,
+            Offset = "next.offset",
+            Items =
+            {
+                CreateDynamicVideo(42, "DYNAMIC_TYPE_AV", "BV1T6PQzQEUf"),
+                CreateDynamicVideo(42, "DYNAMIC_TYPE_FORWARD", "BV17x411w7KC"),
+                CreateDynamicVideo(99, "DYNAMIC_TYPE_AV", "BV1xx411c7mD"),
+                CreateDynamicVideo(42, "DYNAMIC_TYPE_AV", "invalid")
+            }
+        };
+
+        var result = UserSpacePageCoordinator.MapDynamicVideoPage(
+            42,
+            page,
+            new TestNavigationService(),
+            CancellationToken.None);
+
+        var media = Assert.Single(result.Medias);
+        Assert.Equal("BV1T6PQzQEUf", media.Bvid);
+        Assert.Equal("dynamic video", media.Title);
+        Assert.Equal("1.2万", media.PlayNumber);
+        Assert.Equal("03:12", media.Duration);
+        Assert.True(result.HasMore);
+        Assert.Equal("next.offset", result.NextOffset);
+    }
+
+    [Fact]
     public async Task PreCanceledProfileLoadDoesNotStartApiWork()
     {
         using var settings = new TestSettingsStore();
@@ -182,5 +213,37 @@ public sealed class UserSpacePageCoordinatorTests
             new TestNavigationService(),
             NullLogger<UserSpacePageCoordinator>.Instance,
             client ?? new TestBilibiliApiClient());
+    }
+
+    private static SpaceDynamicItem CreateDynamicVideo(long mid, string type, string bvid)
+    {
+        return new SpaceDynamicItem
+        {
+            Type = type,
+            Modules = new SpaceDynamicModules
+            {
+                Author = new SpaceDynamicAuthor
+                {
+                    Mid = mid,
+                    PublishedAt = 1_720_000_000
+                },
+                Dynamic = new SpaceDynamicContent
+                {
+                    Major = new SpaceDynamicMajor
+                    {
+                        Type = "MAJOR_TYPE_ARCHIVE",
+                        Archive = new SpaceDynamicArchive
+                        {
+                            Aid = 100,
+                            Bvid = bvid,
+                            Title = "dynamic video",
+                            Cover = "cover",
+                            Duration = "03:12",
+                            Stat = new SpaceDynamicArchiveStat { Play = "1.2万" }
+                        }
+                    }
+                }
+            }
+        };
     }
 }

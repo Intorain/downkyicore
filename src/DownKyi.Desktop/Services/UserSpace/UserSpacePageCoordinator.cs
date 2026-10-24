@@ -7,6 +7,7 @@ using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Core.BiliApi;
+using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
@@ -53,6 +54,11 @@ internal sealed record PublicationPageSnapshot(
     IReadOnlyList<PublicationMedia> Medias,
     int TotalCount);
 
+internal sealed record DynamicVideoPageSnapshot(
+    IReadOnlyList<PublicationMedia> Medias,
+    string? NextOffset,
+    bool HasMore);
+
 internal interface IUserSpacePageCoordinator
 {
     Task<PublicationPageSnapshot> LoadPublicationPageAsync(
@@ -61,6 +67,11 @@ internal interface IUserSpacePageCoordinator
         int pageSize,
         long typeId,
         string? keyword,
+        CancellationToken cancellationToken);
+
+    Task<DynamicVideoPageSnapshot> LoadDynamicVideoPageAsync(
+        long mid,
+        string? offset,
         CancellationToken cancellationToken);
 
     Task<MySpaceProfileSnapshot?> LoadMyProfileAsync(long mid, CancellationToken cancellationToken);
@@ -125,6 +136,20 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
             cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<DynamicVideoPageSnapshot> LoadDynamicVideoPageAsync(
+        long mid,
+        string? offset,
+        CancellationToken cancellationToken)
+    {
+        var page = await _client.GetDynamicPageAsync(mid, offset, cancellationToken)
+            .ConfigureAwait(false);
+        return await Task.Run(() => MapDynamicVideoPage(
+            mid,
+            page,
+            _navigationService,
+            cancellationToken), cancellationToken).ConfigureAwait(false);
+    }
+
     internal static PublicationPageSnapshot MapPublicationPage(
         SpacePublication? publication,
         IAppNavigationService navigationService,
@@ -165,6 +190,63 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         }
 
         return new PublicationPageSnapshot(result, publication.Page.Count);
+    }
+
+    internal static DynamicVideoPageSnapshot MapDynamicVideoPage(
+        long mid,
+        SpaceDynamicPage page,
+        IAppNavigationService navigationService,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(navigationService);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var result = new List<PublicationMedia>();
+        foreach (var item in page.Items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var author = item.Modules?.Author;
+            var major = item.Modules?.Dynamic?.Major;
+            var archive = major?.Archive;
+            if (!string.Equals(item.Type, "DYNAMIC_TYPE_AV", StringComparison.Ordinal)
+                || author?.Mid != mid
+                || !string.Equals(major?.Type, "MAJOR_TYPE_ARCHIVE", StringComparison.Ordinal)
+                || archive == null
+                || !ParseEntrance.IsBvId(archive.Bvid))
+            {
+                continue;
+            }
+
+            result.Add(new PublicationMedia(navigationService, AppRoute.Publication)
+            {
+                Avid = archive.Aid,
+                Bvid = archive.Bvid,
+                Duration = archive.Duration,
+                Title = archive.Title,
+                PlayNumber = string.IsNullOrWhiteSpace(archive.Stat?.Play)
+                    ? "--"
+                    : archive.Stat.Play,
+                CreateTime = FormatDynamicPublishedDate(author.PublishedAt),
+                CoverUrl = archive.Cover
+            });
+        }
+
+        return new DynamicVideoPageSnapshot(
+            result,
+            page.HasMore ? page.Offset : null,
+            page.HasMore);
+    }
+
+    private static string FormatDynamicPublishedDate(long publishedAt)
+    {
+        const long minimumUnixSeconds = -62_135_596_800;
+        const long maximumUnixSeconds = 253_402_300_799;
+        return publishedAt is <= 0 or < minimumUnixSeconds or > maximumUnixSeconds
+            ? string.Empty
+            : DateTimeOffset.FromUnixTimeSeconds(publishedAt)
+                .ToLocalTime()
+                .ToString("yyyy-MM-dd", CultureInfo.CurrentCulture);
     }
 
     public async Task<MySpaceProfileSnapshot?> LoadMyProfileAsync(
