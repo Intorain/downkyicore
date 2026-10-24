@@ -106,6 +106,15 @@ bounded stdout/stderr 與一次 best-effort final process snapshot；child 未�
 
 ## 外部 Binary 與跨 RID 發布
 
+正式 Release 介紹直接使用 `script/read-release-notes.ps1` 讀取
+`CHANGELOG.md` 中與 `version.txt` 相符的二級版本章節，保留原有中文與
+Markdown，不再從 commit 訊息重新產生。發布前先執行下列命令確認內容；
+缺少版本、同一版本重複或內容只有標題／註解時，流程會停止：
+
+```powershell
+pwsh ./script/read-release-notes.ps1
+```
+
 從儲存庫根目錄執行 Windows 資產腳本；腳本不可依賴目前 working
 directory：
 
