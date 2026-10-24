@@ -118,12 +118,22 @@ public sealed class ReleaseSafetyRegressionTests
             // No Git repository is needed: authored CHANGELOG content owns the release body.
             File.WriteAllText(Path.Combine(root, "version.txt"), "9.8.7");
             File.WriteAllText(Path.Combine(root, "CHANGELOG.md"), changelog, System.Text.Encoding.UTF8);
+            var captureScript = Path.Combine(root, "capture-release-notes.ps1");
+            var outputPath = Path.Combine(root, "release-notes.md");
+            // Match the workflow's in-process string capture and UTF-8 file output.
+            // A redirected Windows console can replace Chinese characters with '?'.
+            File.WriteAllText(captureScript, """
+                param([string]$Reader, [string]$RepositoryRoot, [string]$OutputPath)
+                $ErrorActionPreference = 'Stop'
+                $notes = & $Reader -RepositoryRoot $RepositoryRoot
+                Set-Content -LiteralPath $OutputPath -Value $notes -Encoding utf8 -NoNewline
+                """);
             var result = RunPowerShell(
-                reader, ["-RepositoryRoot", root], RepositoryRoot,
+                captureScript, ["-Reader", reader, "-RepositoryRoot", root, "-OutputPath", outputPath], RepositoryRoot,
                 new Dictionary<string, string> { ["GITHUB_REF"] = "refs/tags/v9.8.7" });
 
             Assert.True(result.ExitCode == 0, result.StandardError);
-            Assert.Equal(expected, result.StandardOutput.Trim());
+            Assert.Equal(expected, File.ReadAllText(outputPath));
             Assert.Equal(changelog, File.ReadAllText(Path.Combine(root, "CHANGELOG.md")));
         }
         finally
