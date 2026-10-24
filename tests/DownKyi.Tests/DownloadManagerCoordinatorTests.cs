@@ -128,7 +128,7 @@ public sealed class DownloadManagerCoordinatorTests
     }
 
     [Fact]
-    public async Task DeleteRemovesGeneratedFilesResumeSidecarsStoreRowAndProjection()
+    public async Task DeletePreservesFilesOutsideTaskStagingAndRemovesStoreRowAndProjection()
     {
         using var context = new CoordinatorContext();
         var item = context.CreateDownloadingItem("delete-complete", DownloadStatus.WaitForDownload);
