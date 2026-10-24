@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Models;
 using DownKyi.Platform;
 using DownKyi.Services;

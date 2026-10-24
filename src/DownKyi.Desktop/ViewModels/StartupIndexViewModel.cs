@@ -3,7 +3,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Images;
 
 namespace DownKyi.ViewModels;

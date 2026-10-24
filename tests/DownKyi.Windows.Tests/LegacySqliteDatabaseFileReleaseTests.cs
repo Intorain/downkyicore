@@ -1,4 +1,4 @@
-using DownKyi.Core.Storage.Database;
+using DownKyi.Infrastructure.Storage.Database;
 using Microsoft.Data.Sqlite;
 
 namespace DownKyi.Windows.Tests;

@@ -11,6 +11,7 @@ using DownKyi.Core.BiliApi.Favorites.Models;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
+using DownKyi.Infrastructure.Bilibili;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -61,6 +62,7 @@ internal sealed class UserSpaceLoadCoordinator : IUserSpaceLoadCoordinator
                 keys,
                 unixTimeSeconds,
                 mid,
+                LoginHelper.HasSavedLoginInfo,
                 cancellationToken),
             TimeProvider.System,
             cancellationToken).ConfigureAwait(false);
@@ -70,6 +72,7 @@ internal sealed class UserSpaceLoadCoordinator : IUserSpaceLoadCoordinator
                 keys,
                 unixTimeSeconds,
                 mid,
+                LoginHelper.HasSavedLoginInfo,
                 cancellationToken),
             TimeProvider.System,
             cancellationToken).ConfigureAwait(false);

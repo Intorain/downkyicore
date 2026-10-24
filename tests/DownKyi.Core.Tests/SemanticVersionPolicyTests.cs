@@ -1,4 +1,4 @@
-using DownKyi.Core.Versioning;
+using DownKyi.Application.Versioning;
 
 namespace DownKyi.Core.Tests;
 

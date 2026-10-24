@@ -16,10 +16,10 @@
 ```mermaid
 flowchart TD
     Entry["DownKyi\nminimal executable"] --> Desktop["DownKyi.Desktop\nAvalonia + composition + desktop runtime"]
-    Desktop --> Core["DownKyi.Core\nBilibili + media/runtime compatibility"]
+    Desktop --> Core["DownKyi.Core\nBilibili protocol + content conversion"]
     Desktop --> Application["DownKyi.Application\nuse cases + ports"]
     Desktop --> Domain["DownKyi.Domain\nstate rules"]
-    Desktop --> Infrastructure["DownKyi.Infrastructure\ndurable adapters"]
+    Desktop --> Infrastructure["DownKyi.Infrastructure\nmedia runtime + durable adapters"]
     Infrastructure --> Application
     Infrastructure --> Domain
     Core --> Application
@@ -28,10 +28,10 @@ flowchart TD
 
 - `DownKyi` 只含最小 `Program` bootstrap，只引用 Desktop；不得擁有 UI、套件、資源或生命週期。
 - `DownKyi.Desktop` 擁有 Avalonia App、Views、ViewModels、UI projections、desktop adapters、Host composition、導航／對話框與下載 runtime。`DesktopThemeController` 是唯一 theme switch owner；semantic tokens 由 `DesignTokens.axaml` 擁有。
-- `DownKyi.Application` 擁有 use cases，以及 Bilibili HTTP、cookie／buvid、logging、physical output path 等 ports。
+- `DownKyi.Application` 擁有 use cases，以及 Bilibili HTTP、cookie／buvid、logging、physical output path、媒體處理與設定 snapshot 等 contracts。
 - `DownKyi.Domain` 的 `DownloadTask` 是 durable state transition 的權威。
-- `DownKyi.Infrastructure` 擁有 SQLite、async Bilibili transport、single-flight buvid、write-behind、physical path resolver 與 private logging sink／retention／exporter。
-- `DownKyi.Core` 必須保持 headless；Bilibili DTO／protocol、FFmpeg 與部分 filesystem compatibility 目前仍在此。把後兩者搬到 Infrastructure 是 ownership 方向，不是已完成事實。
+- `DownKyi.Infrastructure` 擁有 FFmpeg runtime、資料目錄選擇／舊資料搬移／維護、設定與登入檔持久化、legacy SQLite adapter、SQLite download store、async Bilibili transport、single-flight buvid、write-behind、physical path resolver 與 private logging sink／retention／exporter。資料位置與既有 JSON／SQLite 相容契約保持不變。
+- `DownKyi.Core` 必須保持 headless，擁有 Bilibili DTO／protocol、內容轉換與檔名組合；不再擁有 FFmpeg runtime、設定持久化或資料目錄相容實作。Core 與 Infrastructure 各自依賴 Application，不得互相 reference。UserSpace 協定由 caller 傳入是否存在已儲存登入資料，不能直接探查本機檔案。
 
 Prism、DryIoc、EventAggregator、RegionManager、ContainerLocator、第二個 router／container 或 service locator 都不得重新引入。否則會產生平行生命週期、導航狀態或依賴解析 owner。
 

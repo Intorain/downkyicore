@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Core.Settings;
 using DownKyi.Core.Utils;
+using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Presentation;
 using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
@@ -124,6 +125,7 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
                 mid,
                 page,
                 pageSize,
+                LoginHelper.HasSavedLoginInfo,
                 typeId,
                 keyword: keyword?.Trim() ?? string.Empty,
                 cancellationToken: cancellationToken),
@@ -300,6 +302,7 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
                     keys,
                     unixTimeSeconds,
                     mid,
+                    LoginHelper.HasSavedLoginInfo,
                     cancellationToken),
                 TimeProvider.System,
                 cancellationToken).ConfigureAwait(false);

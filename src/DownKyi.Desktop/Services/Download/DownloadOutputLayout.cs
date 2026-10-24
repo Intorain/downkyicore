@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Domain.Downloads;
 
 namespace DownKyi.Services.Download;

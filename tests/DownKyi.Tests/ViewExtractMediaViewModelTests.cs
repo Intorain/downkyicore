@@ -1,5 +1,5 @@
 using DownKyi.Application.Desktop;
-using DownKyi.Core.FFmpeg;
+using DownKyi.Infrastructure.FFmpeg;
 using DownKyi.ViewModels.Toolbox;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,5 +1,5 @@
 using DownKyi.Application.Bilibili;
-using DownKyi.Core.BiliApi.Login;
+using DownKyi.Infrastructure.Bilibili;
 
 namespace DownKyi.Services.Account;
 

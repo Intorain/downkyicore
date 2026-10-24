@@ -58,7 +58,7 @@ public sealed class TlsSecurityArchitectureTests
 
         var migrationSource = Assert.Single(productionSources);
         Assert.Equal(
-            Path.Combine("DownKyi.Core", "Settings", "Models", "NetworkSettings.cs"),
+            Path.Combine("src", "DownKyi.Infrastructure", "Settings", "Models", "NetworkSettings.cs"),
             migrationSource.File);
         Assert.Contains("private AllowStatus LegacyUseSsl", migrationSource.Source, StringComparison.Ordinal);
         Assert.Contains("[JsonProperty(\"UseSsl\")]", migrationSource.Source, StringComparison.Ordinal);

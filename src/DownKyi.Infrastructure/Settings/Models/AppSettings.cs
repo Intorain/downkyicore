@@ -1,0 +1,13 @@
+namespace DownKyi.Infrastructure.Settings.Models;
+
+public class AppSettings
+{
+    public int SchemaVersion { get; set; }
+    public BasicSettings Basic { get; set; } = new();
+    public NetworkSettings Network { get; set; } = new();
+    public VideoSettings Video { get; set; } = new();
+    public DanmakuSettings Danmaku { get; set; } = new();
+    public AboutSettings About { get; set; } = new();
+    public UserInfoSettings UserInfo { get; set; } = new();
+    public WindowSettings WindowSettings { get; set; } = new();
+}

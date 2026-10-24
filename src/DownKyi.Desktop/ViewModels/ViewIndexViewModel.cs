@@ -7,7 +7,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Images;
 using DownKyi.Services;
 using DownKyi.Services.Account;

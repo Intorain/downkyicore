@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Presentation;
 using DownKyi.ViewModels.DownloadManager;
 

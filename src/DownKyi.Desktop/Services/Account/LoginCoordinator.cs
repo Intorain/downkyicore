@@ -7,7 +7,8 @@ using DownKyi.Application.Diagnostics;
 using DownKyi.Core.BiliApi.Login;
 using DownKyi.Core.BiliApi.Login.Models;
 using DownKyi.Core.BiliApi.Users;
-using DownKyi.Core.Storage;
+using DownKyi.Infrastructure.Bilibili;
+using DownKyi.Infrastructure.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Services.Account;

@@ -6,10 +6,10 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.BiliApi.Login;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Core.Utils;
 using DownKyi.Domain.Downloads;
+using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
 

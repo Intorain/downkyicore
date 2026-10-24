@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Domain.Downloads;
 
 namespace DownKyi.Services.Download;

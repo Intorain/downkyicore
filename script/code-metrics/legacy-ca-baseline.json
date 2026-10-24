@@ -639,25 +639,25 @@
       "rationale": "The reported depth comes from a shared Avalonia framework inheritance chain, not a DownKyi-owned hierarchy."
     },
     {
-      "identity": "CA1506|DownKyi.Core/FFmpeg/FfmpegConcatRuntime.cs|ConcatAsync",
+      "identity": "CA1506|src/DownKyi.Infrastructure/FFmpeg/FfmpegConcatRuntime.cs|ConcatAsync",
       "rule": "CA1506",
-      "path": "DownKyi.Core/FFmpeg/FfmpegConcatRuntime.cs",
+      "path": "src/DownKyi.Infrastructure/FFmpeg/FfmpegConcatRuntime.cs",
       "symbol": "ConcatAsync",
       "observedMetric": 45,
       "groupId": "ca1506-reviewed-278bf20ba63b54ec",
-      "groupTitle": "operation-owner: DownKyi.Core/FFmpeg/FfmpegConcatRuntime.cs::ConcatAsync",
+      "groupTitle": "operation-owner: src/DownKyi.Infrastructure/FFmpeg/FfmpegConcatRuntime.cs::ConcatAsync",
       "classification": "operation-owner",
       "reviewStatus": "reviewed-reasonable",
       "rationale": "The method owns one complete FFmpeg concat operation and its validation and cleanup invariants."
     },
     {
-      "identity": "CA1506|DownKyi.Core/Settings/SettingsManager.About.cs|SettingsManager",
+      "identity": "CA1506|src/DownKyi.Infrastructure/Settings/SettingsManager.About.cs|SettingsManager",
       "rule": "CA1506",
-      "path": "DownKyi.Core/Settings/SettingsManager.About.cs",
+      "path": "src/DownKyi.Infrastructure/Settings/SettingsManager.About.cs",
       "symbol": "SettingsManager",
       "observedMetric": 104,
       "groupId": "ca1506-reviewed-ca43009664d30b94",
-      "groupTitle": "settings-aggregation: DownKyi.Core/Settings/SettingsManager.About.cs::SettingsManager",
+      "groupTitle": "settings-aggregation: src/DownKyi.Infrastructure/Settings/SettingsManager.About.cs::SettingsManager",
       "classification": "settings-aggregation",
       "reviewStatus": "reviewed-reasonable",
       "rationale": "The metric aggregates a partial settings owner across settings categories."

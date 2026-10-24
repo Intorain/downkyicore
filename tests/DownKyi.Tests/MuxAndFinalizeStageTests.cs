@@ -1,7 +1,6 @@
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Services.Download;
-
 using static DownKyi.Tests.DownloadPipelineTestSupport;
 
 namespace DownKyi.Tests;

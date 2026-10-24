@@ -1,6 +1,6 @@
 using Avalonia.Styling;
 using Avalonia.Threading;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 
 namespace DownKyi.Desktop.Appearance;
 

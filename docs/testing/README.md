@@ -4,8 +4,8 @@
 
 - `DownKyi.Domain.Tests`：state transitions 與 value objects。
 - `DownKyi.Application.Tests`：commands、queries、coordinators 與 ports。
-- `DownKyi.Infrastructure.Tests`：SQLite、migration、write-behind 與 adapters。
-- `DownKyi.Core.Tests`：Bilibili contracts、HTTP、settings、logging 與 FFmpeg。
+- `DownKyi.Infrastructure.Tests`：SQLite、migration、write-behind、settings／login persistence、FFmpeg 與 adapters。
+- `DownKyi.Core.Tests`：Bilibili contracts、內容轉換與共用契約。
 - `DownKyi.Desktop.Tests`：real Host、XAML 與 typed navigation smoke tests。
 - `DownKyi.Tests`：executable compatibility 與 end-to-end service tests。
 - `DownKyi.Architecture.Tests`：重要 dependency direction 與 repository wiring。

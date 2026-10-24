@@ -1,10 +1,13 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
+using DownKyi.Application.Media;
+using DownKyi.Application.Settings;
 using DownKyi.Composition;
-using DownKyi.Core.Settings;
 using DownKyi.Desktop.Composition;
 using DownKyi.Infrastructure.Downloads;
+using DownKyi.Infrastructure.FFmpeg;
 using DownKyi.Infrastructure.Logging;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Platform;
 using DownKyi.Services.Download;
 using DownKyi.Services.Media;
@@ -59,6 +62,9 @@ public sealed class LocalModuleCompositionTests
             });
 
             var queueGateway = host.Services.GetRequiredService<DownloadTaskQueueGateway>();
+            Assert.Same(
+                host.Services.GetRequiredService<FfmpegProcessor>(),
+                host.Services.GetRequiredService<IFfmpegMediaMuxer>());
             Assert.Same(queueGateway, host.Services.GetRequiredService<IDownloadTaskQueue>());
             Assert.Same(queueGateway, host.Services.GetRequiredService<IDownloadRuntimeAvailability>());
 

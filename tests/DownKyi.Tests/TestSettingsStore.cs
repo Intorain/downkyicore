@@ -1,4 +1,5 @@
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
+using DownKyi.Infrastructure.Settings;
 
 namespace DownKyi.Tests;
 

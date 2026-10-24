@@ -3,7 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Images;
 
 namespace DownKyi.Presentation;

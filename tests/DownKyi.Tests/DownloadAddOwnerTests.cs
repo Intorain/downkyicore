@@ -19,7 +19,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryPreservesTaskIdentityQualityContentAndStreamType()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.AudioQualityFormat = "高质量";
@@ -83,7 +83,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryDefersCollisionResolutionToAtomicAdmission()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var settings = settingsStore.Current with
         {
@@ -133,7 +133,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryRejectsAudioOnlyDurlContract()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.PlaybackAvailability = PlayUrlAvailability.From(CreateDurlPlayUrl());
@@ -167,7 +167,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryUsesIndependentDashAudioWithoutSelectedVideo()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.AudioQualityFormat = "高质量";
@@ -209,7 +209,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryUsesFinalizedPlaybackSnapshotAfterPageChanges()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.AudioQualityFormat = "高质量";
@@ -248,7 +248,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryPersistsFinalizedSelectedMediaKind()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.PlaybackAvailability = PlayUrlAvailability.From(CreateDurlPlayUrl());
@@ -285,7 +285,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
     public void DraftFactoryUsesTheSelectedCandidateWhenQualityIdsMatchAcrossStreamKinds()
     {
         Directory.CreateDirectory(_directory);
-        using var settingsStore = new DownKyi.Core.Settings.SettingsStore(
+        using var settingsStore = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         var page = CreatePage();
         page.PlaybackAvailability = new PlayUrlAvailability(
@@ -331,7 +331,7 @@ public sealed class DownloadAddOwnerTests : IDisposable
         int sectionCount,
         VideoPage page,
         VideoQuality? videoQuality,
-        DownKyi.Core.Settings.ApplicationSettings settings,
+        DownKyi.Application.Settings.ApplicationSettings settings,
         DownloadContentSelection content)
     {
         var audioQualityFormat = page.AudioQualityFormat;

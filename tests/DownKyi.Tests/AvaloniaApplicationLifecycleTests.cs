@@ -1,7 +1,8 @@
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Desktop.Composition;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Platform;
 using DownKyi.Services.Download;
 using Microsoft.Extensions.DependencyInjection;

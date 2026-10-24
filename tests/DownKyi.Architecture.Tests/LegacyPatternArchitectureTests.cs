@@ -112,7 +112,7 @@ public sealed class LegacyPatternArchitectureTests
         var expectedPragmas = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["DownKyi.Core/BiliApi/Sign/WbiSign.cs"] = "CA5351",
-            ["DownKyi.Core/Utils/Encryptor/LegacySettingsDecryptor.cs"] = "CA5351"
+            ["src/DownKyi.Infrastructure/Settings/LegacySettingsDecryptor.cs"] = "CA5351"
         };
         var sourceFiles = EnumerateProductionSourceFiles().ToArray();
         var pragmaFiles = sourceFiles

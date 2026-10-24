@@ -1,8 +1,8 @@
 using System;
 using System.Globalization;
 using DownKyi.Application.Desktop;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
-using DownKyi.Core.Settings;
 
 namespace DownKyi.Services;
 

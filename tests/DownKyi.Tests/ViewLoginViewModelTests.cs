@@ -1,6 +1,6 @@
 using Avalonia.Media.Imaging;
 using DownKyi.Core.BiliApi.Login.Models;
-using DownKyi.Core.Storage;
+using DownKyi.Infrastructure.Storage;
 using DownKyi.Services.Account;
 using DownKyi.Utils;
 using DownKyi.ViewModels;

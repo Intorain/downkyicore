@@ -1,5 +1,5 @@
 using System.Net;
-using DownKyi.Core.Storage;
+using DownKyi.Infrastructure.Storage;
 
 namespace DownKyi.Services.Account;
 

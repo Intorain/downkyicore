@@ -1,6 +1,7 @@
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.VideoStream.Models;
-using DownKyi.Core.Settings;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Presentation;
 using DownKyi.Services.Video;
 

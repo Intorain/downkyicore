@@ -1,7 +1,7 @@
 using DownKyi.Application.Downloads;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.VideoStream;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Infrastructure.Downloads;
 using DownKyi.Infrastructure.Time;

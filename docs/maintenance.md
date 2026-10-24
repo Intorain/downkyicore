@@ -111,7 +111,7 @@ cross-platform stress proof，不得移除。
 ## Settings 卡
 
 - **Use when**：settings、schema、invalid file、flush、shutdown、legacy DES。
-- **Owner**：讀=`ISettingsStore.Current` snapshot；寫=typed `Update`；migration=`SettingsSchemaMigrator`。
+- **Owner**：Application 擁有 `ISettingsStore.Current` snapshot 與 typed `Update` 契約；Infrastructure 擁有 `SettingsStore`、`SettingsManager` 與 `SettingsSchemaMigrator`；資料目錄選擇、舊資料搬移及維護由 Infrastructure 的 `ApplicationDataPaths`／`ApplicationStorage` 擁有。
 - **Invariant**：correlated fields 一次 `Update`；operation 中途不重讀。Schema 逐版升級並保留 JSON names；newer schema byte-for-byte 不動；DES 只讀 legacy。
 - **Do**：malformed → 唯一 `.invalid-*`；寫入：debounce → async gate → temp UTF-8 JSON → parse → flush → atomic replace；shutdown await `FlushAsync`／`DisposeAsync`。
 - **Proof**：`SettingsStoreTests`、`SettingsArchitectureTests`、Host smoke、strict build。
@@ -169,7 +169,7 @@ cross-platform stress proof，不得移除。
 | Location | 只允許用途 | Removal gate |
 | --- | --- | --- |
 | `DownKyi.Core/BiliApi/Sign/WbiSign.cs` | Bilibili WBI protocol MD5 | Bilibili 取代 WBI |
-| `DownKyi.Core/Utils/Encryptor/LegacySettingsDecryptor.cs` | read-only legacy migration | 有 telemetry、recovery guidance 的 migration-window 決策 |
+| `src/DownKyi.Infrastructure/Settings/LegacySettingsDecryptor.cs` | read-only legacy migration | 有 telemetry、recovery guidance 的 migration-window 決策 |
 
 <a id="external-binary"></a>
 
@@ -207,5 +207,5 @@ cross-platform stress proof，不得移除。
 
 ## 固定名稱
 
-- FFmpeg namespace：`DownKyi.Core.FFmpeg`。
+- FFmpeg namespace：`DownKyi.Infrastructure.FFmpeg`。
 - 禁止 source-directory casing `FFMpeg`。

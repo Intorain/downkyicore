@@ -102,7 +102,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
     [Fact]
     public void FfmpegRuntimeDoesNotRestoreSynchronousProcessWaits()
     {
-        var runtimeDirectory = Path.Combine(RepositoryRoot, "DownKyi.Core", "FFmpeg");
+        var runtimeDirectory = Path.Combine(RepositoryRoot, "src", "DownKyi.Infrastructure", "FFmpeg");
         var forbidden = new[]
         {
             "WaitForExit(",
@@ -123,7 +123,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
     [Fact]
     public void FfmpegRuntimeUsesInjectedTypedLogging()
     {
-        var runtimeDirectory = Path.Combine(RepositoryRoot, "DownKyi.Core", "FFmpeg");
+        var runtimeDirectory = Path.Combine(RepositoryRoot, "src", "DownKyi.Infrastructure", "FFmpeg");
         var runtimeFiles = Directory
             .EnumerateFiles(runtimeDirectory, "*.cs", SearchOption.TopDirectoryOnly)
             .ToArray();
@@ -794,7 +794,7 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
 
         var databaseSource = File.ReadAllText(Path.Combine(
             RepositoryRoot,
-            "DownKyi.Core",
+            "src", "DownKyi.Infrastructure",
             "Storage",
             "Database",
             "SqliteDatabase.cs"));

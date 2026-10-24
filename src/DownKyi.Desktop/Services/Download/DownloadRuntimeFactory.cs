@@ -2,9 +2,9 @@ using System;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
+using DownKyi.Application.Media;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Sign;
-using DownKyi.Core.FFmpeg;
-using DownKyi.Core.Settings;
 using DownKyi.Platform;
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +25,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
     private readonly IDownloadTaskSchedulerService _taskScheduler;
     private readonly IUserNotificationService _notificationService;
     private readonly DownloadDiagnosticLogger _diagnosticLogger;
-    private readonly FfmpegProcessor _ffmpegProcessor;
+    private readonly IFfmpegMediaMuxer _ffmpegProcessor;
     private readonly DownloadTaskFileService _fileService;
     private readonly ISettingsStore _settingsStore;
     private readonly IWbiKeyProvider _wbiKeyProvider;
@@ -46,7 +46,7 @@ internal sealed class DownloadRuntimeFactory : IDownloadRuntimeFactory
         ISettingsStore settingsStore,
         IWbiKeyProvider wbiKeyProvider,
         DownloadDiagnosticLogger diagnosticLogger,
-        FfmpegProcessor ffmpegProcessor,
+        IFfmpegMediaMuxer ffmpegProcessor,
         DownloadTaskFileService fileService,
         ILoggerFactory loggerFactory,
         IBilibiliApiClient client,

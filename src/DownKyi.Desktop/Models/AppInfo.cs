@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 using System.Reflection;
-using DownKyi.Core.Versioning;
+using DownKyi.Application.Versioning;
 
 namespace DownKyi.Models;
 

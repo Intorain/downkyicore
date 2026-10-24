@@ -1,7 +1,7 @@
 using DownKyi.Application.Bilibili;
-using DownKyi.Core.BiliApi.Login;
 using DownKyi.Core.BiliApi.Login.Models;
-using DownKyi.Core.Storage;
+using DownKyi.Infrastructure.Bilibili;
+using DownKyi.Infrastructure.Storage;
 using DownKyi.Services.Account;
 using Microsoft.Extensions.Logging.Abstractions;
 

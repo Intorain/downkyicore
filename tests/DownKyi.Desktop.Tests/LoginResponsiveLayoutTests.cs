@@ -6,7 +6,7 @@ using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using DownKyi.Application.Desktop;
 using DownKyi.Core.BiliApi.Login.Models;
-using DownKyi.Core.Storage;
+using DownKyi.Infrastructure.Storage;
 using DownKyi.Services.Account;
 using DownKyi.ViewModels;
 using DownKyi.Views;

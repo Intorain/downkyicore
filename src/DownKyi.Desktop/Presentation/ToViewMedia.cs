@@ -3,8 +3,8 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
-using DownKyi.Core.Settings;
 
 namespace DownKyi.Presentation;
 

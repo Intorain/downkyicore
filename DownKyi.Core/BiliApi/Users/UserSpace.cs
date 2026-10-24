@@ -1,7 +1,6 @@
 using DownKyi.Application.Bilibili;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Core.Storage;
 using Newtonsoft.Json;
 
 namespace DownKyi.Core.BiliApi.Users;
@@ -23,6 +22,7 @@ public static partial class UserSpace
         WbiKeys keys,
         long unixTimeSeconds,
         long mid,
+        bool hasSavedLoginInfo,
         CancellationToken cancellationToken = default)
     {
         const int pn = 1;
@@ -33,6 +33,7 @@ public static partial class UserSpace
             mid,
             pn,
             ps,
+            hasSavedLoginInfo,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         return GetPublicationType(publication?.List);
     }
@@ -64,6 +65,7 @@ public static partial class UserSpace
         long mid,
         int pn,
         int ps,
+        bool hasSavedLoginInfo,
         long tid = 0,
         PublicationOrder order = PublicationOrder.PUBDATE,
         string keyword = "",
@@ -79,7 +81,7 @@ public static partial class UserSpace
             { "tid", tid },
             { "keyword", keyword },
         };
-        if (!File.Exists(ApplicationStorage.GetLogin()))
+        if (!hasSavedLoginInfo)
         {
             parameters.Add("dm_img_str", "V2ViR0wgMS");
             parameters.Add("dm_img_list", "[]");

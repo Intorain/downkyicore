@@ -6,7 +6,6 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Core.Storage;
 using DownKyi.Images;
 using DownKyi.Utils;
 

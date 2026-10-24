@@ -4,9 +4,9 @@ using System.Xml.Linq;
 using Bilibili.Community.Service.Dm.V1;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Downloads;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.VideoStream;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Infrastructure.Bilibili;
@@ -362,7 +362,7 @@ public sealed class DownloadArtifactStageTests
         Directory.CreateDirectory(directory);
         try
         {
-            using var settings = new DownKyi.Core.Settings.SettingsStore(
+            using var settings = new DownKyi.Infrastructure.Settings.SettingsStore(
                 Path.Combine(directory, "settings.json"));
             var downloadBase = new DownloadBase
             {
@@ -413,7 +413,7 @@ public sealed class DownloadArtifactStageTests
         var taskId = new DownloadTaskId("persisted-nfo");
         try
         {
-            using var settings = new DownKyi.Core.Settings.SettingsStore(settingsPath);
+            using var settings = new DownKyi.Infrastructure.Settings.SettingsStore(settingsPath);
             settings.Update(current => current with
             {
                 Video = current.Video with
@@ -1726,13 +1726,13 @@ public sealed class DownloadArtifactStageTests
     private sealed class ArtifactTestContext : IDisposable
     {
         private readonly string _directory;
-        private readonly DownKyi.Core.Settings.SettingsStore _settings;
+        private readonly DownKyi.Infrastructure.Settings.SettingsStore _settings;
         private readonly DownloadTaskApplicationService _tasks;
         private readonly DownloadTaskProjectionStore _projections;
 
         private ArtifactTestContext(
             string directory,
-            DownKyi.Core.Settings.SettingsStore settings,
+            DownKyi.Infrastructure.Settings.SettingsStore settings,
             DownloadTaskApplicationService tasks,
             DownloadTaskProjectionStore projections,
             DownloadingItem downloading,
@@ -1810,7 +1810,7 @@ public sealed class DownloadArtifactStageTests
                 "downkyi-artifact-tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
-            var settings = new DownKyi.Core.Settings.SettingsStore(
+            var settings = new DownKyi.Infrastructure.Settings.SettingsStore(
                 Path.Combine(directory, "settings.json"));
             if (danmakuOutputFormat is not null || configureDanmaku is not null)
             {
