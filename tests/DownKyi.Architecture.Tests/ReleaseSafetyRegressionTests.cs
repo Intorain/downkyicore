@@ -23,12 +23,13 @@ public sealed class ReleaseSafetyRegressionTests
             Path.Combine(RepositoryRoot, "script", "validate-build-run-artifacts.ps1"));
 
         Assert.Contains("validate-release-subject.ps1", workflow, StringComparison.Ordinal);
-        Assert.Contains("resolve-previous-release-tag.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains("./script/read-release-notes.ps1", workflow, StringComparison.Ordinal);
         Assert.Contains(
-            "args: -vv ${{ steps.previous-release.outputs.tag }}..HEAD --strip header",
+            "release_body: ${{ steps.release-notes.outputs.content }}",
             workflow,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("args: -vv --latest --strip header", workflow, StringComparison.Ordinal);
+        Assert.Contains("body: ${{ needs.changelog.outputs.release_body }}", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("git-cliff", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain($"v{RepositoryVersion}", workflow, StringComparison.Ordinal);
         Assert.DoesNotContain($"'{RepositoryVersion}'", packageValidator, StringComparison.Ordinal);
         Assert.Contains("resolve-v112-macos-trust.ps1", workflow, StringComparison.Ordinal);
@@ -92,51 +93,74 @@ public sealed class ReleaseSafetyRegressionTests
         }
     }
 
-    [Fact]
-    public void PreviousReleaseTagResolutionUsesAnnotatedFirstParentSemVerHistory()
+    [Theory]
+    [InlineData("\n", false, false)]
+    [InlineData("\r\n", true, false)]
+    [InlineData("\n", true, true)]
+    public void ReleaseNotesPreserveOnlyTheRequestedVersion(string newline, bool linkedHeading, bool lastSection)
     {
         var root = CreateTemporaryDirectory();
-        var repository = Path.Combine(root, "repository");
-        var resolver = Path.Combine(RepositoryRoot, "script", "resolve-previous-release-tag.ps1");
+        var reader = Path.Combine(RepositoryRoot, "script", "read-release-notes.ps1");
+        var heading = linkedHeading
+            ? "## [9.8.7](https://example.invalid/releases/v9.8.7) - 2026-10-24"
+            : "## [9.8.7] - 2026-10-24";
+        var expected = string.Join(newline,
+            heading, "", "### Features", "",
+            "- 中文說明、**粗體**、`code` 與 [連結](https://example.invalid)。", "",
+            "### Bug Fixes", "", "- 保留原有換行與縮排。", "  第二行說明。");
+        var changelog = "# 更新日志" + newline + newline +
+            "## [Unreleased]" + newline + "- 尚未發布的內容。" + newline + newline +
+            expected + newline + newline +
+            (lastSection ? "" : "## [9.8.6] - 2026-10-20" + newline + "- 舊版本內容。");
 
         try
         {
-            RunRequired("git", ["init", "-b", "main", repository], root);
-            RunRequired("git", ["config", "user.name", "Release Fixture"], repository);
-            RunRequired("git", ["config", "user.email", "release-fixture@example.invalid"], repository);
-            File.WriteAllText(Path.Combine(repository, "version.txt"), "2.0.0");
-            File.WriteAllText(Path.Combine(repository, "fixture.txt"), "previous release");
-            RunRequired("git", ["add", "version.txt", "fixture.txt"], repository);
-            RunRequired("git", ["commit", "-m", "previous release fixture"], repository);
-            RunRequired("git", ["tag", "-a", "v1.8.0", "-m", "v1.8.0"], repository);
-
-            RunRequired("git", ["checkout", "-b", "tagged-side-branch"], repository);
-            File.WriteAllText(Path.Combine(repository, "side.txt"), "merged branch tag");
-            RunRequired("git", ["add", "side.txt"], repository);
-            RunRequired("git", ["commit", "-m", "tagged side branch fixture"], repository);
-            RunRequired("git", ["tag", "-a", "v1.9.5", "-m", "v1.9.5"], repository);
-            RunRequired("git", ["checkout", "main"], repository);
-
-            File.AppendAllText(Path.Combine(repository, "fixture.txt"), "\nintermediate");
-            RunRequired("git", ["add", "fixture.txt"], repository);
-            RunRequired("git", ["commit", "-m", "intermediate fixture"], repository);
-            RunRequired("git", ["tag", "v1.9.0"], repository);
-            RunRequired("git", ["tag", "-a", "release-candidate", "-m", "release-candidate"], repository);
-            RunRequired("git", ["merge", "--no-ff", "tagged-side-branch", "-m", "merge tagged side branch fixture"], repository);
-
-            File.AppendAllText(Path.Combine(repository, "fixture.txt"), "\ncurrent release");
-            RunRequired("git", ["add", "fixture.txt"], repository);
-            RunRequired("git", ["commit", "-m", "current release fixture"], repository);
-            RunRequired("git", ["tag", "-a", "v2.0.0", "-m", "v2.0.0"], repository);
-
+            // No Git repository is needed: authored CHANGELOG content owns the release body.
+            File.WriteAllText(Path.Combine(root, "version.txt"), "9.8.7");
+            File.WriteAllText(Path.Combine(root, "CHANGELOG.md"), changelog, System.Text.Encoding.UTF8);
+            var captureScript = Path.Combine(root, "capture-release-notes.ps1");
+            var outputPath = Path.Combine(root, "release-notes.md");
+            // Match the workflow's in-process string capture and UTF-8 file output.
+            // A redirected Windows console can replace Chinese characters with '?'.
+            File.WriteAllText(captureScript, """
+                param([string]$Reader, [string]$RepositoryRoot, [string]$OutputPath)
+                $ErrorActionPreference = 'Stop'
+                $notes = & $Reader -RepositoryRoot $RepositoryRoot
+                Set-Content -LiteralPath $OutputPath -Value $notes -Encoding utf8 -NoNewline
+                """);
             var result = RunPowerShell(
-                resolver,
-                ["-RepositoryRoot", repository],
-                repository,
-                new Dictionary<string, string> { ["GITHUB_REF"] = "refs/tags/v2.0.0" });
+                captureScript, ["-Reader", reader, "-RepositoryRoot", root, "-OutputPath", outputPath], RepositoryRoot,
+                new Dictionary<string, string> { ["GITHUB_REF"] = "refs/tags/v9.8.7" });
 
-            Assert.Equal(0, result.ExitCode);
-            Assert.Equal("v1.8.0", result.StandardOutput.Trim());
+            Assert.True(result.ExitCode == 0, result.StandardError);
+            Assert.Equal(expected, File.ReadAllText(outputPath));
+            Assert.Equal(changelog, File.ReadAllText(Path.Combine(root, "CHANGELOG.md")));
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(root);
+        }
+    }
+
+    [Theory]
+    [InlineData("## [9.8.70]\n- Different version.", "exactly one section")]
+    [InlineData("## [9.8.7]\n- First.\n## [9.8.7](https://example.invalid)\n- Second.", "exactly one section")]
+    [InlineData("## [9.8.7]\n\n", "has no release notes")]
+    [InlineData("## [9.8.7]\n### Features\n\n### Bug Fixes\n<!-- pending -->\n", "has no release notes")]
+    public void ReleaseNotesRejectMissingDuplicateOrEmptySections(string changelog, string diagnostic)
+    {
+        var root = CreateTemporaryDirectory();
+        var reader = Path.Combine(RepositoryRoot, "script", "read-release-notes.ps1");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "version.txt"), "9.8.7");
+            File.WriteAllText(Path.Combine(root, "CHANGELOG.md"), changelog);
+            var result = RunPowerShell(reader, ["-RepositoryRoot", root], RepositoryRoot);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains(diagnostic, NormalizeDiagnostic(result), StringComparison.Ordinal);
+            Assert.True(string.IsNullOrWhiteSpace(result.StandardOutput));
         }
         finally
         {
