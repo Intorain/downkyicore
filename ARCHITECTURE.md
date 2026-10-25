@@ -43,6 +43,8 @@ Bilibili endpoint adapters 留在 `DownKyi.Core/BiliApi` 以維持 DTO 與協定
 
 GitHub release 的 HTTP、JSON contract 與解析由 Infrastructure 擁有；Desktop composition 提供 repository identity 與 HttpClient 設定，Desktop 決定何時檢查及顯示更新提示。版本比較與 skip-version 等價性共用 Application 的 `SemanticVersionPolicy`；HTTP service 不保存目前應用版本。
 
+下載地址的 HTTP 探測、HTTPS redirect 與 Cookie header 決策由 Infrastructure 的 `DownloadAddressResolver` 擁有；每次跳轉重新產生 header，攜帶登入資料時不得跨 origin。Desktop download runtime 消費解析結果，保留 Range 傳輸與調度責任。
+
 ## Navigation 與 UserSpace invariant
 
 - ViewModel／caller 只依賴 Application 的 `IAppNavigationService` 與 `IAppDialogService`。只有 local composition 的 factories 可依 typed enum 選擇已註冊的 transient View／ViewModel；adapter 不得持有 container。

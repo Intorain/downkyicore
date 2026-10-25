@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using DownKyi.Infrastructure.Downloads;
 using DownKyi.Services.Download;
 using Microsoft.Extensions.Logging.Abstractions;
 

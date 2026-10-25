@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using DownKyi.Infrastructure.Downloads;
 using DownKyi.Services.Download;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -15,6 +15,7 @@ public sealed class MediaStorageOwnershipTests
     [Theory]
     [InlineData(typeof(FfmpegProcessor))]
     [InlineData(typeof(TlsFailureClassifier))]
+    [InlineData(typeof(DownloadAddressResolver))]
     [InlineData(typeof(SettingsStore))]
     [InlineData(typeof(SettingsManager))]
     [InlineData(typeof(ApplicationStorage))]

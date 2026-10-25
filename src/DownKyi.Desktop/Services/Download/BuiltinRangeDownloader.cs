@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Diagnostics;
+using DownKyi.Infrastructure.Downloads;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.Services.Download;
