@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Bilibili;
@@ -7,7 +6,7 @@ using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Infrastructure.Storage;
+using DownKyi.Infrastructure.Bilibili;
 
 namespace DownKyi.Services.Account;
 
@@ -65,7 +64,7 @@ internal sealed class UserSessionCoordinator : IUserSessionCoordinator
             return settings with { User = mapped };
         });
         cancellationToken.ThrowIfCancellationRequested();
-        return new UserSessionSnapshot(userInfo, File.Exists(ApplicationStorage.GetLogin()));
+        return new UserSessionSnapshot(userInfo, LoginHelper.HasSavedLoginInfo);
     }
 
     internal static UserApplicationSettings MapSettings(UserInfoForNavigation? userInfo)
