@@ -52,7 +52,7 @@ public sealed class DownloadTaskFileServiceTests : IDisposable
             var writer = new DownloadTaskStateWriter(tasks);
             await writer.StartAsync(taskId, TestContext.Current.CancellationToken);
             var staging = new DownloadTaskStaging(NullLogger<DownloadTaskStaging>.Instance);
-            using var settings = new DownKyi.Core.Settings.SettingsStore(
+            using var settings = new DownKyi.Infrastructure.Settings.SettingsStore(
                 Path.Combine(_directory, "settings.json"));
             var context = DownloadExecutionContextTestFactory.Create(item, settings.Current);
             context.StagingDirectory = staging.GetDirectory(taskId, outputBase,

@@ -1,9 +1,10 @@
 using DownKyi.Application.Bilibili;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users.Models;
 using DownKyi.Core.BiliApi.Video;
-using DownKyi.Core.Settings;
+using DownKyi.Infrastructure.Settings;
 
 namespace DownKyi.Core.Tests;
 

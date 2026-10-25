@@ -8,11 +8,8 @@
     <ItemGroup>
         <PackageReference Include="Google.Protobuf"/>
         <PackageReference Include="Grpc.Tools" PrivateAssets="All"/>
-        <PackageReference Include="Microsoft.Data.Sqlite.Core"/>
         <PackageReference Include="Microsoft.Extensions.Logging"/>
         <PackageReference Include="Newtonsoft.Json"/>
-        <PackageReference Include="Semver"/>
-        <PackageReference Include="SQLite3MC.PCLRaw.bundle"/>
     </ItemGroup>
 
     <ItemGroup>

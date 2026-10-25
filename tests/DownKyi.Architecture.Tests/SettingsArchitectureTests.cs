@@ -36,8 +36,8 @@ public sealed class SettingsArchitectureTests
     [InlineData("src", "DownKyi.Desktop", "Presentation", "ToViewMedia.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "ViewPublicFavoritesViewModel.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "ViewMySpaceViewModel.cs")]
-    [InlineData("DownKyi.Core", "FFmpeg", "FfmpegProcessor.cs")]
-    [InlineData("DownKyi.Core", "BiliApi", "Login", "LoginHelper.cs")]
+    [InlineData("src", "DownKyi.Infrastructure", "FFmpeg", "FfmpegProcessor.cs")]
+    [InlineData("src", "DownKyi.Infrastructure", "Bilibili", "LoginHelper.cs")]
     [InlineData("src", "DownKyi.Desktop", "Services", "UserSpace", "UserSpacePageCoordinator.cs")]
     [InlineData("src", "DownKyi.Desktop", "ViewModels", "ViewUserSpaceViewModel.cs")]
     public void MigratedApplicationOwnersDoNotReachIntoTheSettingsSingleton(params string[] pathParts)
@@ -160,7 +160,7 @@ public sealed class SettingsArchitectureTests
     [Fact]
     public void FfmpegProcessorIsOneInjectedCompositionOwner()
     {
-        var processorSource = ReadSource("DownKyi.Core", "FFmpeg", "FfmpegProcessor.cs");
+        var processorSource = ReadSource("src", "DownKyi.Infrastructure", "FFmpeg", "FfmpegProcessor.cs");
         var compositionSource = ReadSource(
             "src", "DownKyi.Desktop", "Services", "Download", "DownloadComposition.cs");
 
@@ -192,9 +192,9 @@ public sealed class SettingsArchitectureTests
     [Fact]
     public void SettingsStoreKeepsTheValidatedSnapshotAndAtomicPersistenceContract()
     {
-        var storeSource = ReadSource("DownKyi.Core", "Settings", "ISettingsStore.cs");
-        var managerSource = ReadSource("DownKyi.Core", "Settings", "SettingsManager.cs");
-        var migratorSource = ReadSource("DownKyi.Core", "Settings", "SettingsSchemaMigrator.cs");
+        var storeSource = ReadSource("src", "DownKyi.Infrastructure", "Settings", "SettingsStore.cs");
+        var managerSource = ReadSource("src", "DownKyi.Infrastructure", "Settings", "SettingsManager.cs");
+        var migratorSource = ReadSource("src", "DownKyi.Infrastructure", "Settings", "SettingsSchemaMigrator.cs");
 
         Assert.Contains("ApplicationSettings Current", storeSource, StringComparison.Ordinal);
         Assert.Contains("Update(Func<ApplicationSettings, ApplicationSettings>", storeSource, StringComparison.Ordinal);
@@ -244,7 +244,7 @@ public sealed class SettingsArchitectureTests
             "DownloadExecutionContextFactory.cs");
         var artifactSource = ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadArtifactWriter.cs");
         var diagnosticSource = ReadSource("src", "DownKyi.Desktop", "Services", "Download", "DownloadDiagnosticLogger.cs");
-        var ffmpegSource = ReadSource("DownKyi.Core", "FFmpeg", "FfmpegProcessor.cs");
+        var ffmpegSource = ReadSource("src", "DownKyi.Infrastructure", "FFmpeg", "FfmpegProcessor.cs");
 
         Assert.Contains("ApplicationSettings settings", utilitySource, StringComparison.Ordinal);
         Assert.DoesNotContain("ISettingsStore", utilitySource, StringComparison.Ordinal);

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DownKyi.Core.FFmpeg;
+using DownKyi.Application.Media;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 

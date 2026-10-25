@@ -1,10 +1,8 @@
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;
-
 using static DownKyi.Tests.DownloadPipelineTestSupport;
 
 namespace DownKyi.Tests;

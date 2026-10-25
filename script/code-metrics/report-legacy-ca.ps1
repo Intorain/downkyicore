@@ -196,8 +196,8 @@ function Get-DefaultMetadata {
 
     if ($Rule -eq 'CA1506') {
         $known = @{
-            'DownKyi.Core/FFmpeg/FfmpegConcatRuntime.cs|ConcatAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one complete FFmpeg concat operation and its validation and cleanup invariants.')
-            'DownKyi.Core/Settings/SettingsManager.About.cs|SettingsManager' = @('settings-aggregation', 'reviewed-reasonable', 'The metric aggregates a partial settings owner across settings categories.')
+            'src/DownKyi.Infrastructure/FFmpeg/FfmpegConcatRuntime.cs|ConcatAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one complete FFmpeg concat operation and its validation and cleanup invariants.')
+            'src/DownKyi.Infrastructure/Settings/SettingsManager.About.cs|SettingsManager' = @('settings-aggregation', 'reviewed-reasonable', 'The metric aggregates a partial settings owner across settings categories.')
             'src/DownKyi.Desktop/Services/Download/AddToDownloadService.cs|AddToDownload' = @('operation-owner', 'reviewed-reasonable', 'The method coordinates one add-to-download operation while duplicate policy, metadata construction, and task admission remain delegated to their single owners.')
             'src/DownKyi.Desktop/Services/Download/AddToDownloadService.cs|SelectDownloadAsync' = @('operation-owner', 'reviewed-reasonable', 'The method owns one download-selection interaction, including optional subtitle discovery, dialog selection, and destination validation.')
             'src/DownKyi.Desktop/Services/Download/BuiltinRangeDownloader.cs|BuiltinRangeDownloader' = @('transfer-owner', 'reviewed-reasonable', 'The class is the single owner of one HTTP range transfer and keeps resume identity, continuity validation, range checkpoints, throttling, and stall handling within that invariant boundary.')

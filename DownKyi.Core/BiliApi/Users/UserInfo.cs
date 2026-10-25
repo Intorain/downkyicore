@@ -2,7 +2,6 @@ using DownKyi.Application.Bilibili;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Core.Storage;
 using Newtonsoft.Json;
 
 namespace DownKyi.Core.BiliApi.Users;
@@ -48,6 +47,7 @@ public static class UserInfo
         WbiKeys keys,
         long unixTimeSeconds,
         long mid,
+        bool hasSavedLoginInfo,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(keys);
@@ -56,7 +56,7 @@ public static class UserInfo
             { "mid", mid }
         };
 
-        if (!File.Exists(ApplicationStorage.GetLogin()))
+        if (!hasSavedLoginInfo)
         {
             parameters.Add("dm_img_str", "V2ViR0wgMS");
             parameters.Add("dm_img_list", "[]");

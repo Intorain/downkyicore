@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Core.Utils;
 using Microsoft.Extensions.Logging;
 

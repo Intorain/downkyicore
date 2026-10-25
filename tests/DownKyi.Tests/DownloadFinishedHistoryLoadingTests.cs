@@ -1,6 +1,6 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Services.Download;
 using DownKyi.ViewModels.DownloadManager;

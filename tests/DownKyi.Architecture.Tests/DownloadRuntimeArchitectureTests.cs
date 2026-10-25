@@ -720,10 +720,10 @@ public sealed class DownloadRuntimeArchitectureTests
             "src", "DownKyi.Desktop", "Services", "Download");
         var processorSource = File.ReadAllText(Path.Combine(
             RepositoryRoot,
-            "DownKyi.Core", "FFmpeg", "FfmpegProcessor.cs"));
+            "src", "DownKyi.Infrastructure", "FFmpeg", "FfmpegProcessor.cs"));
         var concatSource = File.ReadAllText(Path.Combine(
             RepositoryRoot,
-            "DownKyi.Core", "FFmpeg", "FfmpegConcatRuntime.cs"));
+            "src", "DownKyi.Infrastructure", "FFmpeg", "FfmpegConcatRuntime.cs"));
         var finalizeSource = File.ReadAllText(Path.Combine(
             downloadDirectory,
             "FinalizeStage.cs"));

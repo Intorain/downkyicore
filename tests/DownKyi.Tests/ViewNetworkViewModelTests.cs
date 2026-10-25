@@ -1,4 +1,4 @@
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Services.Settings;
 using DownKyi.ViewModels.Settings;
 using Microsoft.Extensions.Logging.Abstractions;

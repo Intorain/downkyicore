@@ -1,4 +1,4 @@
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Services.Download;
 

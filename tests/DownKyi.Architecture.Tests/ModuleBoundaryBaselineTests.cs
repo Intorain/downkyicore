@@ -95,22 +95,22 @@ public sealed class ModuleBoundaryBaselineTests
         Assert.Contains("/Languages/Default.axaml", appSource, StringComparison.Ordinal);
         Assert.DoesNotContain("/Languanges/", appSource, StringComparison.Ordinal);
 
-        var coreDirectories = Directory
-            .EnumerateDirectories(Path.Combine(RepositoryRoot, "DownKyi.Core"))
+        var infrastructureDirectories = Directory
+            .EnumerateDirectories(Path.Combine(RepositoryRoot, "src", "DownKyi.Infrastructure"))
             .Select(Path.GetFileName)
             .ToArray();
-        Assert.Contains("FFmpeg", coreDirectories);
-        Assert.DoesNotContain("FFMpeg", coreDirectories);
+        Assert.Contains("FFmpeg", infrastructureDirectories);
+        Assert.DoesNotContain("FFMpeg", infrastructureDirectories);
 
         var ffmpegSources = Directory
             .EnumerateFiles(
-                Path.Combine(RepositoryRoot, "DownKyi.Core", "FFmpeg"),
+                Path.Combine(RepositoryRoot, "src", "DownKyi.Infrastructure", "FFmpeg"),
                 "*.cs",
                 SearchOption.AllDirectories)
             .Select(File.ReadAllText)
             .ToArray();
         Assert.All(ffmpegSources, source =>
-            Assert.DoesNotContain("DownKyi.Core.FFMpeg", source, StringComparison.Ordinal));
+            Assert.DoesNotContain("DownKyi.Infrastructure.FFMpeg", source, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -292,7 +292,7 @@ public sealed class ModuleBoundaryBaselineTests
     [Fact]
     public void NetworkSettingsHaveOneSupportedOwner()
     {
-        var settingsRoot = Path.Combine(RepositoryRoot, "DownKyi.Core", "Settings");
+        var settingsRoot = Path.Combine(RepositoryRoot, "src", "DownKyi.Infrastructure", "Settings");
         var networkSource = File.ReadAllText(Path.Combine(
             settingsRoot,
             "SettingsManager.Network.cs"));

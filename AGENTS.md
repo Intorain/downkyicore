@@ -57,9 +57,10 @@ must not be reported as already implemented.
 
 - `DownKyi` is the minimal executable. Avalonia composition and UI runtime live
   in `src/DownKyi.Desktop`; use cases/contracts in `src/DownKyi.Application`;
-  durable adapters in `src/DownKyi.Infrastructure`; state rules in
-  `src/DownKyi.Domain`; Bilibili and compatible media runtime remain in
-  `DownKyi.Core` until deliberately migrated.
+  media runtime, settings/login persistence and filesystem adapters in
+  `src/DownKyi.Infrastructure`; state rules in `src/DownKyi.Domain`;
+  Bilibili protocol and content conversion in `DownKyi.Core`.
+  Core and Infrastructure both depend on Application, never on each other.
 - Use Microsoft DI, typed navigation/dialog contracts and CommunityToolkit
   MVVM. Do not reintroduce Prism, DryIoc, EventAggregator, RegionManager,
   ContainerLocator, service locators or a second router/container.

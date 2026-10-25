@@ -8,7 +8,7 @@ using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.ViewModels;
 using DownKyi.Views;
 using ShapePath = Avalonia.Controls.Shapes.Path;

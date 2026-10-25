@@ -1,7 +1,7 @@
 using DownKyi.Application.Downloads;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Infrastructure.Time;
 using DownKyi.Models;
 using DownKyi.Platform;

@@ -1,5 +1,4 @@
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
 using DownKyi.Presentation;
 
 namespace DownKyi.Tests;

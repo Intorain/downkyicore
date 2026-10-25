@@ -1,7 +1,8 @@
 using DownKyi.Application.Downloads;
-using DownKyi.Core.FFmpeg;
-using DownKyi.Core.Storage;
+using DownKyi.Application.Media;
 using DownKyi.Infrastructure.Downloads;
+using DownKyi.Infrastructure.FFmpeg;
+using DownKyi.Infrastructure.Storage;
 using DownKyi.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,6 +15,8 @@ internal static class DownloadComposition
     {
         services.AddSingleton(new SqliteDownloadTaskStoreOptions(ApplicationStorage.GetDbPath()));
         services.AddSingleton<FfmpegProcessor>();
+        services.AddSingleton<IFfmpegMediaMuxer>(provider =>
+            provider.GetRequiredService<FfmpegProcessor>());
         services.AddSingleton<IPhysicalOutputPathResolver, FileSystemPhysicalOutputPathResolver>();
         services.AddSingleton<SqliteDownloadTaskStore>();
         services.AddSingleton<IDownloadTaskStore>(provider =>

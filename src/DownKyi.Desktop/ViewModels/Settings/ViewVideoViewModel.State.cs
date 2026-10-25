@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using DownKyi.Core.BiliApi.BiliUtils;
-using DownKyi.Core.Settings;
 using DownKyi.Models;
 
 namespace DownKyi.ViewModels.Settings;

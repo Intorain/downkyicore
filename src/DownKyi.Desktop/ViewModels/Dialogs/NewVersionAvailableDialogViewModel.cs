@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Documents;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
+using DownKyi.Application.Settings;
+using DownKyi.Application.Versioning;
 using DownKyi.Commands;
-using DownKyi.Core.Settings;
-using DownKyi.Core.Versioning;
 using DownKyi.Models;
 using Microsoft.Extensions.Logging;
 

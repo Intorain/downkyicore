@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Lifetime;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Utils;
 
 namespace DownKyi.Services.Settings;

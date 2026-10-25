@@ -1,9 +1,10 @@
+using DownKyi.Application.FileName;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.History.Models;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
 using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Core.FileName;
-using DownKyi.Core.Settings;
 
 namespace DownKyi.Core.Tests;
 

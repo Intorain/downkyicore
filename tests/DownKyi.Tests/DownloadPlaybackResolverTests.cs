@@ -2,7 +2,6 @@ using DownKyi.Application.Bilibili;
 using DownKyi.Application.Downloads;
 using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Core.BiliApi.VideoStream.Models;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Infrastructure.Downloads;
@@ -13,7 +12,6 @@ using DownKyi.ViewModels.DownloadManager;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
-
 using static DownKyi.Tests.DownloadPipelineTestSupport;
 
 namespace DownKyi.Tests;

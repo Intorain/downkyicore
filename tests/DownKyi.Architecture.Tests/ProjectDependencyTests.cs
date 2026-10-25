@@ -49,6 +49,7 @@ public sealed class ProjectDependencyTests
         {
             ["DownKyi.Domain"] = new(StringComparer.OrdinalIgnoreCase),
             ["DownKyi.Application"] = new(StringComparer.OrdinalIgnoreCase) { "DownKyi.Domain" },
+            ["DownKyi.Core"] = new(StringComparer.OrdinalIgnoreCase) { "DownKyi.Application" },
             ["DownKyi.Infrastructure"] = new(StringComparer.OrdinalIgnoreCase)
             {
                 "DownKyi.Application",

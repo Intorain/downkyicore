@@ -1,7 +1,7 @@
 using System;
 using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Desktop.Appearance;
 using DownKyi.Utils;
 

@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using DownKyi.Core.Versioning;
+using DownKyi.Application.Versioning;
 using DownKyi.Models;
 
 namespace DownKyi.Services;

@@ -1,8 +1,8 @@
 using DownKyi.Application.Downloads;
+using DownKyi.Application.Media;
+using DownKyi.Application.Settings;
 using DownKyi.Application.Time;
 using DownKyi.Core.BiliApi.VideoStream.Models;
-using DownKyi.Core.FFmpeg;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Infrastructure.Time;

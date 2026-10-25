@@ -1,6 +1,7 @@
 using Avalonia.Styling;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Desktop.Appearance;
+using DownKyi.Infrastructure.Settings;
 
 namespace DownKyi.Desktop.Tests;
 

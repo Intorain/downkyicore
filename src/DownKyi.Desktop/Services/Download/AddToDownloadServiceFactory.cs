@@ -1,9 +1,9 @@
 using System;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Desktop;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.VideoStream;
-using DownKyi.Core.Settings;
 using DownKyi.Services.Video;
 using Microsoft.Extensions.Logging;
 

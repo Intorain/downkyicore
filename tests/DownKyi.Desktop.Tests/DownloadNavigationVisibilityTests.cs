@@ -7,7 +7,7 @@ using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
-using DownKyi.Core.Settings;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Platform;
 using DownKyi.Services.Download;
 using DownKyi.ViewModels;

@@ -1,6 +1,6 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Lifetime;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Services.Settings;
 
 namespace DownKyi.Tests;

@@ -1,4 +1,4 @@
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 
 namespace DownKyi.Models;
 

@@ -1,7 +1,7 @@
 using DownKyi.Application.Bilibili;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Core.BiliApi.Users.Models;
-using DownKyi.Core.Settings;
 
 namespace DownKyi.Core.BiliApi.Sign;
 

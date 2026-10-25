@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using DownKyi.Core.Danmaku2Ass;
-using DownKyi.Core.Settings;
+using DownKyi.Infrastructure.Settings;
 
 namespace DownKyi.Core.Tests;
 

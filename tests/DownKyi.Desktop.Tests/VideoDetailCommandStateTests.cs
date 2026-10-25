@@ -8,7 +8,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using DownKyi.Application.Desktop;
 using DownKyi.Commands;
-using DownKyi.Core.Settings;
+using DownKyi.Infrastructure.Settings;
 using DownKyi.Platform;
 using DownKyi.Presentation;
 using DownKyi.Services;

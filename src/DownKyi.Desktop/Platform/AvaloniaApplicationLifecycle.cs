@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 using DownKyi.Services.Download;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

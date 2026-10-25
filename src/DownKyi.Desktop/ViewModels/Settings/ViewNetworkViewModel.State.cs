@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using DownKyi.Core.Settings;
+using DownKyi.Application.Settings;
 
 namespace DownKyi.ViewModels.Settings;
 

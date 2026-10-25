@@ -2,11 +2,12 @@ using System.Collections.Concurrent;
 using System.Net.Http;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
+using DownKyi.Application.FileName;
+using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.BiliUtils;
 using DownKyi.Core.BiliApi.VideoStream;
 using DownKyi.Core.BiliApi.VideoStream.Models;
 using DownKyi.Core.FileName;
-using DownKyi.Core.Settings;
 using DownKyi.Domain.Downloads;
 using DownKyi.Domain.Results;
 using DownKyi.Infrastructure.Downloads;
@@ -33,7 +34,7 @@ public sealed class VideoTagLoadingTests : IDisposable
     public async Task VideoPageUsesCurrentOperationAfterOriginalParseWasCanceled()
     {
         Directory.CreateDirectory(_directory);
-        using var settings = new DownKyi.Core.Settings.SettingsStore(
+        using var settings = new DownKyi.Infrastructure.Settings.SettingsStore(
             Path.Combine(_directory, "settings.json"));
         using var parseCancellation = new CancellationTokenSource();
         using var downloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(
@@ -1327,7 +1328,7 @@ public sealed class VideoTagLoadingTests : IDisposable
 
     private sealed class DownloadTestContext : IDisposable
     {
-        private readonly DownKyi.Core.Settings.SettingsStore _settings;
+        private readonly DownKyi.Infrastructure.Settings.SettingsStore _settings;
         private readonly DownloadTaskApplicationService _taskService;
         private readonly DownloadTaskProjectionStore _projectionStore;
         private readonly DownloadTaskAdmissionService _admission;
@@ -1340,7 +1341,7 @@ public sealed class VideoTagLoadingTests : IDisposable
             IDownloadRuntimeAvailability? runtimeAvailability,
             TestBilibiliApiClient? client)
         {
-            _settings = new DownKyi.Core.Settings.SettingsStore(settingsPath);
+            _settings = new DownKyi.Infrastructure.Settings.SettingsStore(settingsPath);
             _settings.Update(settings => settings with
             {
                 Video = settings.Video with

@@ -2,8 +2,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using DownKyi.Application.Settings;
 using DownKyi.Commands;
-using DownKyi.Core.Settings;
 using DownKyi.Models;
 using DownKyi.Utils;
 
