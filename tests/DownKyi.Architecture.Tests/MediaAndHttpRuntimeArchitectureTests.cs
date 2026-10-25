@@ -96,8 +96,8 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
 
         Assert.Contains("DownloadListState", admissionSource, StringComparison.Ordinal);
         Assert.Contains("DownloadTaskProjectionStore", admissionSource, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadingByCidAsync", admissionSource, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadedByCidAsync", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("GetUnfinishedByCidAsync", admissionSource, StringComparison.Ordinal);
+        Assert.Contains("GetByCidAsync", admissionSource, StringComparison.Ordinal);
         Assert.Contains("DuplicateKey.From", admissionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IUserNotificationService", admissionSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IAppDialogService", admissionSource, StringComparison.Ordinal);

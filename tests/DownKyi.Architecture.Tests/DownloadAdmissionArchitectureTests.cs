@@ -57,8 +57,10 @@ public sealed class DownloadAdmissionArchitectureTests
         Assert.Contains("public async Task<bool> AdmitAsync(", admissionService, StringComparison.Ordinal);
         Assert.Contains("_admissionGate.WaitAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_runtimeAvailability.EnsureAcceptingTasks();", admissionService, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadingByCidAsync", admissionService, StringComparison.Ordinal);
-        Assert.Contains("GetDownloadedByCidAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("IDownloadTaskLookup", admissionService, StringComparison.Ordinal);
+        Assert.Contains("IDownloadHistoryService", admissionService, StringComparison.Ordinal);
+        Assert.Contains("GetUnfinishedByCidAsync", admissionService, StringComparison.Ordinal);
+        Assert.Contains("GetByCidAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("DuplicateKey.From", admissionService, StringComparison.Ordinal);
         Assert.Contains("_projections.AddDownloadingAsync", admissionService, StringComparison.Ordinal);
         Assert.Contains("_database.ExecuteImmediateTransactionAsync", reservations, StringComparison.Ordinal);

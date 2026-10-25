@@ -1373,6 +1373,8 @@ public sealed class VideoTagLoadingTests : IDisposable
             _admission = new DownloadTaskAdmissionService(
                 ListState,
                 _taskService,
+                _taskService,
+                historyService,
                 _projectionStore,
                 new DownloadCommittedTaskDispatcher(queue, stateWriter),
                 runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
