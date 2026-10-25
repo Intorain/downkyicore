@@ -17,6 +17,7 @@ public sealed class MediaStorageOwnershipTests
     [InlineData(typeof(SettingsManager))]
     [InlineData(typeof(ApplicationStorage))]
     [InlineData(typeof(LoginHelper))]
+    [InlineData(typeof(BilibiliCookieProvider))]
     [InlineData(typeof(SqliteDatabase))]
     public void ExternalImplementationsBelongToInfrastructure(Type implementation)
     {

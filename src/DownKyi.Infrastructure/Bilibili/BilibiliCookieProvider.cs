@@ -1,13 +1,19 @@
 using System.Net;
+using DownKyi.Application.Bilibili;
 using DownKyi.Infrastructure.Storage;
 
-namespace DownKyi.Services.Account;
+namespace DownKyi.Infrastructure.Bilibili;
 
-internal static class BrowserCookieParser
+public sealed class BilibiliCookieProvider : IBilibiliCookieProvider
 {
     private const string BilibiliDomain = ".bilibili.com";
 
-    public static IReadOnlyList<DownKyiCookie> ParseHeader(string? header)
+    public string GetCookieHeader()
+    {
+        return LoginHelper.GetLoginInfoCookiesString();
+    }
+
+    public static IReadOnlyList<DownKyiCookie> ParseBrowserCookieHeader(string? header)
     {
         if (string.IsNullOrWhiteSpace(header))
         {
