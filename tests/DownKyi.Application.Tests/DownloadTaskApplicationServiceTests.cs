@@ -10,6 +10,72 @@ public sealed class DownloadTaskApplicationServiceTests
     private static readonly DateTimeOffset Epoch = new(2026, 7, 22, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task ResumingQueuedTaskDoesNotWriteOrPublish()
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
+        var task = CreateTask();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        var eventCount = 0;
+        service.TaskChanged += (_, _) => eventCount++;
+
+        var result = await service.ResumeAsync(task.Id, TestContext.Current.CancellationToken);
+
+        Assert.Same(task, result.RequireValue());
+        Assert.Same(task, store.Current);
+        Assert.Empty(store.ExpectedVersions);
+        Assert.Equal(0, eventCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyResumeAndRetryAreRejectedBeforeWritingOrPublishing(bool retry)
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
+        var task = CreateTask()
+            .UpdateTransferState(DownloadTransferState.LegacyEmpty, Epoch.AddSeconds(1)).RequireValue()
+            .Fail(new DownloadFailure("legacy.removed", "Legacy transfer removed.", true), Epoch.AddSeconds(2)).RequireValue();
+        await service.AddAsync(task, TestContext.Current.CancellationToken);
+        var eventCount = 0;
+        service.TaskChanged += (_, _) => eventCount++;
+
+        var result = retry
+            ? await service.RetryAsync(task.Id, TestContext.Current.CancellationToken)
+            : await service.ResumeAsync(task.Id, TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.resume.legacy-transfer", result.Error?.Code);
+        Assert.Same(task, store.Current);
+        Assert.Empty(store.ExpectedVersions);
+        Assert.Equal(0, eventCount);
+    }
+
+    [Fact]
+    public async Task ResumeRevalidatesLegacyProvenanceAfterStoreConflict()
+    {
+        var store = new RecordingStore();
+        using var service = new DownloadTaskApplicationService(store, DownloadHistoryService.CreateForSharedStore(store), new AdvancingClock());
+        var paused = CreateTask().Pause(Epoch.AddSeconds(1)).RequireValue();
+        await service.AddAsync(paused, TestContext.Current.CancellationToken);
+        var concurrent = paused.UpdateTransferState(
+            DownloadTransferState.LegacyEmpty,
+            Epoch.AddSeconds(2)).RequireValue();
+        store.ConcurrentUpdate = concurrent;
+        var eventCount = 0;
+        service.TaskChanged += (_, _) => eventCount++;
+
+        var result = await service.ResumeAsync(paused.Id, TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("download.resume.legacy-transfer", result.Error?.Code);
+        Assert.Same(concurrent, store.Current);
+        Assert.Equal(paused.Version, Assert.Single(store.ExpectedVersions));
+        Assert.Equal(0, eventCount);
+    }
+
+    [Fact]
     public async Task CommandsPersistAggregateBeforePublishingProjectionEvent()
     {
         var store = new RecordingStore();
@@ -429,6 +495,8 @@ public sealed class DownloadTaskApplicationServiceTests
 
         public DownloadTask? Current { get; private set; }
 
+        public DownloadTask? ConcurrentUpdate { get; set; }
+
         public List<long> ExpectedVersions { get; } = [];
 
         public int AddCount { get; private set; }
@@ -477,6 +545,12 @@ public sealed class DownloadTaskApplicationServiceTests
             lock (_sync)
             {
                 ExpectedVersions.Add(expectedVersion);
+                if (ConcurrentUpdate is { } concurrent)
+                {
+                    Current = concurrent;
+                    ConcurrentUpdate = null;
+                }
+
                 if (Current?.Version != expectedVersion)
                 {
                     return Task.FromResult(OperationResult.Failure(new OperationError(

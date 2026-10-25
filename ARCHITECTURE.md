@@ -87,6 +87,7 @@ flowchart LR
 - output admission 必須使用 `IPhysicalOutputPathResolver`，以同一實際路徑識別 symlink／alias。資料庫啟動投影只比較表與欄位，不重新解讀舊記錄的輸出路徑或 reservation key。不同 CID 的重疊 claim 由前置路徑分配與 admission transaction 拒絕；重新解析出的 resolution、codec 或 transport 差異不是新的 media action，需要不同媒體規格時使用明確的重新下載策略。投影無法保留既有資料時必須保留原庫備份，並只在使用者明確確認後建立空白資料庫。
 - 通知只由發起操作的 ViewModel 依 counts 與 planning stop reason 發布一次，policy 不擁有通知。
 - 啟動恢復、新增與續傳只傳 `DownloadTaskId`，不得輪詢 UI collection。啟動查詢同時提供 Domain snapshots 與 projections；runtime decision 只用前者。
+- 續傳與重試規則由 Domain `DownloadTask.Resume`／`Retry` 判定，包含拒絕仍帶有 legacy provenance 的 task；Desktop 不得預讀狀態或自行選擇 transition。Application 在既有 mutation gate 內載入並執行規則，optimistic conflict 後重新驗證；已排隊的續傳回傳原 snapshot，不寫入或發布變更事件。
 
 ### Execution 與 retry
 

@@ -93,6 +93,48 @@ public sealed class DownloadTaskStateMachineTests
         Assert.Equal("published-cover.jpg", failed.Output.PublishedArtifacts["cover"]);
     }
 
+    [Fact]
+    public void ResumingAnAlreadyQueuedTaskKeepsItsSnapshot()
+    {
+        var queued = CreateTask();
+
+        var resumed = queued.Resume(Epoch.AddSeconds(1)).RequireValue();
+
+        Assert.Same(queued, resumed);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("legacy-backend-id", false)]
+    public void LegacyTasksCannotResumeOrRetry(string? backendIdentity, bool isLegacyTransfer)
+    {
+        var queued = CreateTask().UpdateTransferState(
+            new DownloadTransferState(backendIdentity, [], isLegacyTransfer: isLegacyTransfer),
+            Epoch.AddSeconds(1)).RequireValue();
+        var paused = queued.Pause(Epoch.AddSeconds(2)).RequireValue();
+        var failed = queued.Fail(
+            new DownloadFailure("network.timeout", "Transfer timed out.", true),
+            Epoch.AddSeconds(2)).RequireValue();
+        var results = new[]
+        {
+            queued.Resume(Epoch.AddSeconds(3)),
+            paused.Resume(Epoch.AddSeconds(3)),
+            failed.Resume(Epoch.AddSeconds(3)),
+            failed.Retry(Epoch.AddSeconds(3))
+        };
+
+        foreach (var result in results)
+        {
+            Assert.False(result.IsSuccess);
+            Assert.Equal("download.resume.legacy-transfer", result.Error?.Code);
+            Assert.Equal(OperationErrorKind.Conflict, result.Error?.Kind);
+        }
+
+        Assert.Equal(DownloadPhase.Queued, queued.Phase);
+        Assert.Equal(DownloadPhase.Paused, paused.Phase);
+        Assert.Equal(DownloadPhase.Failed, failed.Phase);
+    }
+
     [Theory]
     [InlineData(null, false, false)]
     [InlineData(null, true, true)]

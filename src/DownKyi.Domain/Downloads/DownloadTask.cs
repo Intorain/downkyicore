@@ -148,13 +148,23 @@ public sealed partial class DownloadTask
 
     public OperationResult<DownloadTask> Resume(DateTimeOffset now)
     {
-        return TransitionTo(DownloadPhase.Queued, now);
+        if (Transfer.HasLegacyProvenance)
+        {
+            return OperationResult.Failure<DownloadTask>(new OperationError(
+                "download.resume.legacy-transfer",
+                "A retired legacy transfer cannot be resumed by the built-in downloader.",
+                OperationErrorKind.Conflict));
+        }
+
+        return Phase == DownloadPhase.Queued
+            ? OperationResult.Success(this)
+            : TransitionTo(DownloadPhase.Queued, now);
     }
 
     public OperationResult<DownloadTask> Retry(DateTimeOffset now)
     {
         return Phase == DownloadPhase.Failed
-            ? TransitionTo(DownloadPhase.Queued, now)
+            ? Resume(now)
             : InvalidTransition(DownloadPhase.Queued);
     }
 
