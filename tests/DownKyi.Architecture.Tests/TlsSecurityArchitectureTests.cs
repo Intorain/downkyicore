@@ -68,15 +68,13 @@ public sealed class TlsSecurityArchitectureTests
     public void BuiltinDownloaderOwnsSecureAddressAndRangeValidation()
     {
         var resolver = ReadProductionSource(
-            "src", "DownKyi.Desktop", "Services", "Download", "DownloadAddressResolver.cs");
-        var headers = ReadProductionSource(
-            "src", "DownKyi.Desktop", "Services", "Download", "DownloadRequestHeaderPolicy.cs");
+            "src", "DownKyi.Infrastructure", "Downloads", "DownloadAddressResolver.cs");
         var downloader = ReadProductionSource(
             "src", "DownKyi.Desktop", "Services", "Download", "BuiltinRangeDownloader.cs");
 
-        Assert.Contains("DownloadRequestHeaderPolicy.Create", resolver, StringComparison.Ordinal);
+        Assert.Contains("CreateHeaders", resolver, StringComparison.Ordinal);
         Assert.Contains("Uri.UriSchemeHttps", resolver, StringComparison.Ordinal);
-        Assert.Contains("CarriesCredentials", headers, StringComparison.Ordinal);
+        Assert.Contains("CarriesCredentials", resolver, StringComparison.Ordinal);
         Assert.Contains("ContentRange", downloader, StringComparison.Ordinal);
         Assert.Contains("PartialContent", downloader, StringComparison.Ordinal);
         Assert.DoesNotContain("ServerCertificateCustomValidationCallback", downloader, StringComparison.Ordinal);

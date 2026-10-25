@@ -1,20 +1,15 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading;
-using System.Threading.Tasks;
-using DownKyi.Infrastructure.Downloads;
 
-namespace DownKyi.Services.Download;
+namespace DownKyi.Infrastructure.Downloads;
 
-internal sealed class DownloadAddressResolver : IDisposable
+public sealed class DownloadAddressResolver : IDisposable
 {
+    private const string BilibiliHost = "bilibili.com";
     private const int MaximumRedirects = 5;
     private readonly HttpMessageInvoker _http;
 
-    private DownloadAddressResolver(HttpMessageHandler handler)
+    internal DownloadAddressResolver(HttpMessageHandler handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _http = new HttpMessageInvoker(handler, disposeHandler: true);
@@ -58,22 +53,6 @@ internal sealed class DownloadAddressResolver : IDisposable
         }
     }
 
-    internal static DownloadAddressResolver CreateForTest(HttpMessageHandler handler)
-    {
-        ArgumentNullException.ThrowIfNull(handler);
-        HttpMessageHandler? ownedHandler = handler;
-        try
-        {
-            var resolver = new DownloadAddressResolver(ownedHandler);
-            ownedHandler = null;
-            return resolver;
-        }
-        finally
-        {
-            ownedHandler?.Dispose();
-        }
-    }
-
     public async Task<DownloadAddressResolution> ResolveAsync(
         string address,
         string userAgent,
@@ -90,8 +69,8 @@ internal sealed class DownloadAddressResolver : IDisposable
         for (var redirectCount = 0; ; redirectCount++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var taskHeaders = DownloadRequestHeaderPolicy.Create(
-                current.AbsoluteUri,
+            var taskHeaders = CreateHeaders(
+                current,
                 userAgent,
                 credentials);
             using var request = CreateProbeRequest(current, taskHeaders);
@@ -140,6 +119,46 @@ internal sealed class DownloadAddressResolver : IDisposable
 
                 current = next;
             }
+        }
+    }
+
+    private static DownloadRequestHeaders CreateHeaders(
+        Uri address,
+        string userAgent,
+        string? credentials)
+    {
+        ValidateHeaderValue(userAgent, nameof(userAgent));
+        var headers = new List<string>
+        {
+            "Origin: https://www.bilibili.com",
+            "Referer: https://www.bilibili.com"
+        };
+        var carriesCredentials = string.Equals(address.IdnHost, BilibiliHost, StringComparison.OrdinalIgnoreCase)
+                                 || address.IdnHost.EndsWith("." + BilibiliHost, StringComparison.OrdinalIgnoreCase);
+        if (carriesCredentials)
+        {
+            if (!string.IsNullOrWhiteSpace(credentials))
+            {
+                ValidateHeaderValue(credentials, "credentials");
+                headers.Add($"Cookie: {credentials}");
+            }
+            else
+            {
+                carriesCredentials = false;
+            }
+        }
+
+        return new DownloadRequestHeaders(headers, userAgent, carriesCredentials);
+    }
+
+    private static void ValidateHeaderValue(string value, string parameterName)
+    {
+        if (value.Any(character => character is '\r' or '\n' or '\0'
+            || char.IsControl(character)))
+        {
+            throw new ArgumentException(
+                "A download request header contains a control character.",
+                parameterName);
         }
     }
 
@@ -215,7 +234,7 @@ internal sealed class DownloadAddressResolver : IDisposable
     }
 }
 
-internal sealed record DownloadAddressResolution(
+public sealed record DownloadAddressResolution(
     Uri? Address,
     DownloadRequestHeaders? Headers,
     string? ErrorCode)
@@ -231,3 +250,8 @@ internal sealed record DownloadAddressResolution(
     public static DownloadAddressResolution Rejected(string errorCode) =>
         new(Address: null, Headers: null, errorCode);
 }
+
+public sealed record DownloadRequestHeaders(
+    IReadOnlyList<string> Headers,
+    string UserAgent,
+    bool CarriesCredentials);
