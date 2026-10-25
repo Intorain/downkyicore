@@ -8,16 +8,13 @@ namespace DownKyi.Core.Tests;
 public sealed class BilibiliDanmakuXmlWriterTests
 {
     [Fact]
-    public async Task WritesBilibiliEightFieldMetadataAndRoundTripsContent()
+    public void WritesBilibiliEightFieldMetadataAndRoundTripsContent()
     {
-        var path = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-danmaku-{Guid.NewGuid():N}.xml");
         var originalCulture = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
         try
         {
-            await BilibiliDanmakuXmlWriter.WriteAsync(
+            var output = BilibiliDanmakuXmlWriter.CreateDocument(
                 [
                     new BiliDanmaku
                     {
@@ -33,14 +30,10 @@ public sealed class BilibiliDanmakuXmlWriterTests
                         Content = "中文\n<>&\"'"
                     }
                 ],
-                path,
                 TestContext.Current.CancellationToken);
-
-            await using var input = File.OpenRead(path);
-            var document = await XDocument.LoadAsync(
-                input,
-                LoadOptions.PreserveWhitespace,
-                TestContext.Current.CancellationToken);
+            var document = XDocument.Parse(
+                output.ToString(SaveOptions.DisableFormatting),
+                LoadOptions.PreserveWhitespace);
             Assert.Equal("i", document.Root?.Name.LocalName);
             var element = Assert.Single(document.Root!.Elements("d"));
             Assert.Equal("中文\n<>&\"'", element.Value);
@@ -53,21 +46,16 @@ public sealed class BilibiliDanmakuXmlWriterTests
         finally
         {
             CultureInfo.CurrentCulture = originalCulture;
-            File.Delete(path);
         }
     }
 
     [Fact]
-    public async Task CancellationIsVisibleBeforeXmlWrite()
+    public async Task CancellationIsVisibleBeforeXmlGeneration()
     {
-        var path = Path.Combine(
-            Path.GetTempPath(),
-            $"downkyi-danmaku-{Guid.NewGuid():N}.xml");
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            BilibiliDanmakuXmlWriter.WriteAsync([], path, cancellation.Token));
-        Assert.False(File.Exists(path));
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            BilibiliDanmakuXmlWriter.CreateDocument([], cancellation.Token));
     }
 }

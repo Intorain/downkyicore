@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Net;
+using System.Text;
 using System.Xml.Linq;
 using Bilibili.Community.Service.Dm.V1;
 using DownKyi.Application.Bilibili;
@@ -32,6 +33,7 @@ public sealed class DownloadArtifactStageTests
         bool expectsAss,
         bool expectsXml)
     {
+        const string content = "字幕 <>&\"'";
         var client = CreateDanmakuClient(
         [
             new DanmakuElem
@@ -42,7 +44,7 @@ public sealed class DownloadArtifactStageTests
                 Fontsize = 25,
                 Color = 0xFFFFFF,
                 MidHash = "synthetic",
-                Content = "hello"
+                Content = content
             }
         ]);
         using var context = await ArtifactTestContext.CreateAsync(
@@ -57,6 +59,22 @@ public sealed class DownloadArtifactStageTests
         Assert.True(result.IsSuccess, result.Error?.Message);
         Assert.Equal(expectsAss, File.Exists($"{context.Downloading.DownloadBase!.FilePath}.ass"));
         Assert.Equal(expectsXml, File.Exists($"{context.Downloading.DownloadBase.FilePath}.xml"));
+        if (expectsAss)
+        {
+            var bytes = await File.ReadAllBytesAsync(
+                $"{context.Downloading.DownloadBase.FilePath}.ass", TestContext.Current.CancellationToken);
+            Assert.False(bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble));
+            Assert.Contains(content, Encoding.UTF8.GetString(bytes), StringComparison.Ordinal);
+        }
+
+        if (expectsXml)
+        {
+            var text = await File.ReadAllTextAsync(
+                $"{context.Downloading.DownloadBase.FilePath}.xml", TestContext.Current.CancellationToken);
+            var document = XDocument.Parse(text);
+            Assert.Equal("utf-8", document.Declaration?.Encoding);
+            Assert.Equal(content, Assert.Single(document.Root!.Elements("d")).Value);
+        }
     }
 
     [Fact]
@@ -247,14 +265,17 @@ public sealed class DownloadArtifactStageTests
             "crowded-", StringComparison.Ordinal)));
     }
 
-    [Fact]
-    public async Task XmlWriteFailureIsTypedAndTheClaimRemainsDurable()
+    [Theory]
+    [InlineData(DanmakuOutputFormat.Ass, "ass", DownloadArtifactWriter.DanmakuAssTransferKey)]
+    [InlineData(DanmakuOutputFormat.Xml, "xml", DownloadArtifactWriter.DanmakuXmlTransferKey)]
+    public async Task DanmakuWriteFailureIsTypedAndTheClaimRemainsDurable(
+        DanmakuOutputFormat outputFormat, string extension, string transferKey)
     {
         using var context = await ArtifactTestContext.CreateAsync(
             CreateDanmakuClient([]),
             danmaku: true,
             useMissingOutputDirectory: true,
-            danmakuOutputFormat: DanmakuOutputFormat.Xml).ConfigureAwait(true);
+            danmakuOutputFormat: outputFormat).ConfigureAwait(true);
 
         var result = await context.Stage.ExecuteAsync(
             context.Execution,
@@ -264,13 +285,16 @@ public sealed class DownloadArtifactStageTests
         Assert.Equal("download.artifact.danmaku.io", result.Error?.Code);
         var task = await context.GetTaskAsync().ConfigureAwait(true);
         Assert.Equal(
-            $"{context.Downloading.DownloadBase!.FilePath}.xml",
-            task.Plan.TransferFiles[DownloadArtifactWriter.DanmakuXmlTransferKey]);
+            $"{context.Downloading.DownloadBase!.FilePath}.{extension}",
+            task.Plan.TransferFiles[transferKey]);
         Assert.Empty(context.GetPhysicalArtifactFiles());
     }
 
-    [Fact]
-    public async Task XmlCancellationRemainsVisibleAfterDurableClaim()
+    [Theory]
+    [InlineData(DanmakuOutputFormat.Ass, "ass", DownloadArtifactWriter.DanmakuAssTransferKey)]
+    [InlineData(DanmakuOutputFormat.Xml, "xml", DownloadArtifactWriter.DanmakuXmlTransferKey)]
+    public async Task DanmakuCancellationRemainsVisibleAfterDurableClaim(
+        DanmakuOutputFormat outputFormat, string extension, string transferKey)
     {
         using var cancellation = new CancellationTokenSource();
         var client = CreateDanmakuClient(
@@ -279,15 +303,15 @@ public sealed class DownloadArtifactStageTests
         using var context = await ArtifactTestContext.CreateAsync(
             client,
             danmaku: true,
-            danmakuOutputFormat: DanmakuOutputFormat.Xml).ConfigureAwait(true);
+            danmakuOutputFormat: outputFormat).ConfigureAwait(true);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             context.Stage.ExecuteAsync(context.Execution, cancellation.Token)).ConfigureAwait(true);
 
         var task = await context.GetTaskAsync().ConfigureAwait(true);
         Assert.Equal(
-            $"{context.Downloading.DownloadBase!.FilePath}.xml",
-            task.Plan.TransferFiles[DownloadArtifactWriter.DanmakuXmlTransferKey]);
+            $"{context.Downloading.DownloadBase!.FilePath}.{extension}",
+            task.Plan.TransferFiles[transferKey]);
     }
 
     [Fact]

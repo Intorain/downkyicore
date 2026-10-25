@@ -1,4 +1,3 @@
-using System.Text;
 using DownKyi.Core.BiliApi.Zone;
 using DownKyi.Core.Danmaku2Ass;
 
@@ -11,48 +10,6 @@ public sealed class DanmakuAndZoneContractTests
     {
         Assert.Equal("Zone.techDrawingImage", VideoZoneIcon.GetZoneImageKey(36));
         Assert.Equal("videoUpDrawingImage", VideoZoneIcon.GetZoneImageKey(int.MaxValue));
-    }
-
-    [Fact]
-    public void StudioUsesInjectedOutputEncoding()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"downkyi-studio-{Guid.NewGuid():N}.txt");
-        var encoding = new UnicodeEncoding(bigEndian: false, byteOrderMark: true);
-        var studio = new Studio(new Config(), new List<Danmaku>(), encoding);
-
-        try
-        {
-            studio.CreateFile(path, "字幕");
-
-            var bytes = File.ReadAllBytes(path);
-            Assert.True(bytes.AsSpan().StartsWith(encoding.GetPreamble()));
-            Assert.Equal("字幕", File.ReadAllText(path, encoding));
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void StudioDoesNotHideOutputWriteFailures()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), $"downkyi-studio-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        var studio = new Studio(new Config(), [], Encoding.UTF8);
-
-        try
-        {
-            var exception = Record.Exception(() => studio.CreateFile(directory, "subtitle"));
-
-            Assert.True(
-                exception is IOException or UnauthorizedAccessException,
-                $"Expected a visible file-system failure, got {exception?.GetType().Name ?? "no exception"}.");
-        }
-        finally
-        {
-            Directory.Delete(directory);
-        }
     }
 
     [Fact]
