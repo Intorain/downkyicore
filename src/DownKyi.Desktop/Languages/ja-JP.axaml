@@ -51,16 +51,16 @@
     <system:String x:Key="PersonalEmailBound">メールアドレス連携済み</system:String>
     <system:String x:Key="PersonalPhoneBound">電話番号連携済み</system:String>
     <system:String x:Key="MySpace">マイスペース</system:String><system:String x:Key="Logout">ログアウト</system:String>
-    <system:String x:Key="BilibiliDynamics">Bilibili の動き</system:String>
+    <system:String x:Key="BilibiliDynamics">Bilibili の投稿</system:String>
     <system:String x:Key="MySpaceWait">しばらくお待ちください…</system:String>
     <system:String x:Key="Level">レベル</system:String>
     <system:String x:Key="Following">フォロー中</system:String>
     <system:String x:Key="Follower">フォロワー</system:String>
-    <system:String x:Key="Black">ブロックしたユーザー</system:String>
-    <system:String x:Key="Moral">信用スコア</system:String>
-    <system:String x:Key="Silence">アカウントの状態</system:String>
+    <system:String x:Key="Black">ブロック数</system:String>
+    <system:String x:Key="Moral">モラル値</system:String>
+    <system:String x:Key="Silence">アカウントの停止状態</system:String>
     <system:String x:Key="Favorites">お気に入り</system:String>
-    <system:String x:Key="Subscription">マイ登録</system:String>
+    <system:String x:Key="Subscription">フォロー中の番組</system:String>
     <system:String x:Key="ToView">あとで見る</system:String>
     <system:String x:Key="History">視聴履歴</system:String>
     <system:String x:Key="Normal">正常</system:String>
@@ -77,9 +77,9 @@
     <system:String x:Key="ArticleViewCount">記事の閲覧回数</system:String>
     <system:String x:Key="AllPublicationZones">すべて</system:String>
     <system:String x:Key="Publication">投稿動画</system:String>
-    <system:String x:Key="DynamicVideos">投稿した動画</system:String>
+    <system:String x:Key="DynamicVideos">タイムラインの動画</system:String>
     <system:String x:Key="Channel">チャンネル</system:String>
-    <system:String x:Key="SeasonsSeries">合集とシリーズ</system:String>
+    <system:String x:Key="SeasonsSeries">コレクションとシリーズ</system:String>
     <system:String x:Key="UserSpaceWait">しばらくお待ちください…</system:String>
 
     <!--  PublicFavorites  -->
@@ -94,7 +94,7 @@
     <system:String x:Key="FavoritesFavTime">登録日時：</system:String>
 
     <!--  MyBangumiFollow  -->
-    <system:String x:Key="MyBangumiFollow">マイ登録</system:String>
+    <system:String x:Key="MyBangumiFollow">フォロー中の番組</system:String>
     <system:String x:Key="FollowAnime">アニメ</system:String>
     <system:String x:Key="FollowMovie">ドラマ</system:String>
     <system:String x:Key="BangumiNotWatched">未視聴</system:String>
@@ -102,7 +102,7 @@
     <!--  MyHistory  -->
     <system:String x:Key="MyHistory">視聴履歴</system:String>
     <system:String x:Key="HistoryFinished">視聴済み</system:String>
-    <system:String x:Key="HistoryStarted">視聴中</system:String>
+    <system:String x:Key="HistoryStarted">見始めたところ</system:String>
     <system:String x:Key="HistoryWatch">視聴位置</system:String>
 
     <!--  MyToView  -->
@@ -125,7 +125,7 @@
     <system:String x:Key="FriendFollower">フォロワー</system:String>
     <system:String x:Key="FollowingWait">しばらくお待ちください…</system:String>
     <system:String x:Key="FollowerWait">しばらくお待ちください…</system:String>
-    <system:String x:Key="AllFollowing">フォロー中のすべて</system:String>
+    <system:String x:Key="AllFollowing">フォロー中のすべてのユーザー</system:String>
 
     <system:String x:Key="VideoDetailHeading">動画の解析</system:String>
     <system:String x:Key="DownloadOptionsHeading">ダウンロードオプション</system:String>
@@ -147,7 +147,7 @@
     <system:String x:Key="Cheese">講座</system:String>
     <system:String x:Key="Order">番号</system:String>
     <system:String x:Key="Name">名前</system:String>
-    <system:String x:Key="Duration">長さ</system:String>
+    <system:String x:Key="Duration">再生時間</system:String>
     <system:String x:Key="SelectAll">すべて選択</system:String>
     <system:String x:Key="ClearSelection">選択をクリア</system:String>
     <system:String x:Key="Search">検索</system:String>
@@ -161,22 +161,22 @@
     <system:String x:Key="VideoDetailStatusAddUnavailable">ダウンロードサービスから結果が返らなかったため、タスクを作成できませんでした。</system:String>
     <system:String x:Key="DownloadSelected">選択した項目をダウンロード</system:String>
     <system:String x:Key="AddAllToDownload">すべてダウンロード</system:String>
-    <system:String x:Key="TipAlreadyToAddDownloading">このコンテンツはダウンロード キューに追加されているため、再度追加する必要はありません。</system:String>
-    <system:String x:Key="TipAlreadyToAddDownloaded">ダウンロード完了しました～</system:String>
+    <system:String x:Key="TipAlreadyToAddDownloading">このコンテンツはすでにダウンロードキューにあります。</system:String>
+    <system:String x:Key="TipAlreadyToAddDownloaded">ダウンロード済みです。</system:String>
     <system:String x:Key="TipAddDownloadingZero">ダウンロードできる項目が選択されていません。</system:String>
-    <system:String x:Key="TipAddDownloadingUnavailable">現在、選択したコンテンツにはダウンロード可能なアセットがありません。</system:String>
-    <system:String x:Key="TipAddDownloadingSkippedByChoice">あなたの選択により、ダウンロードはスキップされました。</system:String>
+    <system:String x:Key="TipAddDownloadingUnavailable">選択したコンテンツには現在ダウンロード可能なファイルがありません。</system:String>
+    <system:String x:Key="TipAddDownloadingSkippedByChoice">選択に従ってダウンロードをスキップしました。</system:String>
     <system:String x:Key="TipAddDownloadingFailed">ダウンロードタスクを追加できませんでした。</system:String>
-    <system:String x:Key="TipAddDownloadingUnsupportedInput">現在の入力ではダウンロード タスクを作成できません。</system:String>
-    <system:String x:Key="TipAddDownloadingCanceled">新しいダウンロード タスクはキャンセルされました。</system:String>
-    <system:String x:Key="TipAddDownloadingCanceledAfterProgress">その後、{0} 操作はキャンセルされました。</system:String>
-    <system:String x:Key="TipAddDownloadingSelectionUnavailable">ダウンロード ディレクトリが利用できず、タスクが追加されていません。</system:String>
+    <system:String x:Key="TipAddDownloadingUnsupportedInput">この入力からダウンロードタスクを作成できません。</system:String>
+    <system:String x:Key="TipAddDownloadingCanceled">ダウンロードタスクの追加をキャンセルしました。</system:String>
+    <system:String x:Key="TipAddDownloadingCanceledAfterProgress">{0}（残りの追加はキャンセルされました。）</system:String>
+    <system:String x:Key="TipAddDownloadingSelectionUnavailable">ダウンロード先のフォルダーを使用できないため、タスクは追加されませんでした。</system:String>
     <system:String x:Key="TipAddDownloadingSummary">追加 {0} 件、重複 {1} 件、スキップ {2} 件、失敗 {3} 件。</system:String>
     <system:String x:Key="TipAddDownloadingNoAddedSummary">タスクは追加されませんでした。重複 {0} 件、スキップ {1} 件、失敗 {2} 件。</system:String>
-    <system:String x:Key="TipAddDownloadingFinished1">追加しました：</system:String>
+    <system:String x:Key="TipAddDownloadingFinished1">追加：</system:String>
     <system:String x:Key="TipAddDownloadingFinished2"> 件</system:String>
-    <system:String x:Key="TipAddDownloadingFinishedWithSkipped">{0} 個のアイテムが正常に追加されましたが、{1} 個の使用できないアイテムはスキップされました。</system:String>
-    <system:String x:Key="TipAddDownloadingSkipped">{1} 個の利用できないアイテムはスキップされ、ダウンロードは追加されませんでした。</system:String>
+    <system:String x:Key="TipAddDownloadingFinishedWithSkipped">{0} 件を追加し、利用できない {1} 件をスキップしました。</system:String>
+    <system:String x:Key="TipAddDownloadingSkipped">利用できない {1} 件をスキップしました。ダウンロードタスクは追加されませんでした。</system:String>
 
     <!--  DownloadManager  -->
     <system:String x:Key="DownloadTaskColumn">動画と形式</system:String>
@@ -207,13 +207,13 @@
     <system:String x:Key="Waiting">待機中…</system:String>
     <system:String x:Key="DownloadFailed">ダウンロードに失敗しました</system:String>
     <system:String x:Key="DownloadFailureDetails">原因を表示</system:String>
-    <system:String x:Key="HideFailureDetails">原因を閉じる</system:String>
+    <system:String x:Key="HideFailureDetails">原因を非表示</system:String>
     <system:String x:Key="DownloadFailureCode">エラーコード</system:String>
     <system:String x:Key="DownloadFailureUnknownCode">不明</system:String>
     <system:String x:Key="DownloadFailureUnavailableDetails">要求された画質、音声トラック、その他のコンテンツは現在利用できません。動画を再解析し、利用可能な内容で新しいタスクを作成してください。再試行しても元のタスクの選択内容は変わりません。</system:String>
     <system:String x:Key="DownloadFailureRateLimitDetails">サーバーが一時的にリクエストを制限しています。しばらく待ってから「再試行」を押してください。連続して送信しないでください。</system:String>
     <system:String x:Key="DownloadFailureAccessDetails">サーバーがダウンロード要求を拒否しました。ログイン状態とコンテンツのアクセス権を確認してください。失敗が続く場合は、動画を再解析し、別の画質を選んでください。</system:String>
-    <system:String x:Key="DownloadFailureCoverAccessDetails">サーバーがカバー画像の要求を拒否しました。後でもう一度お試しください。失敗が続く場合は、新しいタスクを作成するか、カバー画像の選択を解除してください。</system:String>
+    <system:String x:Key="DownloadFailureCoverAccessDetails">サーバーがサムネイルの取得を拒否しました。しばらくしてから再試行してください。失敗が続く場合は、新しいタスクを作成するか、サムネイルの選択を解除してください。</system:String>
     <system:String x:Key="DownloadFailureArtifactAccessDetails">サーバーが追加ファイルの要求を拒否しました。ログイン状態とアクセス権を確認してから再試行してください。失敗が続く場合は、新しいタスクを作成するか、そのファイルの選択を解除してください。</system:String>
     <system:String x:Key="DownloadFailureExpiredAddressDetails">ダウンロード URL の有効期限が切れたか、サーバーに拒否されました。DownKyi は URL の切り替えと更新を試みました。動画を再解析して新しいタスクを作成してください。失敗が続く場合は、ログイン状態とアクセス権を確認してください。</system:String>
     <system:String x:Key="DownloadFailureNetworkDetails">ネットワーク接続またはサーバーの応答が中断されました。ネットワークとプロキシの設定を確認してから「再試行」を押してください。</system:String>
@@ -225,18 +225,18 @@
     <system:String x:Key="DownloadFailureTlsDetails">安全な接続の検証に失敗しました。システムの日付、プロキシ、および証明書の設定を確認して、再試行してください。</system:String>
     <system:String x:Key="DownloadFailureRuntimeDetails">ダウンロードサービスを続行できません。DownKyi を再起動してください。それでも失敗する場合は、「設定 → 概要とフィードバック」で診断パッケージをエクスポートしてください。</system:String>
     <system:String x:Key="DownloadFailureLegacyDetails">このタスクは廃止されたダウンローダーを使用しているため、直接再試行できません。動画を再解析して新しいタスクを作成してください。</system:String>
-    <system:String x:Key="DownloadFailurePublicationRecoveryDetails">前回のファイル確定状態を安全に確認できないため、このタスクは直接再試行できません。同名のファイルを確認し、失敗したタスクを削除してから、動画を再解析して新しいタスクを作成してください。</system:String>
-    <system:String x:Key="DownloadFailurePublishedArtifactDetails">公開済みのダウンロードファイルが見つからないか破損しているため、元のタスクを直接再試行できません。同名の破損ファイルがあれば移動または削除し、この失敗タスクを削除してから、動画を再解析して新しいタスクを作成してください。</system:String>
+    <system:String x:Key="DownloadFailurePublicationRecoveryDetails">前回の出力ファイルが確定したかどうかを安全に確認できないため、このタスクは直接再試行できません。同名のファイルを確認し、失敗したタスクを削除してから、動画を再解析して新しいタスクを作成してください。</system:String>
+    <system:String x:Key="DownloadFailurePublishedArtifactDetails">確定済みのダウンロードファイルが見つからないか破損しているため、元のタスクを直接再試行できません。同名の破損ファイルがあれば移動または削除し、失敗したタスクを削除してから、動画を再解析して新しいタスクを作成してください。</system:String>
     <system:String x:Key="DownloadFailureGenericDetails">原因を特定できません。「再試行」を押してください。再び失敗する場合は、「設定 → 概要とフィードバック」で診断パッケージをエクスポートしてください。</system:String>
     <system:String x:Key="SubtitleDownloadFailed">字幕のダウンロードに失敗しました</system:String>
-    <system:String x:Key="DownloadRuntimeUnavailable">ダウンロードサービスの開始に失敗しました。アプリケーションを再起動してログを確認してください。</system:String>
-    <system:String x:Key="TotalDownloading1">ダウンロード中</system:String>
-    <system:String x:Key="TotalDownloading2"> 本の動画</system:String>
+    <system:String x:Key="DownloadRuntimeUnavailable">ダウンロードサービスを起動できませんでした。DownKyi を再起動し、ログを確認してください。</system:String>
+    <system:String x:Key="TotalDownloading1">動画を </system:String>
+    <system:String x:Key="TotalDownloading2"> 本ダウンロード中</system:String>
     <system:String x:Key="PauseAllDownloading">すべて一時停止する</system:String>
     <system:String x:Key="ContinueAllDownloading">すべて再開</system:String>
     <system:String x:Key="DeleteAllDownloading">すべて削除</system:String>
-    <system:String x:Key="TotalDownloaded1">ダウンロード済み</system:String>
-    <system:String x:Key="TotalDownloaded2"> 本の動画</system:String>
+    <system:String x:Key="TotalDownloaded1">動画を </system:String>
+    <system:String x:Key="TotalDownloaded2"> 本ダウンロード済み</system:String>
     <system:String x:Key="DownloadedSortByTimeAsc">ダウンロード日時の古い順</system:String>
     <system:String x:Key="DownloadedSortByTimeDesc">ダウンロード日時の新しい順</system:String>
     <system:String x:Key="DownloadedSortByOrder">番号順</system:String>
@@ -276,7 +276,7 @@
     <system:String x:Key="NetworkConnectionSection">接続</system:String>
     <system:String x:Key="DownloaderSection">ダウンローダー</system:String>
     <system:String x:Key="BuiltinParametersSection">内蔵ダウンローダーの設定</system:String>
-    <system:String x:Key="ZeroMeansUnlimited">単位: KB/秒; 0は制限なしを意味します</system:String>
+    <system:String x:Key="ZeroMeansUnlimited">単位：KB/秒。0 は速度制限なし。</system:String>
     <system:String x:Key="SelectDownloader">ダウンローダー（再起動後に反映）：</system:String>
     <system:String x:Key="BuiltinDownloader">内蔵ダウンローダー</system:String>
     <system:String x:Key="HighSpeedDownloadMode">高速ダウンロードモード（推奨の分割数と接続数）</system:String>
@@ -287,7 +287,7 @@
     <system:String x:Key="MaxCurrentDownloads">同時ダウンロード数:</system:String>
     <system:String x:Key="Split">最大スレッド数:</system:String>
     <system:String x:Key="MaxOverallDownloadLimit">グローバルなダウンロード速度制限</system:String>
-    <system:String x:Key="MaxOverallDownloadLimitDescription">すべてのダウンロード タスクの合計速度を制限する</system:String>
+    <system:String x:Key="MaxOverallDownloadLimitDescription">すべてのダウンロードタスクの合計速度を制限します。</system:String>
     <system:String x:Key="MaxDownloadLimit">単一タスクのダウンロード速度制限</system:String>
     <system:String x:Key="MaxDownloadLimitDescription">各ダウンロードタスクの速度を制限する</system:String>
     <system:String x:Key="Video">動画</system:String>
@@ -299,17 +299,17 @@
     <system:String x:Key="FirstAudioQuality">優先する音質：</system:String>
     <system:String x:Key="IsTranscodingFlvToMp4">ダウンロードした FLV 動画を MP4 に変換</system:String>
     <system:String x:Key="IsTranscodingAacToMp3">ダウンロードした AAC 音声を MP3 に変換</system:String>
-    <system:String x:Key="FfmpegHardwareAcceleration">FFmpeg ハードウェア アクセラレーション:</system:String>
+    <system:String x:Key="FfmpegHardwareAcceleration">FFmpeg ハードウェアアクセラレーション：</system:String>
     <system:String x:Key="FfmpegHardwareAccelerationTip">再エンコードが必要な処理でのみ使用します。通常の音声と動画の結合では、可能な限り無劣化でストリームをコピーします。</system:String>
     <system:String x:Key="FfmpegMaxParallelJobs">FFmpeg の最大並列タスク:</system:String>
-    <system:String x:Key="FfmpegMaxParallelJobsTip">過剰な CPU/メモリ使用量によるクラッシュを避けるために、バッチ ダウンロード中に同時に実行する FFmpeg プロセスを制限します。</system:String>
+    <system:String x:Key="FfmpegMaxParallelJobsTip">一括ダウンロード時に同時実行する FFmpeg プロセス数を制限し、CPU やメモリの過剰な使用によるクラッシュを防ぎます。</system:String>
     <system:String x:Key="GenerateVideoMetadata">動画のメタデータを生成</system:String>
     <system:String x:Key="DefaultDirectory">既定のダウンロード先：</system:String>
-    <system:String x:Key="DefaultDirectoryTip">ファイルはデフォルトでこのフォルダーにダウンロードされます</system:String>
+    <system:String x:Key="DefaultDirectoryTip">通常、ファイルはこのフォルダーにダウンロードされます。</system:String>
     <system:String x:Key="ChangeDirectory">フォルダーを変更</system:String>
-    <system:String x:Key="FileNameParts">ファイル命名形式</system:String>
+    <system:String x:Key="FileNameParts">ファイル名の形式</system:String>
     <system:String x:Key="FileName">ファイル名：</system:String>
-    <system:String x:Key="OptionalFields">オプションのフィールド:</system:String>
+    <system:String x:Key="OptionalFields">任意の項目：</system:String>
     <system:String x:Key="DisplayOrder">番号</system:String>
     <system:String x:Key="DisplaySection">動画のチャプター</system:String>
     <system:String x:Key="DisplayMainTitle">動画のタイトル</system:String>
@@ -322,7 +322,7 @@
     <system:String x:Key="DisplaySpace">空白</system:String>
     <system:String x:Key="DisplayUpMid">投稿者 ID</system:String>
     <system:String x:Key="DisplayUpName">投稿者名</system:String>
-    <system:String x:Key="Reset">デフォルトに戻す</system:String>
+    <system:String x:Key="Reset">初期設定に戻す</system:String>
     <system:String x:Key="FileNameTimeFormat">時刻形式:</system:String>
     <system:String x:Key="OrderFormat">番号の形式：</system:String>
     <system:String x:Key="OrderFormatNatural">自然数</system:String>
@@ -335,13 +335,13 @@
     <system:String x:Key="DanmakuFilterRules">ブロックルール</system:String>
     <system:String x:Key="DanmakuDisplaySettings">表示設定</system:String>
     <system:String x:Key="FilterType">タイプ別ブロック</system:String>
-    <system:String x:Key="TopFilter">トップ</system:String>
+    <system:String x:Key="TopFilter">上部</system:String>
     <system:String x:Key="BottomFilter">下部</system:String>
     <system:String x:Key="ScrollFilter">スクロール</system:String>
     <system:String x:Key="RemoveEmojiAndSpecialCharacters">絵文字と特殊文字を削除</system:String>
-    <system:String x:Key="BlockedDanmakuKeywords">キーワード ブラックリスト (1 行に 1 つ)</system:String>
-    <system:String x:Key="BlockedDanmakuSenderUids">送信者 UID ブラックリスト (1 行に 1 つ)</system:String>
-    <system:String x:Key="SaveDanmakuBlacklists">ブラックリストの保存</system:String>
+    <system:String x:Key="BlockedDanmakuKeywords">弾幕キーワードのブロックリスト（1 行に 1 つ）</system:String>
+    <system:String x:Key="BlockedDanmakuSenderUids">送信者 UID のブロックリスト（1 行に 1 つ）</system:String>
+    <system:String x:Key="SaveDanmakuBlacklists">ブロックリストを保存</system:String>
     <system:String x:Key="Resolution">解像度：</system:String>
     <system:String x:Key="FontName">弾幕のフォント：</system:String>
     <system:String x:Key="FontSize">フォントサイズ:</system:String>
@@ -366,7 +366,7 @@
     <system:String x:Key="ExportDiagnosticLog">診断ログをエクスポートする</system:String>
     <system:String x:Key="DiagnosticLogTip">公開用のフィードバックパッケージには、定義済みの最近の警告、エラー、診断項目のみが含まれます。元のログ、データベース、設定ファイルは含まれません。</system:String>
     <system:String x:Key="DiagnosticLogExported">診断パッケージをエクスポートしました。</system:String>
-    <system:String x:Key="DiagnosticLogExportFailed">エラー診断パッケージのエクスポートに失敗しました。後でもう一度お試しください~</system:String>
+    <system:String x:Key="DiagnosticLogExportFailed">診断パッケージをエクスポートできませんでした。しばらくしてから再試行してください。</system:String>
     <system:String x:Key="ReceiveBetaVersion">ベータ版アップデートを受け取る</system:String>
     <system:String x:Key="AutoUpdateWhenLaunch">起動時にアップデートを確認する</system:String>
     <system:String x:Key="TipSettingUpdated">設定を更新しました。</system:String>
@@ -374,7 +374,7 @@
     <system:String x:Key="Disclaimer">免責事項</system:String>
     <system:String x:Key="Disclaimer1">1. 本ソフトウェアは動画の解析のみを行い、リソースをサーバーにアップロードしたり保存したりしません。</system:String>
     <system:String x:Key="Disclaimer2">2. 本ソフトウェアは Bilibili のコンテンツのみを解析します。解析した音声や動画を再エンコードしませんが、一部の動画では限定的な形式変換や結合を行います。</system:String>
-    <system:String x:Key="Disclaimer3">3. 本ソフトウェアが解析するコンテンツは、Bilibili の投稿者がアップロードまたは共有したものです。著作権は元の権利者に帰属します。コンテンツの提供者と投稿者は、提供した内容について責任を負います。</system:String>
+    <system:String x:Key="Disclaimer3">3. 本ソフトウェアが解析するコンテンツは、Bilibili の投稿者がアップロードまたは共有したものです。著作権は元の著作者に帰属します。コンテンツの提供者と投稿者は、提供またはアップロードした内容について全責任を負います。</system:String>
     <system:String x:Key="Disclaimer4">4. ダウンロードしたコンテンツは学習・交流の目的でのみ使用してください。それ以外の用途には元の権利者の許可が必要です。24 時間以内に削除してください。制作者を支援するため、元の公開サイトで視聴してください。</system:String>
     <system:String x:Key="Disclaimer5">5. 営利目的での使用は禁止されています。その結果については利用者が責任を負います。</system:String>
     <system:String x:Key="Disclaimer6">6. ソフトウェアの作成者は、このソフトウェアの使用によって生じる著作権の問題については責任を負いません。</system:String>
@@ -421,15 +421,15 @@
     <system:String x:Key="StartupDownloadFailureImpact">ダウンロード機能はご利用いただけませんが、その他の機能は引き続きご利用いただけます。</system:String>
     <system:String x:Key="StartupDownloadStoreFailureTitle">ダウンロードデータベースを読み取れません</system:String>
     <system:String x:Key="StartupDownloadStoreFailureDescription">既存のダウンロードデータベースを現在の形式で読み取れません。完全なバックアップを保存してから、空のデータベースを作成できます。</system:String>
-    <system:String x:Key="StartupDownloadStoreFailureImpact">ダウンロード機能は、再構築する前は機能しません。再構築後は古いレコードは表示されませんが、元のデータベースはバックアップに保存されます。</system:String>
+    <system:String x:Key="StartupDownloadStoreFailureImpact">データベースを再構築するまでダウンロード機能は使えません。再構築後は以前の記録が表示されなくなりますが、元のデータベースはバックアップに残ります。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureTitle">旧バージョンのデータ移行に失敗しました</system:String>
-    <system:String x:Key="StartupLegacyMigrationFailureDescription">一部の従来のダウンロード レコードのデータ変換を完了できませんでした。</system:String>
+    <system:String x:Key="StartupLegacyMigrationFailureDescription">一部の旧バージョンのダウンロード記録を変換できませんでした。</system:String>
     <system:String x:Key="StartupLegacyMigrationFailureImpact">一部の過去のダウンロードデータが正しく表示されない場合があります。</system:String>
-    <system:String x:Key="ViewFullErrorDetails">エラーの完全な詳細を表示する</system:String>
-    <system:String x:Key="ResetDownloadStore">バックアップして空のデータベースを作成します...</system:String>
+    <system:String x:Key="ViewFullErrorDetails">エラーの詳細をすべて表示</system:String>
+    <system:String x:Key="ResetDownloadStore">バックアップして空のデータベースを作成…</system:String>
     <system:String x:Key="DownloadStoreResetConfirmation">既存のダウンロードデータベースを完全にバックアップし、空のデータベースを作成して DownKyi を再起動します。新しいデータベースには、以前のキュー、履歴、再開状態は含まれません。ダウンロード済みのメディア、ログイン情報、設定は残ります。続行しますか？</system:String>
     <system:String x:Key="DownloadStoreResetFailed">ダウンロードデータベースのバックアップと再構築ができませんでした。既存のデータは自動削除されません。エラーをコピーし、GitHub で Issue を作成してください。</system:String>
-    <system:String x:Key="DownloadStoreResetRestartFailed">ダウンロード データベースはバックアップおよび再構築されましたが、自動的に再起動できません。 DownKyi を手動で閉じて再度開いてください。</system:String>
+    <system:String x:Key="DownloadStoreResetRestartFailed">ダウンロードデータベースはバックアップと再構築が完了しましたが、自動で再起動できませんでした。DownKyi を手動で終了し、再度起動してください。</system:String>
     <system:String x:Key="CopyAllDiagnostics">すべての診断をコピーする</system:String>
     <system:String x:Key="ErrorDetailsCopied">エラーの詳細をコピーしました。</system:String>
     <system:String x:Key="CreateGitHubIssue">GitHub で Issue を作成</system:String>
@@ -442,7 +442,7 @@
     <system:String x:Key="Cancel">キャンセル</system:String>
     <system:String x:Key="ConfirmReboot">この変更は再起動後に反映されます。今すぐ再起動しますか？</system:String>
     <system:String x:Key="ConfirmDelete">削除してもよろしいですか?</system:String>
-    <system:String x:Key="SelectDirectory">フォルダを選択してください</system:String>
+    <system:String x:Key="SelectDirectory">フォルダーを選択してください</system:String>
     <system:String x:Key="DirectoryError">パスが無効です。</system:String>
     <system:String x:Key="DownloadOutputCollision">同じ名前のファイルが存在するか、別のダウンロードで使用中です。別のフォルダーを選ぶか、「設定 → 基本」で「ファイル名が重複した場合は自動で番号を追加」を有効にして再試行してください。</system:String>
 
@@ -462,7 +462,7 @@
     <system:String x:Key="SubtitleTypeStandard">通常</system:String>
     <system:String x:Key="SubtitleTypeAi">AI</system:String>
     <system:String x:Key="DefaultSubtitle">既定</system:String>
-    <system:String x:Key="SubtitleTrackHelpTitle">なぜ字幕が2つあるのでしょうか？</system:String>
+    <system:String x:Key="SubtitleTrackHelpTitle">なぜ字幕ファイルが 2 つあるのですか？</system:String>
     <system:String x:Key="SubtitleTrackHelpLead">「既定」を選ぶと、同じ字幕のコピーを作成します。</system:String>
     <system:String x:Key="SubtitleTrackHelpType">通常 = AI 以外。複数の字幕を選べる場合があります</system:String>
     <system:String x:Key="SubtitleTrackHelpTrackFile">オリジナル字幕</system:String>
@@ -488,9 +488,9 @@
     <system:String x:Key="DriveNotFound">ディスクが存在しません</system:String>
 
     <system:String x:Key="DownloadContentConflictTitle">ダウンロードの選択には確認が必要です</system:String>
-    <system:String x:Key="DownloadDuplicateBatchTitle">繰り返しダウンロードする場合は確認が必要です</system:String>
+    <system:String x:Key="DownloadDuplicateBatchTitle">再ダウンロードの確認</system:String>
     <system:String x:Key="DownloadDuplicateBatchMessage">このダウンロード一覧には、以前にダウンロードした動画が {0} 本含まれています。スキップするか、再ダウンロードするかを選んでください。</system:String>
-    <system:String x:Key="DownloadDuplicateBatchActiveMessage">さらに {0} 個の動画がすでにダウンロード キューに入っているため、スキップされます。</system:String>
+    <system:String x:Key="DownloadDuplicateBatchActiveMessage">さらに {0} 本の動画がすでにダウンロードキューにあるため、スキップされます。</system:String>
     <system:String x:Key="DownloadDuplicateBatchAffectedItems">ダウンロードした {0} 本の動画を表示</system:String>
     <system:String x:Key="RedownloadDuplicateBatch">この {0} 本を再ダウンロード</system:String>
     <system:String x:Key="SkipDuplicateBatch">この {0} 本をスキップ</system:String>
@@ -517,7 +517,7 @@
     <system:String x:Key="Page">ページ</system:String>
     <system:String x:Key="JumpTo">移動</system:String>
     <system:String x:Key="EmptyStateTitle">まだコンテンツがありません</system:String>
-    <system:String x:Key="EmptyStateDescription">ここにはまだ何も表示できません。</system:String>
+    <system:String x:Key="EmptyStateDescription">ここに表示できるコンテンツはまだありません。</system:String>
     <!-- Localized desktop messages -->
     <system:String x:Key="MigrationCancelConfirmation">データの移行を中止しますか？すでに書き込まれたデータは残ります。残りの移行は次回の起動時に再試行できます。</system:String>
     <system:String x:Key="MigrationCancel">移行をキャンセルする</system:String>
@@ -527,12 +527,12 @@
     <system:String x:Key="MigrationDownloadComplete">ダウンロード情報の移行が完了しました</system:String>
     <system:String x:Key="MigrationFailedSeeLogs">データの移行に失敗しました。ログを確認してください。</system:String>
     <system:String x:Key="MigrationRestarting">アプリを再起動中</system:String>
-    <system:String x:Key="MigrationRestartFailed">アプリを再起動できません。ログを確認してください</system:String>
+    <system:String x:Key="MigrationRestartFailed">アプリを再起動できません。ログを確認してください。</system:String>
     <system:String x:Key="OpenVideoFailed">動画ファイルを開けませんでした</system:String>
     <system:String x:Key="OpenFolderFailed">フォルダーを開けません</system:String>
     <system:String x:Key="LegacyOutputRecordMissing">この旧タスクには正確な出力記録がないため、ファイルの場所を特定できません。</system:String>
     <system:String x:Key="VideoFileNotFound">動画ファイルが見つかりません。移動または削除された可能性があります。</system:String>
-    <system:String x:Key="SelectFolder">フォルダを選択</system:String>
+    <system:String x:Key="SelectFolder">フォルダーを選択</system:String>
     <system:String x:Key="SelectVideo">動画を選択</system:String>
     <system:String x:Key="UpdateCheckFailed">チェックに失敗しました。後でもう一度試してください。</system:String>
     <system:String x:Key="AlreadyLatestVersion">すでに最新バージョンです。</system:String>
@@ -556,13 +556,13 @@
     <system:String x:Key="MigrationTryingAlternateConnection">別の接続方法を試行中</system:String>
     <system:String x:Key="MigrationDatabaseAttemptFailed">データベース接続試行 {0} が失敗しました</system:String>
     <system:String x:Key="MigrationDatabaseAttemptsExceeded">データベース接続の試行回数が制限を超えたため、移行は中止されました。</system:String>
-    <system:String x:Key="MigrationSkippedCorruptRecord">古い破損したダウンロード レコードがスキップされました</system:String>
-    <system:String x:Key="MigrationSkippedCorruptDetail">破損した旧ダウンロード詳細をスキップしました</system:String>
+    <system:String x:Key="MigrationSkippedCorruptRecord">破損した旧ダウンロード記録を 1 件スキップしました。</system:String>
+    <system:String x:Key="MigrationSkippedCorruptDetail">破損した旧ダウンロードの詳細を 1 件スキップしました。</system:String>
     <system:String x:Key="MigrationDownloadProgress">ダウンロード情報を移行しています ({0}/{1})</system:String>
     <system:String x:Key="MigrationBackupCreated">元のデータベースは {0} としてバックアップされました</system:String>
     <system:String x:Key="MigrationDatabaseRenamed">元のデータベースの名前が {0} に変更されました</system:String>
     <system:String x:Key="MigrationBackupFailed">旧データベースを自動でバックアップできませんでした。ログを保存し、手動で対応してください。</system:String>
     <system:String x:Key="ToolboxSectionCaption">メディア / ツール</system:String>
     <system:String x:Key="SettingsSectionCaption">システム / 環境設定</system:String>
-    <system:String x:Key="UnavailableMediaTitle">視聴できない動画</system:String>
+    <system:String x:Key="UnavailableMediaTitle">視聴できなくなった動画</system:String>
 </ResourceDictionary>
