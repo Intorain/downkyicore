@@ -9,21 +9,15 @@ public sealed class LoginHelperTests
     [Fact]
     public void PersistedWireCookieValueSurvivesReloadWithoutAdditionalEncoding()
     {
-        var cookies = new[]
-        {
-            new DownKyiCookie(
-                "SESSDATA",
-                "fixture%2Fvalue",
-                ".bilibili.com",
-                isWireValue: true)
-        };
+        var cookies = BilibiliCookieProvider.ParseBrowserCookieHeader(
+            "Cookie: SESSDATA=fixture%2Fvalue");
 
         Assert.True(LoginHelper.SaveLoginInfoCookies(cookies));
 
         var reloaded = Assert.Single(LoginHelper.GetLoginInfoCookies());
         Assert.Equal("fixture%2Fvalue", reloaded.Value);
         Assert.True(reloaded.IsWireValue);
-        Assert.Equal("SESSDATA=fixture%2Fvalue", LoginHelper.GetLoginInfoCookiesString());
+        Assert.Equal("SESSDATA=fixture%2Fvalue", new BilibiliCookieProvider().GetCookieHeader());
     }
 
     [Fact]

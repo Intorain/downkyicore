@@ -118,7 +118,7 @@ public sealed class LoginCoordinatorTests
             NullLogger<LoginCoordinator>.Instance,
             client,
             sessionFactory);
-        var cookies = BrowserCookieParser.ParseHeader(
+        var cookies = BilibiliCookieProvider.ParseBrowserCookieHeader(
             "Cookie: SESSDATA=fixture%2Fsession");
 
         var candidate = Assert.Single(cookies);
@@ -151,7 +151,7 @@ public sealed class LoginCoordinatorTests
             NullLogger<LoginCoordinator>.Instance,
             new TestBilibiliApiClient(),
             sessionFactory);
-        var cookies = BrowserCookieParser.ParseHeader("not-a-cookie; =missing-name; empty=");
+        var cookies = BilibiliCookieProvider.ParseBrowserCookieHeader("not-a-cookie; =missing-name; empty=");
 
         Assert.Empty(cookies);
         var result = await coordinator.CommitLoginCookiesAsync(
@@ -179,7 +179,7 @@ public sealed class LoginCoordinatorTests
             NullLogger<LoginCoordinator>.Instance,
             new TestBilibiliApiClient(),
             sessionFactory);
-        var cookies = BrowserCookieParser.ParseHeader(
+        var cookies = BilibiliCookieProvider.ParseBrowserCookieHeader(
             "SESSDATA=fixture%2Fsession\r\nX-Next-Header: fixture-secret");
 
         Assert.Empty(cookies);

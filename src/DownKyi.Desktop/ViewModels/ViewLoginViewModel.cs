@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Core.BiliApi;
+using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Services.Account;
 using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
@@ -225,7 +226,7 @@ internal class ViewLoginViewModel : ViewModelBase
         var cancellationToken = CancellationToken.None;
         try
         {
-            var cookies = BrowserCookieParser.ParseHeader(BrowserCookieHeader);
+            var cookies = BilibiliCookieProvider.ParseBrowserCookieHeader(BrowserCookieHeader);
             if (cookies.Count == 0)
             {
                 Notifications.Show(DictionaryResource.GetString("BrowserCookieInvalid"));
