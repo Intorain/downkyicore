@@ -16,7 +16,6 @@ using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Infrastructure.Storage;
 using DownKyi.Infrastructure.Storage.Database;
 using DownKyi.Models;
-using DownKyi.Services.Download;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -48,17 +47,16 @@ internal interface ILegacyUpgradeCoordinator
 internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
 {
     private const int BatchSize = 200;
-    private readonly DownloadTaskProjectionStore _projectionStore;
+    private readonly IDownloadHistoryService _history;
     private readonly IClock _clock;
     private readonly ILogger<LegacyUpgradeCoordinator> _logger;
 
     public LegacyUpgradeCoordinator(
-        DownloadTaskProjectionStore projectionStore,
+        IDownloadHistoryService history,
         IClock clock,
         ILogger<LegacyUpgradeCoordinator> logger)
     {
-        _projectionStore = projectionStore
-            ?? throw new ArgumentNullException(nameof(projectionStore));
+        _history = history ?? throw new ArgumentNullException(nameof(history));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -449,15 +447,17 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
         }
     }
 
-    private async Task PersistBatchAsync(
+    internal async Task PersistBatchAsync(
         IEnumerable<DownloadHistoryRecord> batch,
         CancellationToken cancellationToken)
     {
         foreach (var history in batch)
         {
-            await _projectionStore
-                .AddMigratedHistoryAsync(history, cancellationToken)
-                .ConfigureAwait(false);
+            var result = await _history.AddAsync(history, cancellationToken).ConfigureAwait(false);
+            if (!result.IsSuccess)
+            {
+                throw new InvalidOperationException(result.Error?.Message ?? "Download storage operation failed.");
+            }
         }
     }
 

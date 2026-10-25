@@ -94,20 +94,6 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
         return tasks.Select(CreateDownloadingProjection).ToArray();
     }
 
-    public async Task AddMigratedHistoryAsync(
-        DownloadHistoryRecord history,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(history);
-        var result = await _history.AddAsync(history, cancellationToken).ConfigureAwait(true);
-        if (result.IsSuccess)
-        {
-            return;
-        }
-
-        ThrowStoreFailure(result.Error?.Message);
-    }
-
     public async Task RemoveDownloadedAsync(
         DownloadedItem? downloadedItem,
         CancellationToken cancellationToken = default)
