@@ -14,6 +14,7 @@ using DownKyi.Desktop.Appearance;
 using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Infrastructure.Settings;
 using DownKyi.Infrastructure.Storage;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.Platform;
 using DownKyi.Services;
 using DownKyi.Services.Account;
@@ -48,12 +49,12 @@ internal static class DesktopComposition
         services.AddSingleton(logService);
         services.AddHttpClient("DownKyi.Images", client =>
             client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient<VersionCheckerService>(client =>
+        services.AddHttpClient(nameof(VersionCheckerService), client =>
         {
             client.BaseAddress = new Uri("https://api.github.com/");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("downkyi");
             client.Timeout = TimeSpan.FromSeconds(3);
-        });
+        }).AddTypedClient(client => new VersionCheckerService(client, AppConstant.RepoOwner, AppConstant.RepoName));
         services.AddSingleton<IAsyncImageLoader>(provider =>
             new DiskCachedWebImageLoader(
                 provider.GetRequiredService<IHttpClientFactory>().CreateClient("DownKyi.Images"),

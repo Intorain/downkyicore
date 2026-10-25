@@ -2,6 +2,7 @@ using System.Net;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Downloads;
 using DownKyi.Application.Settings;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.Platform;
 using DownKyi.Services;
 using DownKyi.Services.Download;

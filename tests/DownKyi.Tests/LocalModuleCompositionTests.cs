@@ -8,6 +8,7 @@ using DownKyi.Infrastructure.Downloads;
 using DownKyi.Infrastructure.FFmpeg;
 using DownKyi.Infrastructure.Logging;
 using DownKyi.Infrastructure.Settings;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.Platform;
 using DownKyi.Services.Download;
 using DownKyi.Services.Media;
@@ -62,6 +63,7 @@ public sealed class LocalModuleCompositionTests
             });
 
             var queueGateway = host.Services.GetRequiredService<DownloadTaskQueueGateway>();
+            Assert.NotNull(host.Services.GetRequiredService<VersionCheckerService>());
             Assert.Same(
                 host.Services.GetRequiredService<FfmpegProcessor>(),
                 host.Services.GetRequiredService<IFfmpegMediaMuxer>());

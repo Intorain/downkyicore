@@ -1,9 +1,8 @@
-using System;
 using System.Text.Json.Serialization;
 
-namespace DownKyi.Models;
+namespace DownKyi.Infrastructure.Versioning;
 
-internal class GitHubRelease
+public class GitHubRelease
 {
     [JsonPropertyName("tag_name")]
     public string TagName { get; set; } = string.Empty;

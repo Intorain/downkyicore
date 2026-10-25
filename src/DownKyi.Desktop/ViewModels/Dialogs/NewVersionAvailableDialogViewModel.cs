@@ -8,7 +8,7 @@ using DownKyi.Application.Desktop;
 using DownKyi.Application.Settings;
 using DownKyi.Application.Versioning;
 using DownKyi.Commands;
-using DownKyi.Models;
+using DownKyi.Infrastructure.Versioning;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels.Dialogs

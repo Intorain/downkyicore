@@ -1,6 +1,6 @@
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
-using DownKyi.Services;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.ViewModels.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

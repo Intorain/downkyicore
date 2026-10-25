@@ -1,41 +1,19 @@
-using System;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using DownKyi.Application.Versioning;
-using DownKyi.Models;
 
-namespace DownKyi.Services;
+namespace DownKyi.Infrastructure.Versioning;
 
-internal sealed class VersionCheckerService
+public sealed class VersionCheckerService
 {
     private readonly HttpClient _httpClient;
     private readonly string _repoOwner;
     private readonly string _repoName;
-    private readonly string _currentVersion;
 
-    public VersionCheckerService(HttpClient httpClient)
-        : this(httpClient, AppConstant.RepoOwner, AppConstant.RepoName)
-    {
-    }
-
-    internal VersionCheckerService(HttpClient httpClient, string repoOwner, string repoName)
-        : this(httpClient, repoOwner, repoName, new AppInfo().VersionName)
-    {
-    }
-
-    internal VersionCheckerService(
-        HttpClient httpClient,
-        string repoOwner,
-        string repoName,
-        string currentVersion)
+    public VersionCheckerService(HttpClient httpClient, string repoOwner, string repoName)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _repoOwner = repoOwner ?? throw new ArgumentNullException(nameof(repoOwner));
         _repoName = repoName ?? throw new ArgumentNullException(nameof(repoName));
-        _currentVersion = SemanticVersionPolicy.NormalizeForDisplay(currentVersion);
     }
 
     public async Task<GitHubRelease?> GetLatestReleaseAsync(
@@ -66,11 +44,6 @@ internal sealed class VersionCheckerService
         return latestRelease != null && !IsExcluded(latestRelease.TagName, excludedVersion)
             ? latestRelease
             : null;
-    }
-
-    public bool IsNewVersionAvailable(string latestVersion)
-    {
-        return SemanticVersionPolicy.IsNewer(latestVersion, _currentVersion);
     }
 
     private static bool IsExcluded(string releaseVersion, string? excludedVersion)

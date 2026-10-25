@@ -9,7 +9,9 @@ using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Settings;
+using DownKyi.Application.Versioning;
 using DownKyi.Commands;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.Models;
 using DownKyi.Services;
 using DownKyi.Utils;
@@ -150,7 +152,7 @@ internal class ViewAboutViewModel : ViewModelBase
                 return;
             }
 
-            if (_versionChecker.IsNewVersionAvailable(release!.TagName))
+            if (SemanticVersionPolicy.IsNewer(release!.TagName, new AppInfo().VersionName))
             {
                 await AppDialogs.ShowAsync(new AppDialogRequest(
                     AppDialog.NewVersionAvailable,
