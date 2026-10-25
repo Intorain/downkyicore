@@ -74,6 +74,9 @@ public sealed record DownloadHistoryRecord
     public string? MaximumSpeedText { get; }
     public DownloadContentSelection? RequestedContent { get; }
 
+    public DownloadContentSelection EffectiveRequestedContent =>
+        RequestedContent ?? DownloadContentSelection.All;
+
     public static DownloadHistoryRecord FromCompletedTask(DownloadTask task)
     {
         ArgumentNullException.ThrowIfNull(task);

@@ -234,7 +234,7 @@ internal static class DownloadTaskProjectionMapper
         return new DownloadBase
         {
             Id = history.Id.Value,
-            NeedDownloadContent = history.RequestedContent ?? DownloadContentSelection.All,
+            NeedDownloadContent = history.EffectiveRequestedContent,
             Cid = history.Cid,
             ZoneId = history.ZoneId,
             Order = history.Order,

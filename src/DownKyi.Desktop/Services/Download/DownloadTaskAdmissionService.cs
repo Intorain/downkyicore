@@ -17,6 +17,8 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
 {
     private readonly DownloadListState _downloadLists;
     private readonly IDownloadOutputReservationService _outputReservations;
+    private readonly IDownloadTaskLookup _tasks;
+    private readonly IDownloadHistoryService _history;
     private readonly DownloadTaskProjectionStore _projections;
     private readonly DownloadCommittedTaskDispatcher _committedTaskDispatcher;
     private readonly IDownloadRuntimeAvailability _runtimeAvailability;
@@ -27,6 +29,8 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
     public DownloadTaskAdmissionService(
         DownloadListState downloadLists,
         IDownloadOutputReservationService outputReservations,
+        IDownloadTaskLookup tasks,
+        IDownloadHistoryService history,
         DownloadTaskProjectionStore projections,
         DownloadCommittedTaskDispatcher committedTaskDispatcher,
         IDownloadRuntimeAvailability runtimeAvailability,
@@ -35,6 +39,8 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         _downloadLists = downloadLists ?? throw new ArgumentNullException(nameof(downloadLists));
         _outputReservations = outputReservations
             ?? throw new ArgumentNullException(nameof(outputReservations));
+        _tasks = tasks ?? throw new ArgumentNullException(nameof(tasks));
+        _history = history ?? throw new ArgumentNullException(nameof(history));
         _projections = projections ?? throw new ArgumentNullException(nameof(projections));
         _committedTaskDispatcher = committedTaskDispatcher
             ?? throw new ArgumentNullException(nameof(committedTaskDispatcher));
@@ -56,21 +62,23 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         try
         {
             var cid = item.DownloadBase.Cid;
-            var duplicateKey = DuplicateKey.From(item);
-            var active = await _projections
-                .GetDownloadingByCidAsync(cid, cancellationToken)
+            var duplicateKey = DuplicateKey.From(cid, item.DownloadBase.NeedDownloadContent);
+            var active = await _tasks
+                .GetUnfinishedByCidAsync(cid, cancellationToken)
                 .ConfigureAwait(true);
-            if (active.Any(existing => DuplicateKey.From(existing) == duplicateKey))
+            if (active.Any(existing => DuplicateKey.From(
+                    existing.Metadata.Media.Cid, existing.Plan.RequestedContent) == duplicateKey))
             {
                 return false;
             }
 
             if (!redownloadCompleted)
             {
-                var completed = await _projections
-                    .GetDownloadedByCidAsync(cid, cancellationToken)
+                var completed = await _history
+                    .GetByCidAsync(cid, cancellationToken)
                     .ConfigureAwait(true);
-                if (completed.Any(existing => DuplicateKey.From(existing) == duplicateKey))
+                if (completed.Any(existing => DuplicateKey.From(
+                        existing.Cid, existing.EffectiveRequestedContent) == duplicateKey))
                 {
                     return false;
                 }
@@ -128,20 +136,22 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         }
 
         var cids = items.Select(item => item.DownloadBase.Cid).Distinct().ToArray();
-        var active = await _projections
-            .GetDownloadingByCidsAsync(cids, cancellationToken)
+        var active = await _tasks
+            .GetUnfinishedByCidsAsync(cids, cancellationToken)
             .ConfigureAwait(true);
-        var completed = await _projections
-            .GetDownloadedByCidsAsync(cids, cancellationToken)
+        var completed = await _history
+            .GetByCidsAsync(cids, cancellationToken)
             .ConfigureAwait(true);
-        var activeKeys = active.Select(DuplicateKey.From).ToHashSet();
-        var completedKeys = completed.Select(DuplicateKey.From).ToHashSet();
+        var activeKeys = active.Select(task => DuplicateKey.From(
+            task.Metadata.Media.Cid, task.Plan.RequestedContent)).ToHashSet();
+        var completedKeys = completed.Select(history => DuplicateKey.From(
+            history.Cid, history.EffectiveRequestedContent)).ToHashSet();
         var incomingKeys = new HashSet<DuplicateKey>();
         var activeDuplicateIds = new HashSet<string>(StringComparer.Ordinal);
         var completedDuplicateIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in items)
         {
-            var key = DuplicateKey.From(item);
+            var key = DuplicateKey.From(item.DownloadBase.Cid, item.DownloadBase.NeedDownloadContent);
             if (activeKeys.Contains(key) || !incomingKeys.Add(key))
             {
                 activeDuplicateIds.Add(item.DownloadBase.Id);
@@ -175,12 +185,10 @@ internal sealed class DownloadTaskAdmissionService : IDisposable
         bool Subtitle,
         bool Cover)
     {
-        public static DuplicateKey From(DownloadBaseItem item)
+        public static DuplicateKey From(long cid, DownloadContentSelection content)
         {
-            ArgumentNullException.ThrowIfNull(item);
-            var content = item.DownloadBase.NeedDownloadContent;
             return new DuplicateKey(
-                item.DownloadBase.Cid,
+                cid,
                 content.Audio,
                 content.Video,
                 content.Danmaku,

@@ -73,27 +73,6 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
             tasks.Select(CreateDownloadingProjection).ToArray());
     }
 
-    public async Task<IReadOnlyList<DownloadingItem>> GetDownloadingByCidAsync(
-        long cid,
-        CancellationToken cancellationToken = default)
-    {
-        var tasks = await _tasks
-            .GetUnfinishedByCidAsync(cid, cancellationToken)
-            .ConfigureAwait(true);
-        return tasks.Select(CreateDownloadingProjection).ToArray();
-    }
-
-    public async Task<IReadOnlyList<DownloadingItem>> GetDownloadingByCidsAsync(
-        IReadOnlyCollection<long> cids,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(cids);
-        var tasks = await _tasks
-            .GetUnfinishedByCidsAsync(cids, cancellationToken)
-            .ConfigureAwait(true);
-        return tasks.Select(CreateDownloadingProjection).ToArray();
-    }
-
     public async Task RemoveDownloadedAsync(
         DownloadedItem? downloadedItem,
         CancellationToken cancellationToken = default)
@@ -135,27 +114,6 @@ internal sealed class DownloadTaskProjectionStore : IDisposable
         while (cursor != null);
 
         return items;
-    }
-
-    public async Task<IReadOnlyList<DownloadedItem>> GetDownloadedByCidAsync(
-        long cid,
-        CancellationToken cancellationToken = default)
-    {
-        var records = await _history
-            .GetByCidAsync(cid, cancellationToken)
-            .ConfigureAwait(false);
-        return records.Select(DownloadTaskProjectionMapper.ToDownloadedItem).ToArray();
-    }
-
-    public async Task<IReadOnlyList<DownloadedItem>> GetDownloadedByCidsAsync(
-        IReadOnlyCollection<long> cids,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(cids);
-        var records = await _history
-            .GetByCidsAsync(cids, cancellationToken)
-            .ConfigureAwait(false);
-        return records.Select(DownloadTaskProjectionMapper.ToDownloadedItem).ToArray();
     }
 
     public async Task ClearDownloadedAsync(CancellationToken cancellationToken = default)

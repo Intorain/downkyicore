@@ -32,7 +32,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             clock);
         var listState = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(listState, tasks, projections, queue);
+        using var admission = CreateAdmission(listState, tasks, historyService, projections, queue);
         var basePath = Path.Combine(_directory, "same-output");
         var first = CreateItem("first", basePath, cid: 1001);
         var second = CreateItem("second", basePath, cid: 2002);
@@ -63,7 +63,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
         var listState = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(listState, tasks, projections, queue);
+        using var admission = CreateAdmission(listState, tasks, historyService, projections, queue);
         var first = CreateItem("first", Path.Combine(_directory, "first"), cid: 1001);
         var second = CreateItem("second", Path.Combine(_directory, "second"), cid: 1001);
         first.DownloadBase.Resolution = new DownKyi.Core.BiliApi.BiliUtils.Quality
@@ -100,7 +100,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
         var list = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(list, tasks, projections, queue);
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
         const long cid = 1001;
         var completed = CreateItem("completed", Path.Combine(_directory, "completed"), cid);
         completed.DownloadBase.NeedDownloadContent = DownloadContentSelection.None with
@@ -152,9 +152,83 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
 
         Assert.Equal(2, list.Downloading.Count);
         Assert.Equal(2, queue.Enqueued.Count);
-        Assert.Single(await projections.GetDownloadedByCidAsync(
+        Assert.Single(await historyService.GetByCidAsync(
             cid,
             TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateChecksIgnoreMutableProjectionContent(bool reviewBatch)
+    {
+        using var store = CreateStore();
+        var clock = new SystemClock();
+        var historyService = DownloadHistoryService.CreateForSharedStore(store);
+        using var tasks = new DownloadTaskApplicationService(store, historyService, clock);
+        using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
+        var list = new DownloadListState();
+        var queue = new RecordingDownloadTaskQueue();
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
+        var existing = CreateItem("persisted", Path.Combine(_directory, "persisted"), cid: 1001);
+        existing.DownloadBase.NeedDownloadContent = DownloadContentSelection.All;
+        await projections.AddDownloadingAsync(existing, TestContext.Current.CancellationToken);
+        existing.DownloadBase.NeedDownloadContent = DownloadContentSelection.None with { Audio = true };
+        var duplicate = CreateItem("duplicate", Path.Combine(_directory, "duplicate"), cid: 1001);
+        duplicate.DownloadBase.NeedDownloadContent = DownloadContentSelection.All;
+
+        if (reviewBatch)
+        {
+            var review = await admission.ReviewDuplicatesAsync([duplicate], TestContext.Current.CancellationToken);
+            Assert.Equal(duplicate.DownloadBase.Id, Assert.Single(review.ActiveDuplicateIds));
+            Assert.Empty(review.CompletedDuplicateIds);
+        }
+        else
+        {
+            Assert.False(await admission.AdmitAsync(duplicate, true, TestContext.Current.CancellationToken));
+        }
+
+        Assert.Single(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(list.Downloading);
+        Assert.Empty(queue.Enqueued);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyHistoryWithoutContentKeepsAllContentDuplicateIdentity(bool reviewBatch)
+    {
+        using var store = CreateStore();
+        var clock = new SystemClock();
+        var historyService = DownloadHistoryService.CreateForSharedStore(store);
+        using var tasks = new DownloadTaskApplicationService(store, historyService, clock);
+        using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
+        var list = new DownloadListState();
+        var queue = new RecordingDownloadTaskQueue();
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
+        var legacy = new DownloadHistoryRecord(
+            new DownloadTaskId("legacy"), 1001, 1, 1, "Series", "Episode", "01:00", "AVC",
+            80, "1080P", "AAC", "1 GB", [], 1_700_000_000, "finished", "25 MB/s");
+        Assert.True((await historyService.AddAsync(legacy, TestContext.Current.CancellationToken)).IsSuccess);
+        var duplicate = CreateItem("duplicate", Path.Combine(_directory, "duplicate"), cid: 1001);
+        duplicate.DownloadBase.NeedDownloadContent = DownloadContentSelection.All;
+
+        if (reviewBatch)
+        {
+            var review = await admission.ReviewDuplicatesAsync([duplicate], TestContext.Current.CancellationToken);
+            Assert.Equal(duplicate.DownloadBase.Id, Assert.Single(review.CompletedDuplicateIds));
+            Assert.Empty(review.ActiveDuplicateIds);
+        }
+        else
+        {
+            Assert.False(await admission.AdmitAsync(duplicate, true, TestContext.Current.CancellationToken));
+        }
+
+        Assert.Equal(DownloadContentSelection.All,
+            DownloadTaskProjectionMapper.ToDownloadedItem(legacy).DownloadBase.NeedDownloadContent);
+        Assert.Empty(await tasks.GetUnfinishedAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(list.Downloading);
+        Assert.Empty(queue.Enqueued);
     }
 
     [Fact]
@@ -168,7 +242,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
         var list = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(list, tasks, projections, queue);
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
         var basePath = Path.Combine(_directory, "cross-cid-auto");
         var media = CreateItem("cross-cid-media", basePath, cid: 1001);
         media.DownloadBase.NeedDownloadContent =
@@ -211,7 +285,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var projections = new DownloadTaskProjectionStore(tasks, historyService, clock);
         var list = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(list, tasks, projections, queue);
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
         var basePath = Path.Combine(_directory, "cross-cid-reject");
         var media = CreateItem("cross-cid-existing", basePath, cid: 1001);
         media.DownloadBase.NeedDownloadContent =
@@ -248,6 +322,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "same-cid-overlap");
@@ -282,6 +357,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "retryable-output");
@@ -319,6 +395,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "canceled-output");
@@ -358,6 +435,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "late-disk-collision");
@@ -390,6 +468,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "no-auto-suffix");
@@ -426,7 +505,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             clock);
         var list = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(list, tasks, projections, queue);
+        using var admission = CreateAdmission(list, tasks, historyService, projections, queue);
         var basePath = Path.Combine(_directory, "db-no-auto-suffix");
         await admission.AdmitAsync(CreateItem("first", basePath), true, TestContext.Current.CancellationToken);
         var rejected = CreateItem("rejected", basePath);
@@ -455,6 +534,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             list,
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "shared-residual-output");
@@ -496,6 +576,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "foreign-sidecar-output");
@@ -530,6 +611,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "existing-nfo-output");
@@ -618,7 +700,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         var logicalBasePath = Path.Combine(_directory, "logical-alias", "cafe\u0301-output");
         var frozenBasePath = Path.Combine(_directory, "physical-target", "cafe\u0301-output");
         var resolver = new RecordingPhysicalOutputPathResolver(_ => frozenBasePath);
-        using var admission = CreateAdmission(listState, tasks, projections, queue, resolver);
+        using var admission = CreateAdmission(listState, tasks, historyService, projections, queue, resolver);
         var item = CreateItem("frozen", logicalBasePath);
 
         await admission.AdmitAsync(item, true, TestContext.Current.CancellationToken)
@@ -662,7 +744,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         var logicalBasePath = Path.Combine(_directory, "broken-alias", "output");
         var resolver = new RecordingPhysicalOutputPathResolver(
             _ => throw new IOException("Alias resolution failed."));
-        using var admission = CreateAdmission(listState, tasks, projections, queue, resolver);
+        using var admission = CreateAdmission(listState, tasks, historyService, projections, queue, resolver);
         var item = CreateItem("unresolved", logicalBasePath);
 
         await Assert.ThrowsAsync<IOException>(() => admission.AdmitAsync(
@@ -692,7 +774,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             clock);
         var listState = new DownloadListState();
         var queue = new RecordingDownloadTaskQueue();
-        using var admission = CreateAdmission(listState, tasks, projections, queue);
+        using var admission = CreateAdmission(listState, tasks, historyService, projections, queue);
         var item = CreateItem("rejected", Path.Combine(_directory, "rejected-output"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => admission.AdmitAsync(
@@ -723,6 +805,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             listState,
             tasks,
+            historyService,
             projections,
             gateway,
             runtimeAvailability: gateway);
@@ -754,6 +837,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             listState,
             tasks,
+            historyService,
             projections,
             gateway,
             runtimeAvailability: gateway);
@@ -788,6 +872,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             listState,
             tasks,
+            historyService,
             projections,
             new RuntimeUnavailableQueue());
         var item = CreateItem("runtime-failed-after-commit", Path.Combine(_directory, "output"));
@@ -823,6 +908,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue(),
             resolver);
@@ -883,7 +969,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             historyService,
             clock);
         using var admission = CreateAdmission(
-            new DownloadListState(), tasks, projections, new RecordingDownloadTaskQueue());
+            new DownloadListState(), tasks, historyService, projections, new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "video");
         await AdmitThreeWithHoleAsync(admission, basePath);
 
@@ -906,7 +992,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             historyService,
             clock);
         using var admission = CreateAdmission(
-            new DownloadListState(), tasks, projections, new RecordingDownloadTaskQueue());
+            new DownloadListState(), tasks, historyService, projections, new RecordingDownloadTaskQueue());
         var basePath = Path.Combine(_directory, "video");
         await AdmitThreeWithHoleAsync(admission, basePath);
         await File.WriteAllTextAsync(
@@ -933,7 +1019,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
                 firstHistoryService,
                 clock);
             using var firstAdmission = CreateAdmission(
-                new DownloadListState(), firstTasks, firstProjections, new RecordingDownloadTaskQueue());
+                new DownloadListState(), firstTasks, firstHistoryService, firstProjections, new RecordingDownloadTaskQueue());
             await AdmitThreeWithHoleAsync(firstAdmission, basePath);
         }
 
@@ -946,7 +1032,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             reopenedHistoryService,
             reopenedClock);
         using var reopenedAdmission = CreateAdmission(
-            new DownloadListState(), reopenedTasks, reopenedProjections, new RecordingDownloadTaskQueue());
+            new DownloadListState(), reopenedTasks, reopenedHistoryService, reopenedProjections, new RecordingDownloadTaskQueue());
         var next = CreateItem("after-reopen", basePath);
         await reopenedAdmission.AdmitAsync(next, true, TestContext.Current.CancellationToken);
 
@@ -969,6 +1055,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         using var admission = CreateAdmission(
             new DownloadListState(),
             tasks,
+            historyService,
             projections,
             new RecordingDownloadTaskQueue());
 
@@ -1003,7 +1090,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             historyService,
             clock);
         using var admission = CreateAdmission(
-            new DownloadListState(), tasks, projections, new RecordingDownloadTaskQueue());
+            new DownloadListState(), tasks, historyService, projections, new RecordingDownloadTaskQueue());
 
         const int admissionCount = 64;
         for (var index = 0; index < admissionCount; index++)
@@ -1035,7 +1122,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
             historyService,
             clock);
         using var admission = CreateAdmission(
-            new DownloadListState(), tasks, projections, new RecordingDownloadTaskQueue());
+            new DownloadListState(), tasks, historyService, projections, new RecordingDownloadTaskQueue());
         var decomposed = Path.Combine(_directory, "cafe\u0301-legacy-admission");
         var composed = Path.Combine(_directory, "caf\u00e9-legacy-admission");
         await admission.AdmitAsync(
@@ -1092,6 +1179,7 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
     private static DownloadTaskAdmissionService CreateAdmission(
         DownloadListState listState,
         IDownloadTaskApplicationService tasks,
+        IDownloadHistoryService historyService,
         DownloadTaskProjectionStore projections,
         IDownloadTaskQueue queue,
         IPhysicalOutputPathResolver? resolver = null,
@@ -1101,6 +1189,8 @@ public sealed class DownloadTaskAdmissionServiceTests : IDisposable
         return new DownloadTaskAdmissionService(
             listState,
             tasks,
+            tasks,
+            historyService,
             projections,
             new DownloadCommittedTaskDispatcher(queue, stateWriter),
             runtimeAvailability ?? new ReadyDownloadRuntimeAvailability(),
