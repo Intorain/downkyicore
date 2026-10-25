@@ -106,7 +106,7 @@ internal sealed class NetworkSettingsCoordinator : INetworkSettingsCoordinator
         if (result == AppDialogOutcome.Accepted &&
             !await _applicationLifecycle.RestartAsync(cancellationToken).ConfigureAwait(true))
         {
-            _notifications.Show("无法重新启动应用，请查看日志");
+            _notifications.Show(DictionaryResource.GetString("MigrationRestartFailed"));
         }
 
         return succeeded;

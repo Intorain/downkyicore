@@ -62,6 +62,7 @@ internal static class DesktopComposition
                 Path.Combine(ApplicationStorage.GetCache(), "Images")));
         services.AddSingleton<ISettingsStore, SettingsStore>();
         services.AddSingleton<DesktopThemeController>();
+        services.AddSingleton<DesktopLanguageController>();
         services.AddSingleton<IBilibiliCookieProvider, BilibiliCookieProvider>();
         services.AddDownKyiBilibiliInfrastructure(provider =>
         {

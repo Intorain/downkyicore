@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using Avalonia.Threading;
 
 namespace DownKyi.Utils;
@@ -28,6 +30,21 @@ internal static class DictionaryResource
             return obj;
         });
         return obj == null ? "" : (string)obj;
+    }
+
+    public static string GetString(string resourceKey, string fallback)
+    {
+        var value = GetString(resourceKey);
+        return string.IsNullOrEmpty(value) ? fallback : value;
+    }
+
+    public static string Format(string resourceKey, string fallback, params object?[] arguments)
+    {
+        var format = GetString(resourceKey, fallback);
+        return string.Format(
+            CultureInfo.CurrentCulture,
+            CompositeFormat.Parse(format),
+            arguments);
     }
 
     public static T Get<T>(string resourceKey)

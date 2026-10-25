@@ -49,7 +49,10 @@ public partial class SettingsManager
                 GetAfterDownloadOperation(),
                 GetIsListenClipboard(),
                 GetDownloadFinishedSort(),
-                IsRepeatFileAutoAddNumberSuffix()),
+                IsRepeatFileAutoAddNumberSuffix())
+            {
+                UiLanguage = UiLanguage
+            },
             new NetworkApplicationSettings(
                 GetIsLiftingOfRegion(),
                 GetUserAgent(),
@@ -127,6 +130,7 @@ public partial class SettingsManager
             {
                 SetProperty(_appSettings.SchemaVersion, validated.SchemaVersion, value => _appSettings.SchemaVersion = value);
                 SetThemeMode(validated.Basic.ThemeMode);
+                SetUiLanguage(validated.Basic.UiLanguage);
                 SetAfterDownloadOperation(validated.Basic.AfterDownload);
                 SetIsListenClipboard(validated.Basic.IsListenClipboard);
                 SetDownloadFinishedSort(validated.Basic.DownloadFinishedSort);

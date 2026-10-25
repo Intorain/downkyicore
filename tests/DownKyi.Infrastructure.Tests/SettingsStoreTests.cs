@@ -221,6 +221,7 @@ public sealed class SettingsStoreTests
 
             Assert.Equal(ApplicationSettingsValidator.CurrentSchemaVersion, store.Current.SchemaVersion);
             Assert.Equal(ThemeMode.Dark, store.Current.Basic.ThemeMode);
+            Assert.Equal(UiLanguage.ChineseSimplified, store.Current.Basic.UiLanguage);
 
             await store.FlushAsync(TestContext.Current.CancellationToken);
             using var document = JsonDocument.Parse(await File.ReadAllTextAsync(

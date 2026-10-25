@@ -1,10 +1,46 @@
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace DownKyi.Architecture.Tests;
 
 public sealed class UiThemeArchitectureTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();
+
+    [Fact]
+    public void DesktopLanguagesKeepTheSameKeysAndFormatArguments()
+    {
+        var baseline = ReadLanguage("Default.axaml");
+        foreach (var language in new[] { "zh-TW.axaml", "en-US.axaml", "ja-JP.axaml" })
+        {
+            var translated = ReadLanguage(language);
+            Assert.Equal(baseline.Keys.Order(StringComparer.Ordinal), translated.Keys.Order(StringComparer.Ordinal));
+            foreach (var (key, value) in baseline)
+            {
+                Assert.Equal(
+                    FormatArguments(value),
+                    FormatArguments(translated[key]));
+            }
+        }
+    }
+
+    private static Dictionary<string, string> ReadLanguage(string fileName)
+    {
+        var document = XDocument.Parse(ReadSource("src", "DownKyi.Desktop", "Languages", fileName));
+        var keyNamespace = XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
+        return document.Root!.Elements().ToDictionary(
+            element => (string)element.Attribute(keyNamespace + "Key")!,
+            element => element.Value,
+            StringComparer.Ordinal);
+    }
+
+    private static string[] FormatArguments(string value)
+    {
+        return Regex.Matches(value, @"\{\d+(?::[^}]*)?\}")
+            .Select(match => match.Value)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
 
     [Fact]
     public void DesktopUsesOneFluentThemeAndCentralDesignTokens()

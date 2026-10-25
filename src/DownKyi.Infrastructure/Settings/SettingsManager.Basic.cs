@@ -3,6 +3,16 @@ namespace DownKyi.Infrastructure.Settings;
 
 public partial class SettingsManager
 {
+    public UiLanguage UiLanguage => _appSettings.Basic.UiLanguage;
+
+    public bool SetUiLanguage(UiLanguage language)
+    {
+        return SetProperty(
+            _appSettings.Basic.UiLanguage,
+            language,
+            value => _appSettings.Basic.UiLanguage = value);
+    }
+
     // 默认下载完成后的操作
     private const AfterDownloadOperation AfterDownload = AfterDownloadOperation.None;
 

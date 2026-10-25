@@ -62,7 +62,7 @@
                         IsVisible="{Binding CancelConfirmationVisible}"
                         FontSize="16"
                         TextWrapping="Wrap"
-                        Text="确定要取消数据迁移吗？已完成写入的数据会保留；剩余迁移可在下次启动时重新尝试。" />
+                        Text="{DynamicResource MigrationCancelConfirmation}" />
                 </StackPanel>
             </ScrollViewer>
             <Border Name="DialogFooter" Classes="dialog-footer" Grid.Row="2">
@@ -72,14 +72,14 @@
                             Name="RequestCancelMigrationButton"
                             IsVisible="{Binding IsMigrationActive}"
                             Command="{Binding RequestCancelMigrationCommand}"
-                            Content="取消迁移"
+                            Content="{DynamicResource MigrationCancel}"
                             MinWidth="104" />
                         <Button
                             Name="RestartMigrationButton"
                             Classes="studio-primary"
                             IsVisible="{Binding RestartVisible}"
                             Command="{Binding RestartCommand}"
-                            Content="立即重启"
+                            Content="{DynamicResource MigrationRestartNow}"
                             MinWidth="104" />
                     </WrapPanel>
                     <WrapPanel IsVisible="{Binding CancelConfirmationVisible}" HorizontalAlignment="Right">
@@ -87,13 +87,13 @@
                             Name="ContinueMigrationButton"
                             Classes="studio-primary"
                             Command="{Binding ContinueMigrationCommand}"
-                            Content="继续迁移"
+                            Content="{DynamicResource MigrationContinue}"
                             Margin="0,0,12,0"
                             MinWidth="104" />
                         <Button
                             Name="ConfirmCancelMigrationButton"
                             Command="{Binding ConfirmCancelMigrationCommand}"
-                            Content="取消迁移"
+                            Content="{DynamicResource MigrationCancel}"
                             MinWidth="104" />
                     </WrapPanel>
                 </Grid>

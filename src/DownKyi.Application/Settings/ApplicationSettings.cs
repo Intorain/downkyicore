@@ -39,7 +39,10 @@ public sealed record BasicApplicationSettings(
     AfterDownloadOperation AfterDownload,
     AllowStatus IsListenClipboard,
     DownloadFinishedSort DownloadFinishedSort,
-    bool RepeatFileAutoAddNumberSuffix);
+    bool RepeatFileAutoAddNumberSuffix)
+{
+    public UiLanguage UiLanguage { get; init; }
+}
 
 public sealed record NetworkApplicationSettings(
     AllowStatus IsLiftingOfRegion,
