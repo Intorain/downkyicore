@@ -1,4 +1,9 @@
+using DownKyi.Application.Downloads;
+using DownKyi.Domain.Downloads;
+using DownKyi.Domain.Results;
+using DownKyi.Infrastructure.Time;
 using DownKyi.Services.Migration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DownKyi.Tests;
 
@@ -49,5 +54,105 @@ public sealed class LegacyUpgradeCoordinatorTests
 
         Assert.Contains("fixture", exception.Message, StringComparison.Ordinal);
         Assert.Contains("System.String", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task MigratedHistoryBatchPreservesRecordsAndCancellationToken()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var records = new[] { CreateHistory("first"), CreateHistory("second") };
+        var written = new List<DownloadHistoryRecord>();
+        var history = new StubHistoryService((record, token) =>
+        {
+            Assert.Equal(cancellationToken, token);
+            written.Add(record);
+            return Task.FromResult(OperationResult.Success());
+        });
+
+        await CreateCoordinator(history).PersistBatchAsync(records, cancellationToken);
+
+        Assert.Equal(records, written);
+    }
+
+    [Fact]
+    public async Task FailedHistoryWriteStopsTheBatchAndRetainsMigrationFailureSemantics()
+    {
+        var written = new List<string>();
+        var history = new StubHistoryService((record, _) =>
+        {
+            written.Add(record.Id.Value);
+            return Task.FromResult(written.Count == 1
+                ? OperationResult.Success()
+                : OperationResult.Failure(new OperationError(
+                    "test.history.failed", "History write failed.", OperationErrorKind.Conflict)));
+        });
+
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateCoordinator(history).PersistBatchAsync(
+                [CreateHistory("first"), CreateHistory("failed"), CreateHistory("remaining")],
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal("History write failed.", failure.Message);
+        Assert.True(LegacyUpgradeCoordinator.IsMigrationException(failure));
+        Assert.Equal(["first", "failed"], written);
+    }
+
+    [Fact]
+    public async Task CanceledHistoryWritePropagatesCancellationAndStopsTheBatch()
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
+        var writes = 0;
+        var history = new StubHistoryService(async (_, token) =>
+        {
+            writes++;
+            await cancellation.CancelAsync().ConfigureAwait(true);
+            return await Task.FromCanceled<OperationResult>(token).ConfigureAwait(true);
+        });
+
+        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateCoordinator(history).PersistBatchAsync(
+                [CreateHistory("canceled"), CreateHistory("remaining")], cancellation.Token));
+
+        Assert.Equal(cancellation.Token, failure.CancellationToken);
+        Assert.False(LegacyUpgradeCoordinator.IsMigrationException(failure));
+        Assert.Equal(1, writes);
+    }
+
+    private static LegacyUpgradeCoordinator CreateCoordinator(IDownloadHistoryService history) =>
+        new(history, new SystemClock(), NullLogger<LegacyUpgradeCoordinator>.Instance);
+
+    private static DownloadHistoryRecord CreateHistory(string id) =>
+        new(new DownloadTaskId(id), 42, 1, 1, "Series", "Episode", "01:00", "AVC",
+            80, "1080P", "AAC", "1 GB", [], 1_700_000_000, "finished", "25 MB/s",
+            DownloadContentSelection.None);
+
+    private sealed class StubHistoryService(
+        Func<DownloadHistoryRecord, CancellationToken, Task<OperationResult>> addAsync)
+        : IDownloadHistoryService
+    {
+        public Task<OperationResult> AddAsync(DownloadHistoryRecord history, CancellationToken cancellationToken) =>
+            addAsync(history, cancellationToken);
+
+        public Task<OperationResult> CompleteAsync(
+            DownloadTask completedTask, long expectedVersion, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<DownloadHistoryPage> GetPageAsync(
+            DownloadHistoryCursor? cursor, int pageSize, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DownloadHistoryRecord>> GetByCidAsync(long cid, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DownloadHistoryRecord>> GetByCidsAsync(
+            IReadOnlyCollection<long> cids, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<OperationResult> DeleteAsync(DownloadTaskId taskId, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<OperationResult> ClearAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }
