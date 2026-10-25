@@ -5,6 +5,12 @@ namespace DownKyi.Desktop.Tests;
 
 public sealed class DownloadFailurePresentationTests
 {
+    private static readonly string[] UnknownFailureCodes =
+    [
+        "download.artifact.subtitle.future.io",
+        "download.transfer.tls.future"
+    ];
+
     [AvaloniaFact]
     public Task MissingSelectedSubtitleShowsSpecificFailureInsteadOfGenericDownloadFailure()
     {
@@ -104,14 +110,28 @@ public sealed class DownloadFailurePresentationTests
         return AvaloniaTestDispatcher.RunAsync(() =>
         {
             DesktopTestResources.EnsureDownloadProjectionResources();
-            var failure = DownloadActivityPresenter.CreateFailure(OperationError.Unexpected(
-                "download.transfer.tls.expired",
-                "Sensitive certificate details."));
-            var details = DownloadActivityPresenter.FormatFailureDetails(failure);
+            var expectations = new[]
+            {
+                ("download.transfer.tls.untrusted", "下载失败：服务器证书不受信任"),
+                ("download.transfer.tls.expired", "下载失败：服务器证书已过期"),
+                ("download.transfer.tls.not-yet-valid", "下载失败：服务器证书尚未生效"),
+                ("download.transfer.tls.hostname", "下载失败：服务器证书与主机名不匹配"),
+                ("download.transfer.tls.chain", "下载失败：服务器证书链无效"),
+                ("download.transfer.tls.handshake", "下载失败：TLS 安全连接验证失败")
+            };
+            foreach (var (code, expectedMessage) in expectations)
+            {
+                var failure = DownloadActivityPresenter.CreateFailure(OperationError.Unexpected(
+                    code,
+                    "Sensitive certificate details."));
+                var details = DownloadActivityPresenter.FormatFailureDetails(failure);
 
-            Assert.True(failure.IsTransient);
-            Assert.Contains("证书设置", details, StringComparison.Ordinal);
-            Assert.Contains("再重试", details, StringComparison.Ordinal);
+                Assert.Equal(code, failure.Code);
+                Assert.Equal(expectedMessage, failure.Message);
+                Assert.True(failure.IsTransient);
+                Assert.Contains("证书设置", details, StringComparison.Ordinal);
+                Assert.Contains("再重试", details, StringComparison.Ordinal);
+            }
         });
     }
 
@@ -177,15 +197,19 @@ public sealed class DownloadFailurePresentationTests
         return AvaloniaTestDispatcher.RunAsync(() =>
         {
             DesktopTestResources.EnsureDownloadProjectionResources();
-            var details = DownloadActivityPresenter.FormatFailureDetails(
-                new DownKyi.Domain.Downloads.DownloadFailure(
-                    "download.artifact.subtitle.future.io",
-                    "下载失败",
-                    true));
+            foreach (var code in UnknownFailureCodes)
+            {
+                var failure = DownloadActivityPresenter.CreateFailure(OperationError.Unexpected(
+                    code,
+                    "Sensitive certificate details."));
+                var details = DownloadActivityPresenter.FormatFailureDetails(failure);
 
-            Assert.Contains("暂时无法判断具体原因", details, StringComparison.Ordinal);
-            Assert.DoesNotContain("下载目录权限", details, StringComparison.Ordinal);
-            Assert.DoesNotContain("所选字幕", details, StringComparison.Ordinal);
+                Assert.Equal("下载失败", failure.Message);
+                Assert.Contains("暂时无法判断具体原因", details, StringComparison.Ordinal);
+                Assert.DoesNotContain("下载目录权限", details, StringComparison.Ordinal);
+                Assert.DoesNotContain("所选字幕", details, StringComparison.Ordinal);
+                Assert.DoesNotContain("证书设置", details, StringComparison.Ordinal);
+            }
         });
     }
 

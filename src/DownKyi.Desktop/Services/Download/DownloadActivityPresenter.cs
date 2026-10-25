@@ -123,29 +123,31 @@ internal sealed class DownloadActivityPresenter
                 true);
         }
 
-        if (!TlsFailureClassifier.IsTlsErrorCode(error.Code))
+        if (error.Code is "download.media.recreate-task"
+            or "download.resolve.recreate-task"
+            or "download.media.contract"
+            or "download.media.durl-audio-only"
+            or "download.validate.published-missing")
         {
-            if (error.Code is "download.media.recreate-task"
-                or "download.resolve.recreate-task"
-                or "download.media.contract"
-                or "download.media.durl-audio-only"
-                or "download.validate.published-missing")
-            {
-                return new DownloadFailure(
-                    error.Code,
-                    DictionaryResource.GetString("DownloadFailed"),
-                    false);
-            }
-
             return new DownloadFailure(
                 error.Code,
                 DictionaryResource.GetString("DownloadFailed"),
-                true);
+                false);
         }
 
+        var resourceKey = error.Code switch
+        {
+            "download.transfer.tls.untrusted" => "DownloadTlsUntrusted",
+            "download.transfer.tls.expired" => "DownloadTlsExpired",
+            "download.transfer.tls.not-yet-valid" => "DownloadTlsNotYetValid",
+            "download.transfer.tls.hostname" => "DownloadTlsHostnameMismatch",
+            "download.transfer.tls.chain" => "DownloadTlsInvalidChain",
+            "download.transfer.tls.handshake" => "DownloadTlsHandshakeFailed",
+            _ => "DownloadFailed"
+        };
         return new DownloadFailure(
             error.Code,
-            DictionaryResource.GetString(TlsFailureClassifier.GetResourceKey(error.Code)),
+            DictionaryResource.GetString(resourceKey),
             true);
     }
 

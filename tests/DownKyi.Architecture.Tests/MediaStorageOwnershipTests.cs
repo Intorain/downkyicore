@@ -2,6 +2,7 @@ using DownKyi.Application.Media;
 using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Users;
 using DownKyi.Infrastructure.Bilibili;
+using DownKyi.Infrastructure.Downloads;
 using DownKyi.Infrastructure.FFmpeg;
 using DownKyi.Infrastructure.Settings;
 using DownKyi.Infrastructure.Storage;
@@ -13,6 +14,7 @@ public sealed class MediaStorageOwnershipTests
 {
     [Theory]
     [InlineData(typeof(FfmpegProcessor))]
+    [InlineData(typeof(TlsFailureClassifier))]
     [InlineData(typeof(SettingsStore))]
     [InlineData(typeof(SettingsManager))]
     [InlineData(typeof(ApplicationStorage))]
