@@ -9,6 +9,8 @@ using CommunityToolkit.Mvvm.Input;
 using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Settings;
+using DownKyi.Application.Versioning;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.Models;
 using DownKyi.Platform;
 using DownKyi.Services;
@@ -469,7 +471,7 @@ internal sealed class MainWindowViewModel : ObservableObject, IDisposable
                     about.SkipVersionOnLaunch,
                     _lifetimeToken)
                 .ConfigureAwait(true);
-            if (release != null && _versionChecker.IsNewVersionAvailable(release.TagName))
+            if (release != null && SemanticVersionPolicy.IsNewer(release.TagName, new AppInfo().VersionName))
             {
                 await _dialogService.ShowAsync(new AppDialogRequest(
                     AppDialog.NewVersionAvailable,

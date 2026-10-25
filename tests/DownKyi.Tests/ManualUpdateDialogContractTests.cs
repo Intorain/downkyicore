@@ -1,5 +1,5 @@
 using DownKyi.Application.Desktop;
-using DownKyi.Models;
+using DownKyi.Infrastructure.Versioning;
 using DownKyi.ViewModels.Dialogs;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
-using DownKyi.Models;
 
-namespace DownKyi.Services;
+namespace DownKyi.Infrastructure.Versioning;
 
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(GitHubRelease))]

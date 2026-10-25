@@ -124,7 +124,7 @@ public sealed class LoggingMigrationArchitectureTests
 
     [Theory]
     [InlineData("src/DownKyi.Desktop/CustomAction/ScrollIntoViewBehavior.cs")]
-    [InlineData("src/DownKyi.Desktop/Services/VersionCheckerService.cs")]
+    [InlineData("src/DownKyi.Infrastructure/Versioning/VersionCheckerService.cs")]
     [InlineData("src/DownKyi.Desktop/ViewModels/Dialogs/ViewDownloadSetterViewModel.cs")]
     [InlineData("src/DownKyi.Desktop/ViewModels/MainWindowViewModel.cs")]
     [InlineData("src/DownKyi.Desktop/ViewModels/Toolbox/ViewBiliHelperViewModel.cs")]
@@ -149,8 +149,8 @@ public sealed class LoggingMigrationArchitectureTests
             "MainWindowViewModel.cs"));
         var versionCheckerSource = File.ReadAllText(Path.Combine(
             RepositoryRoot,
-            "src", "DownKyi.Desktop",
-            "Services",
+            "src", "DownKyi.Infrastructure",
+            "Versioning",
             "VersionCheckerService.cs"));
 
         Assert.Contains("ILogger<MainWindowViewModel>", mainWindowSource, StringComparison.Ordinal);

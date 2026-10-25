@@ -41,6 +41,8 @@ Desktop composition root 只選擇模組；Navigation／Dialog／Download 的實
 
 Bilibili endpoint adapters 留在 `DownKyi.Core/BiliApi` 以維持 DTO 與協定相容。所有 production 呼叫必須使用注入的 async port：普通 API 經 `IBilibiliApiClient`；QR 登入由同一個隔離 `IBilibiliLoginSession` 貫穿 generate、poll 與 trusted callback，以保留 response cookies。Host 是 client、session factory、cookie、buvid 與 network settings 的唯一組合點；不得恢復 static client、global `Configure()` 或同步 HTTP compatibility path。
 
+GitHub release 的 HTTP、JSON contract 與解析由 Infrastructure 擁有；Desktop composition 提供 repository identity 與 HttpClient 設定，Desktop 決定何時檢查及顯示更新提示。版本比較與 skip-version 等價性共用 Application 的 `SemanticVersionPolicy`；HTTP service 不保存目前應用版本。
+
 ## Navigation 與 UserSpace invariant
 
 - ViewModel／caller 只依賴 Application 的 `IAppNavigationService` 與 `IAppDialogService`。只有 local composition 的 factories 可依 typed enum 選擇已註冊的 transient View／ViewModel；adapter 不得持有 container。
