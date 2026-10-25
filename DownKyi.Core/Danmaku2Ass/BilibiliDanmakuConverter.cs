@@ -90,39 +90,13 @@ public sealed class BilibiliDanmakuConverter
         return this;
     }
 
-    public async Task CreateAsync(
+    public async Task<IReadOnlyList<BiliDanmaku>> GetDanmakusAsync(
         IBilibiliApiClient client,
         long avid,
         long cid,
-        Config subtitleConfig,
-        string assFile,
-        CancellationToken cancellationToken = default)
-    {
-        await CreateAsync(
-            client,
-            avid,
-            cid,
-            subtitleConfig,
-            assFile,
-            xmlFile: null,
-            cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task CreateAsync(
-        IBilibiliApiClient client,
-        long avid,
-        long cid,
-        Config subtitleConfig,
-        string? assFile,
-        string? xmlFile,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(subtitleConfig);
-        if (string.IsNullOrWhiteSpace(assFile) && string.IsNullOrWhiteSpace(xmlFile))
-        {
-            throw new ArgumentException("At least one danmaku output file is required.");
-        }
 
         var biliDanmakus = (await client.GetAllDanmakuProtoAsync(
                 avid,
@@ -130,20 +104,7 @@ public sealed class BilibiliDanmakuConverter
                 cancellationToken).ConfigureAwait(false))
             .OrderBy(danmaku => danmaku.Progress)
             .ToArray();
-        var survivingDanmakus = CreateSurvivingSnapshot(biliDanmakus, cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(assFile))
-        {
-            CreateAss(subtitleConfig, assFile, survivingDanmakus, cancellationToken);
-        }
-
-        if (!string.IsNullOrWhiteSpace(xmlFile))
-        {
-            await BilibiliDanmakuXmlWriter.WriteAsync(
-                survivingDanmakus,
-                xmlFile,
-                cancellationToken).ConfigureAwait(false);
-        }
+        return CreateSurvivingSnapshot(biliDanmakus, cancellationToken);
     }
 
     private List<BiliDanmaku> CreateSurvivingSnapshot(
@@ -169,12 +130,14 @@ public sealed class BilibiliDanmakuConverter
         return survivingDanmakus;
     }
 
-    private void CreateAss(
+    public string CreateAss(
         Config subtitleConfig,
-        string assFile,
         IReadOnlyList<BiliDanmaku> biliDanmakus,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(subtitleConfig);
+        ArgumentNullException.ThrowIfNull(biliDanmakus);
+        cancellationToken.ThrowIfCancellationRequested();
         // 弹幕转换
 
         var danmakus = new List<Danmaku>();
@@ -200,10 +163,7 @@ public sealed class BilibiliDanmakuConverter
         producer.StartHandle();
 
         // 字幕生成
-        var keepedDanmakus = producer.KeepedDanmakus;
-        var studio = new Studio(subtitleConfig, keepedDanmakus);
-        studio.StartHandle();
-        studio.CreateAssFile(assFile);
+        return new Creater(subtitleConfig, producer.KeepedDanmakus).Text;
     }
 
     private bool IsExplicitlyFiltered(int mode)

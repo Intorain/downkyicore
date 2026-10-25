@@ -13,6 +13,23 @@ public sealed class MediaAndHttpRuntimeArchitectureTests
     ];
 
     [Fact]
+    public void CoreDanmakuConversionDoesNotOpenPhysicalOutputFiles()
+    {
+        var sources = Directory.EnumerateFiles(
+                Path.Combine(RepositoryRoot, "DownKyi.Core", "Danmaku2Ass"), "*.cs")
+            .Append(Path.Combine(RepositoryRoot, "DownKyi.Core", "BiliApi", "DanmakuApi",
+                "BilibiliDanmakuXmlWriter.cs"))
+            .Select(File.ReadAllText);
+
+        Assert.All(sources, source =>
+        {
+            Assert.DoesNotContain("File.", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("FileStream", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("StreamWriter", source, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void VideoMetadataDoesNotCaptureAnOperationTokenInLazyState()
     {
         var videoInfoSource = File.ReadAllText(Path.Combine(

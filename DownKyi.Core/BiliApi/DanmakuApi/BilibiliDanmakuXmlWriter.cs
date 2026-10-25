@@ -4,15 +4,13 @@ using DownKyi.Core.BiliApi.DanmakuApi.Models;
 
 namespace DownKyi.Core.BiliApi.DanmakuApi;
 
-internal static class BilibiliDanmakuXmlWriter
+public static class BilibiliDanmakuXmlWriter
 {
-    public static async Task WriteAsync(
+    public static XDocument CreateDocument(
         IReadOnlyList<BiliDanmaku> danmakus,
-        string filePath,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(danmakus);
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
         var root = new XElement("i");
@@ -25,20 +23,7 @@ internal static class BilibiliDanmakuXmlWriter
                 new XText(danmaku.Content)));
         }
 
-        var document = new XDocument(new XDeclaration("1.0", "utf-8", null), root);
-        var output = new FileStream(
-            filePath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            4096,
-            FileOptions.Asynchronous);
-        await using (output.ConfigureAwait(false))
-        {
-            await document.SaveAsync(output, SaveOptions.DisableFormatting, cancellationToken)
-                .ConfigureAwait(false);
-            await output.FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
+        return new XDocument(new XDeclaration("1.0", "utf-8", null), root);
     }
 
     private static string CreateParameter(BiliDanmaku danmaku)

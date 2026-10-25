@@ -5,12 +5,15 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using DownKyi.Application.Bilibili;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Settings;
+using DownKyi.Core.BiliApi.DanmakuApi;
 using DownKyi.Core.BiliApi.Models.Json;
 using DownKyi.Core.BiliApi.Sign;
 using DownKyi.Core.BiliApi.VideoStream;
@@ -180,19 +183,46 @@ internal sealed partial class DownloadArtifactWriter
                 settings.BlockedSenderUids);
         try
         {
+            if (string.IsNullOrWhiteSpace(assFile) && string.IsNullOrWhiteSpace(xmlFile))
+            {
+                throw new ArgumentException("At least one danmaku output file is required.");
+            }
+
             await _stateWriter.ClaimTransferFilesAsync(
                 taskId,
                 outputClaims,
                 cancellationToken).ConfigureAwait(false);
 
-            await converter.CreateAsync(
+            var danmakus = await converter.GetDanmakusAsync(
                 _client,
                 metadata.Media.Avid,
                 metadata.Media.Cid,
-                subtitleConfig,
-                assFile,
-                xmlFile,
                 cancellationToken).ConfigureAwait(false);
+            if (assFile != null)
+            {
+                var text = converter.CreateAss(subtitleConfig, danmakus, cancellationToken);
+                await File.WriteAllTextAsync(assFile, text, new UTF8Encoding(false), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            if (xmlFile != null)
+            {
+                var document = BilibiliDanmakuXmlWriter.CreateDocument(danmakus, cancellationToken);
+                var output = new FileStream(
+                    xmlFile,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    4096,
+                    FileOptions.Asynchronous);
+                await using (output.ConfigureAwait(false))
+                {
+                    await document.SaveAsync(output, SaveOptions.DisableFormatting, cancellationToken)
+                        .ConfigureAwait(false);
+                    await output.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+
             if (assFile != null && !DownloadFileIntegrity.Check(assFile).IsUsable ||
                 xmlFile != null && !DownloadFileIntegrity.CheckXml(xmlFile, "i").IsUsable)
             {
