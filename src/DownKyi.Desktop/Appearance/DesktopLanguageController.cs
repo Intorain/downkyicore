@@ -1,4 +1,5 @@
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using DownKyi.Application.Settings;
 
@@ -22,8 +23,10 @@ internal sealed class DesktopLanguageController
         var languageDictionaryIndex = -1;
         for (var index = 0; index < dictionaries.Count; index++)
         {
-            if (dictionaries[index] is ResourceInclude include &&
-                include.Source?.OriginalString.Contains("/Languages/", StringComparison.Ordinal) == true)
+            if (dictionaries[index].TryGetResource(
+                    "InterfaceLanguage",
+                    ThemeVariant.Default,
+                    out _))
             {
                 languageDictionaryIndex = index;
                 break;

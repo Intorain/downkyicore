@@ -1,4 +1,3 @@
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 using DownKyi.Application.Settings;
 using DownKyi.Desktop.Appearance;
@@ -16,8 +15,10 @@ public sealed class DesktopLanguageControllerTests
             var application = DesktopTestResources.EnsureDownloadProjectionResources();
             var dictionaries = application.Resources.MergedDictionaries;
             var languageIndex = Enumerable.Range(0, dictionaries.Count).First(index =>
-                dictionaries[index] is ResourceInclude include &&
-                include.Source?.OriginalString.Contains("/Languages/", StringComparison.Ordinal) == true);
+                dictionaries[index].TryGetResource(
+                    "InterfaceLanguage",
+                    ThemeVariant.Default,
+                    out _));
             var original = dictionaries[languageIndex];
             var directory = Path.Combine(Path.GetTempPath(), $"downkyi-ui-language-{Guid.NewGuid():N}");
             var settingsPath = Path.Combine(directory, "settings.json");
@@ -56,6 +57,50 @@ public sealed class DesktopLanguageControllerTests
                     Directory.Delete(directory, recursive: true);
                 }
             }
+        }).ConfigureAwait(true);
+    }
+
+    [AvaloniaFact]
+    public async Task MaterializedLanguageDictionaryIsReplacedAtStartup()
+    {
+        await AvaloniaTestDispatcher.RunAsync(() =>
+        {
+            var application = DesktopTestResources.EnsureDownloadProjectionResources();
+            var dictionaries = application.Resources.MergedDictionaries;
+            var languageIndex = Enumerable.Range(0, dictionaries.Count).First(index =>
+                dictionaries[index].TryGetResource(
+                    "InterfaceLanguage",
+                    ThemeVariant.Default,
+                    out _));
+            var original = dictionaries[languageIndex];
+            var materialized = new Avalonia.Controls.ResourceDictionary
+            {
+                ["InterfaceLanguage"] = "compiled dictionary marker"
+            };
+
+            try
+            {
+                dictionaries[languageIndex] = materialized;
+
+                using var settings = new SettingsStore(Path.Combine(
+                    Path.GetTempPath(),
+                    $"downkyi-ui-language-{Guid.NewGuid():N}",
+                    "settings.json"));
+                new DesktopLanguageController(settings).ApplySavedLanguage();
+
+                Assert.NotSame(materialized, dictionaries[languageIndex]);
+                Assert.True(application.TryGetResource(
+                    "InterfaceLanguage",
+                    ThemeVariant.Default,
+                    out var label));
+                Assert.Equal("界面语言", label);
+            }
+            finally
+            {
+                dictionaries[languageIndex] = original;
+            }
+
+            return Task.CompletedTask;
         }).ConfigureAwait(true);
     }
 }
