@@ -35,26 +35,10 @@ internal sealed class DownloadTaskStateWriter
         CancellationToken cancellationToken = default) =>
         RequireAsync(_tasks.ConfirmPausedAsync(taskId, cancellationToken));
 
-    public async Task<DownloadTask> ResumeAsync(
+    public Task<DownloadTask> ResumeAsync(
         DownloadTaskId taskId,
-        CancellationToken cancellationToken = default)
-    {
-        var current = await FindRequiredAsync(taskId, cancellationToken).ConfigureAwait(false);
-        if (current.Transfer.HasLegacyProvenance)
-        {
-            throw new InvalidOperationException(
-                "A retired legacy transfer cannot be resumed by the built-in downloader.");
-        }
-
-        if (current.Phase == DownloadPhase.Queued)
-        {
-            return current;
-        }
-
-        return current.Phase == DownloadPhase.Failed
-            ? await RequireAsync(_tasks.RetryAsync(taskId, cancellationToken)).ConfigureAwait(false)
-            : await RequireAsync(_tasks.ResumeAsync(taskId, cancellationToken)).ConfigureAwait(false);
-    }
+        CancellationToken cancellationToken = default) =>
+        RequireAsync(_tasks.ResumeAsync(taskId, cancellationToken));
 
     public Task<DownloadTask> RecoverInterruptedAsync(
         DownloadTaskId taskId,
@@ -223,14 +207,6 @@ internal sealed class DownloadTaskStateWriter
         DownloadTaskId taskId,
         CancellationToken cancellationToken = default) =>
         RequireAsync(_tasks.DeleteAsync(taskId, cancellationToken));
-
-    private async Task<DownloadTask> FindRequiredAsync(
-        DownloadTaskId taskId,
-        CancellationToken cancellationToken)
-    {
-        return await _tasks.FindAsync(taskId, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Download task '{taskId.Value}' was not found.");
-    }
 
     private static DownloadFailure CreateRuntimeUnavailableFailure() =>
         new(

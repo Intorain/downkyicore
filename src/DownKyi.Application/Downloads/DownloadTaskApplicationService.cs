@@ -455,6 +455,11 @@ public sealed partial class DownloadTaskApplicationService : IDownloadTaskApplic
                     return transitionResult;
                 }
 
+                if (ReferenceEquals(current, updated))
+                {
+                    return transitionResult;
+                }
+
                 var storeResult = updated.Phase == DownloadPhase.Completed
                     ? await _history.CompleteAsync(
                             updated,
