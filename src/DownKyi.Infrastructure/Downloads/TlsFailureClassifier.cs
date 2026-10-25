@@ -1,10 +1,8 @@
-using System;
-using System.Net.Http;
 using System.Security.Authentication;
 
-namespace DownKyi.Services.Download;
+namespace DownKyi.Infrastructure.Downloads;
 
-internal static class TlsFailureClassifier
+public static class TlsFailureClassifier
 {
     private const string Prefix = "download.transfer.tls.";
 
@@ -45,7 +43,7 @@ internal static class TlsFailureClassifier
         return false;
     }
 
-    public static bool TryClassify(string? message, out string errorCode)
+    private static bool TryClassify(string? message, out string errorCode)
     {
         if (ContainsAny(message,
                 "certificate is not yet valid",
@@ -142,7 +140,7 @@ internal static class TlsFailureClassifier
         return false;
     }
 
-    public static bool IsSecureConnectionFailure(string? message)
+    private static bool IsSecureConnectionFailure(string? message)
     {
         return IsTlsHandshakeFailure(message) || ContainsAny(message,
             "secure connection",
@@ -152,35 +150,12 @@ internal static class TlsFailureClassifier
             "transport connection");
     }
 
-    public static bool IsTlsHandshakeFailure(string? message)
+    private static bool IsTlsHandshakeFailure(string? message)
     {
         return ContainsAny(message,
             "ssl/tls handshake",
             "tls handshake",
             "ssl handshake");
-    }
-
-    public static bool IsTlsErrorCode(string? errorCode)
-    {
-        return errorCode is Prefix + "untrusted"
-            or Prefix + "expired"
-            or Prefix + "not-yet-valid"
-            or Prefix + "hostname"
-            or Prefix + "chain"
-            or Prefix + "handshake";
-    }
-
-    public static string GetResourceKey(string errorCode)
-    {
-        return errorCode switch
-        {
-            Prefix + "untrusted" => "DownloadTlsUntrusted",
-            Prefix + "expired" => "DownloadTlsExpired",
-            Prefix + "not-yet-valid" => "DownloadTlsNotYetValid",
-            Prefix + "hostname" => "DownloadTlsHostnameMismatch",
-            Prefix + "chain" => "DownloadTlsInvalidChain",
-            _ => "DownloadTlsHandshakeFailed"
-        };
     }
 
     private static bool ContainsAny(string? value, params string[] candidates)
