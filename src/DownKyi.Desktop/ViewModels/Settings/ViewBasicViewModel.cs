@@ -41,6 +41,34 @@ internal class ViewBasicViewModel : ViewModelBase
         set => SetProperty(ref _themeAuto, value);
     }
 
+    private bool _languageChineseSimplified;
+    public bool LanguageChineseSimplified
+    {
+        get => _languageChineseSimplified;
+        set => SetProperty(ref _languageChineseSimplified, value);
+    }
+
+    private bool _languageChineseTraditional;
+    public bool LanguageChineseTraditional
+    {
+        get => _languageChineseTraditional;
+        set => SetProperty(ref _languageChineseTraditional, value);
+    }
+
+    private bool _languageEnglish;
+    public bool LanguageEnglish
+    {
+        get => _languageEnglish;
+        set => SetProperty(ref _languageEnglish, value);
+    }
+
+    private bool _languageJapanese;
+    public bool LanguageJapanese
+    {
+        get => _languageJapanese;
+        set => SetProperty(ref _languageJapanese, value);
+    }
+
     private bool _none;
 
     public bool None
@@ -119,6 +147,11 @@ internal class ViewBasicViewModel : ViewModelBase
                 break;
         }
 
+        LanguageChineseSimplified = basic.UiLanguage == UiLanguage.ChineseSimplified;
+        LanguageChineseTraditional = basic.UiLanguage == UiLanguage.ChineseTraditional;
+        LanguageEnglish = basic.UiLanguage == UiLanguage.English;
+        LanguageJapanese = basic.UiLanguage == UiLanguage.Japanese;
+
         // 下载完成后的操作
         var afterDownload = basic.AfterDownload;
         SetAfterDownloadOperation(afterDownload);
@@ -149,6 +182,19 @@ internal class ViewBasicViewModel : ViewModelBase
     {
         var isSucceed = _themeController.SetMode(themeMode);
         PublishTip(isSucceed);
+    }
+
+    private RelayCommand<UiLanguage>? _languageCommand;
+
+    public RelayCommand<UiLanguage> LanguageCommand =>
+        _languageCommand ??= new RelayCommand<UiLanguage>(ExecuteLanguageCommand);
+
+    private void ExecuteLanguageCommand(UiLanguage language)
+    {
+        var updated = UpdateBasic(settings => settings with { UiLanguage = language });
+        Notifications.Show(DictionaryResource.GetString(updated.UiLanguage == language
+            ? "RestartToApplyLanguage"
+            : "TipSettingFailed"));
     }
 
     // 下载完成后的操作事件

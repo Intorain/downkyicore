@@ -50,7 +50,7 @@
                             <Rectangle Width="42" Height="42" Fill="{DynamicResource SpaceInk}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
                             <Ellipse Width="48" Height="48" Fill="{DynamicResource SpaceAccent}" HorizontalAlignment="Right" VerticalAlignment="Top" />
                         </Grid>
-                        <TextBlock Text="MEDIA / WORKSHOP" FontFamily="Consolas" FontSize="10" Foreground="{DynamicResource SpaceMuted}" />
+                        <TextBlock Text="{DynamicResource ToolboxSectionCaption}" FontFamily="Consolas" FontSize="10" Foreground="{DynamicResource SpaceMuted}" />
                     </StackPanel>
                 </Border>
             </Grid>

@@ -23,10 +23,7 @@ namespace DownKyi.ViewModels.Settings;
 internal class ViewAboutViewModel : ViewModelBase
 {
     public const string Tag = "PageSettingsAbout";
-    private const string FeedbackIssueTitle = "[Bug] 用户反馈";
     private const string FeedbackIssueTemplate = "app_diagnostic_report.yml";
-    private const string TruncatedFeedbackSuffix =
-        "\n\n[预填信息已截断；请上传生成的诊断 ZIP。]";
 
     private readonly ISettingsStore _settingsStore;
     private readonly IApplicationLogService _logService;
@@ -148,7 +145,7 @@ internal class ViewAboutViewModel : ViewModelBase
                 .ConfigureAwait(true);
             if (GitHubRelease.IsNullOrEmpty(release))
             {
-                Notifications.Show("检查失败，请稍后重试~");
+                Notifications.Show(DictionaryResource.GetString("UpdateCheckFailed"));
                 return;
             }
 
@@ -164,18 +161,18 @@ internal class ViewAboutViewModel : ViewModelBase
             }
             else
             {
-                Notifications.Show("已是最新版~");
+                Notifications.Show(DictionaryResource.GetString("AlreadyLatestVersion"));
             }
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarningMessage("Manual update check timed out.");
-            Notifications.Show("检查超时，请稍后重试~");
+            Notifications.Show(DictionaryResource.GetString("UpdateCheckTimedOut"));
         }
         catch (Exception e) when (e is HttpRequestException or InvalidOperationException or JsonException)
         {
             _logger.LogErrorMessage("Manual update check failed.", e);
-            Notifications.Show("检查失败，请稍后重试~");
+            Notifications.Show(DictionaryResource.GetString("UpdateCheckFailed"));
         }
     }
 
@@ -193,11 +190,11 @@ internal class ViewAboutViewModel : ViewModelBase
         {
             var packagePath = await _logService.ExportFeedbackPackageAsync().ConfigureAwait(true);
             var issueUri = GitHubIssueUriBuilder.CreateForm(
-                FeedbackIssueTitle,
+                DictionaryResource.GetString("FeedbackIssueTitle", "[Bug] 用户反馈"),
                 FeedbackIssueTemplate,
                 "app_version",
                 AppVersion,
-                TruncatedFeedbackSuffix);
+                DictionaryResource.GetString("TruncatedFeedbackSuffix", "\n\n[预填信息已截断；请上传生成的诊断 ZIP。]"));
             await OpenUriAsync(issueUri).ConfigureAwait(true);
             await OpenFeedbackPackageFolderAsync(packagePath).ConfigureAwait(true);
         }
@@ -220,7 +217,7 @@ internal class ViewAboutViewModel : ViewModelBase
         await _logService.FlushAsync(cancellation.Token).ConfigureAwait(true);
         if (!await _platformLauncher.OpenFolderAsync(_logService.LogDirectory).ConfigureAwait(true))
         {
-            Notifications.Show("无法打开日志文件夹");
+            Notifications.Show(DictionaryResource.GetString("OpenLogsFolderFailed"));
         }
     }
 
@@ -292,7 +289,7 @@ internal class ViewAboutViewModel : ViewModelBase
             ?? throw new InvalidOperationException("Feedback package directory is unavailable.");
         if (!await _platformLauncher.OpenFolderAsync(directory).ConfigureAwait(true))
         {
-            Notifications.Show("无法打开诊断包所在文件夹");
+            Notifications.Show(DictionaryResource.GetString("OpenFeedbackFolderFailed"));
         }
     }
 
@@ -305,7 +302,7 @@ internal class ViewAboutViewModel : ViewModelBase
     {
         if (!await _platformLauncher.OpenUriAsync(uri).ConfigureAwait(true))
         {
-            Notifications.Show("无法打开网页");
+            Notifications.Show(DictionaryResource.GetString("OpenWebPageFailed"));
         }
     }
 

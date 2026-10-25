@@ -6,6 +6,7 @@ using DownKyi.Application.Desktop;
 using DownKyi.Application.Diagnostics;
 using DownKyi.Commands;
 using DownKyi.Services.Toolbox;
+using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels.Toolbox;
@@ -122,7 +123,7 @@ internal class ViewBiliHelperViewModel : ViewModelBase
         var uri = new Uri($"https://www.bilibili.com/video/{Bvid}");
         if (!await _platformLauncher.OpenUriAsync(uri).ConfigureAwait(true))
         {
-            Notifications.Show("无法打开视频页面");
+            Notifications.Show(DictionaryResource.GetString("OpenVideoPageFailed"));
         }
     }
 
@@ -178,7 +179,7 @@ internal class ViewBiliHelperViewModel : ViewModelBase
         var userSpace = new Uri($"https://space.bilibili.com/{UserMid}");
         if (!await _platformLauncher.OpenUriAsync(userSpace).ConfigureAwait(true))
         {
-            Notifications.Show("无法打开用户空间");
+            Notifications.Show(DictionaryResource.GetString("OpenUserSpaceFailed"));
         }
     }
 

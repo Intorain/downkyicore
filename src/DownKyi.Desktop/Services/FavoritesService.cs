@@ -9,6 +9,7 @@ using DownKyi.Application.Settings;
 using DownKyi.Core.BiliApi.Favorites;
 using DownKyi.Core.Utils;
 using DownKyi.Presentation;
+using DownKyi.Utils;
 using ApiFavoritesMedia = DownKyi.Core.BiliApi.Favorites.Models.FavoritesMedia;
 using ApiFavoritesMediaResource = DownKyi.Core.BiliApi.Favorites.Models.FavoritesMediaResource;
 
@@ -105,7 +106,7 @@ internal sealed class FavoritesService : IFavoritesService
                 Order = order,
                 Cover = media.Cover,
                 Title = unavailable && string.IsNullOrWhiteSpace(media.Title)
-                    ? UnavailableMediaTitle
+                    ? DictionaryResource.GetString("UnavailableMediaTitle", UnavailableMediaTitle)
                     : media.Title,
                 IsUnavailable = unavailable,
                 PlayNumber = media.CntInfo != null ? Format.FormatNumber(media.CntInfo.Play) : "0",

@@ -89,8 +89,8 @@ internal partial class ViewVideoViewModel : ViewModelBase
 
         FfmpegHardwareAccelerations = new List<FfmpegHardwareAccelerationItem>
         {
-            new() { Name = "自动检测", Value = FfmpegHardwareAcceleration.Auto },
-            new() { Name = "禁用硬件加速", Value = FfmpegHardwareAcceleration.Disabled },
+            new() { Name = DictionaryResource.GetString("HardwareAccelerationAuto"), Value = FfmpegHardwareAcceleration.Auto },
+            new() { Name = DictionaryResource.GetString("HardwareAccelerationDisabled"), Value = FfmpegHardwareAcceleration.Disabled },
             new() { Name = "NVIDIA NVENC", Value = FfmpegHardwareAcceleration.NvidiaNvenc },
             new() { Name = "Intel QSV", Value = FfmpegHardwareAcceleration.IntelQsv },
             new() { Name = "AMD AMF", Value = FfmpegHardwareAcceleration.AmdAmf },

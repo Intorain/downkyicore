@@ -16,6 +16,7 @@ using DownKyi.Infrastructure.Bilibili;
 using DownKyi.Infrastructure.Storage;
 using DownKyi.Infrastructure.Storage.Database;
 using DownKyi.Models;
+using DownKyi.Utils;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -111,7 +112,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             return new LegacyUpgradeResult(LegacyUpgradeOutcome.NoMigration);
         }
 
-        progress.Report(new LegacyUpgradeProgress("正在迁移下载信息"));
+        progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationDownloading", "正在迁移下载信息")));
         try
         {
             var readResult = ReadLegacyDatabase(oldDatabasePath, progress, cancellationToken);
@@ -129,7 +130,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             cancellationToken.ThrowIfCancellationRequested();
             File.Delete(oldDatabasePath);
 
-            progress.Report(new LegacyUpgradeProgress("下载信息迁移完成", 100));
+            progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationDownloadComplete", "下载信息迁移完成"), 100));
             return new LegacyUpgradeResult(LegacyUpgradeOutcome.Completed);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -143,8 +144,8 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                 ? BackupFailedDatabase(oldDatabasePath)
                 : null;
             var message = backupMessage == null
-                ? $"数据迁移失败: {e.Message}"
-                : $"数据迁移失败: {e.Message}; {backupMessage}";
+                ? DictionaryResource.Format("MigrationFailedDetail", "数据迁移失败: {0}", e.Message)
+                : DictionaryResource.Format("MigrationFailedWithBackup", "数据迁移失败: {0}; {1}", e.Message, backupMessage);
             return new LegacyUpgradeResult(
                 LegacyUpgradeOutcome.Failed,
                 message,
@@ -167,7 +168,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
         catch (Exception e) when (IsLegacyRecordException(e) || e is IOException or UnauthorizedAccessException)
         {
             _logger.LogErrorMessage("Legacy login migration failed; download migration will continue.", e);
-            progress.Report(new LegacyUpgradeProgress("登录信息迁移失败，继续迁移下载信息"));
+            progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationLoginFailedContinuing", "登录信息迁移失败，继续迁移下载信息")));
         }
     }
 
@@ -187,14 +188,14 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             return;
         }
 
-        progress.Report(new LegacyUpgradeProgress("正在迁移登录信息"));
+        progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationLoginInProgress", "正在迁移登录信息")));
         var cookies = ReadLegacyCookies(stream, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (!LoginHelper.SaveLoginInfoCookies(cookies))
         {
             throw new IOException("Legacy login cookies could not be persisted.");
         }
-        progress.Report(new LegacyUpgradeProgress("登录信息迁移完成"));
+        progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationLoginComplete", "登录信息迁移完成")));
     }
 
     internal static IReadOnlyList<DownKyiCookie> ReadLegacyCookies(
@@ -298,7 +299,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                     : new SqliteDatabase(databasePath);
                 if (attempt > 1)
                 {
-                    progress.Report(new LegacyUpgradeProgress("尝试备用连接方式"));
+                    progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationTryingAlternateConnection", "尝试备用连接方式")));
                 }
 
                 ValidateLegacyDatabase(database);
@@ -311,11 +312,12 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             {
                 lastFailure = e;
                 _logger.LogErrorMessage($"Legacy database connection attempt {attempt} failed.", e);
-                progress.Report(new LegacyUpgradeProgress($"数据库连接尝试 {attempt} 失败"));
+                progress.Report(new LegacyUpgradeProgress(DictionaryResource.Format(
+                    "MigrationDatabaseAttemptFailed", "数据库连接尝试 {0} 失败", attempt)));
             }
         }
 
-        progress.Report(new LegacyUpgradeProgress("数据库连接尝试次数超限，放弃迁移"));
+        progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationDatabaseAttemptsExceeded", "数据库连接尝试次数超限，放弃迁移")));
         return new LegacyDatabaseReadResult(Records: null, Failure: lastFailure);
     }
 
@@ -396,7 +398,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                     catch (Exception e) when (IsLegacyRecordException(e))
                     {
                         _logger.LogErrorMessage("A damaged legacy download record was skipped.", e);
-                        progress.Report(new LegacyUpgradeProgress("已跳过一笔损坏的旧下载记录"));
+                        progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationSkippedCorruptRecord", "已跳过一笔损坏的旧下载记录")));
                     }
                 }
             });
@@ -426,7 +428,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             catch (Exception e) when (IsLegacyRecordException(e) || e is SqliteException)
             {
                 _logger.LogErrorMessage("A damaged legacy download detail was skipped.", e);
-                progress.Report(new LegacyUpgradeProgress("已跳过一笔损坏的旧下载详情"));
+                progress.Report(new LegacyUpgradeProgress(DictionaryResource.GetString("MigrationSkippedCorruptDetail", "已跳过一笔损坏的旧下载详情")));
             }
 
             if (batch.Count >= BatchSize)
@@ -437,7 +439,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
 
             var percent = records.Count == 0 ? 100 : visited / (double)records.Count * 100;
             progress.Report(new LegacyUpgradeProgress(
-                $"正在迁移下载信息({visited}/{records.Count})",
+                DictionaryResource.Format("MigrationDownloadProgress", "正在迁移下载信息({0}/{1})", visited, records.Count),
                 percent));
         }
 
@@ -531,7 +533,7 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
                 backupDirectory,
                 $"{Path.GetFileNameWithoutExtension(databasePath)}_failed_{DateTime.Now:yyyyMMdd_HHmmss_fff}{Path.GetExtension(databasePath)}");
             File.Move(databasePath, backupPath);
-            return $"原数据库已备份为 {Path.GetFileName(backupPath)}";
+            return DictionaryResource.Format("MigrationBackupCreated", "原数据库已备份为 {0}", Path.GetFileName(backupPath));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -540,12 +542,12 @@ internal sealed class LegacyUpgradeCoordinator : ILegacyUpgradeCoordinator
             {
                 var renamedPath = $"{databasePath}.corrupted_{DateTime.Now:yyyyMMdd_HHmmss_fff}";
                 File.Move(databasePath, renamedPath);
-                return $"原数据库已重命名为 {Path.GetFileName(renamedPath)}";
+                return DictionaryResource.Format("MigrationDatabaseRenamed", "原数据库已重命名为 {0}", Path.GetFileName(renamedPath));
             }
             catch (Exception fallback) when (fallback is IOException or UnauthorizedAccessException)
             {
                 _logger.LogErrorMessage("Legacy database rename fallback failed.", fallback);
-                return "无法自动备份旧数据库，请保留日志并手动处理";
+                return DictionaryResource.GetString("MigrationBackupFailed", "无法自动备份旧数据库，请保留日志并手动处理");
             }
         }
     }

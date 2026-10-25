@@ -258,6 +258,7 @@ public sealed class SettingsRoundtripCompletenessTests
             return path switch
             {
                 "Basic.ThemeMode" => ThemeMode.Dark,
+                "Basic.UiLanguage" => UiLanguage.Japanese,
                 "Basic.AfterDownload" => AfterDownloadOperation.OpenFolder,
                 "Basic.DownloadFinishedSort" => DownloadFinishedSort.DownloadDesc,
                 "Network.NetworkProxy" => NetworkProxy.System,

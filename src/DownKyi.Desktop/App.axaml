@@ -163,7 +163,7 @@
     </Application.Styles>
     <TrayIcon.Icons>
         <TrayIcons>
-            <TrayIcon Icon="/Resources/favicon.ico" ToolTipText="{StaticResource AppName}" />
+            <TrayIcon Icon="/Resources/favicon.ico" ToolTipText="{DynamicResource AppName}" />
         </TrayIcons>
     </TrayIcon.Icons>
 </Application>

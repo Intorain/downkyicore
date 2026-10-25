@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using DownKyi.Application.Desktop;
+using DownKyi.Utils;
 
 namespace DownKyi.Platform;
 
@@ -28,7 +29,7 @@ internal sealed class AvaloniaFilePickerService : IFilePickerService
         cancellationToken.ThrowIfCancellationRequested();
         var folders = await provider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "选择文件夹",
+            Title = DictionaryResource.GetString("SelectFolder"),
             SuggestedStartLocation = await provider
                 .TryGetFolderFromPathAsync(new Uri(DefaultDirectory))
                 .ConfigureAwait(true),
@@ -57,7 +58,7 @@ internal sealed class AvaloniaFilePickerService : IFilePickerService
         cancellationToken.ThrowIfCancellationRequested();
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "选择视频",
+            Title = DictionaryResource.GetString("SelectVideo"),
             SuggestedStartLocation = await provider
                 .TryGetFolderFromPathAsync(new Uri(DefaultDirectory))
                 .ConfigureAwait(true),

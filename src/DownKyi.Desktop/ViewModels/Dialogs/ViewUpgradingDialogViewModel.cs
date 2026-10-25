@@ -8,6 +8,7 @@ using DownKyi.Application.Diagnostics;
 using DownKyi.Application.Lifetime;
 using DownKyi.Commands;
 using DownKyi.Services.Migration;
+using DownKyi.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace DownKyi.ViewModels.Dialogs;
@@ -107,7 +108,8 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         _applicationLifecycle = applicationLifecycle
             ?? throw new ArgumentNullException(nameof(applicationLifecycle));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        Message = "数据迁移中；如需停止，请使用“取消迁移”";
+        Message = DictionaryResource.GetIfApplicationInitialized<string>("MigrationInProgress")
+            ?? "数据迁移中；如需停止，请使用“取消迁移”";
     }
 
     public override void OnDialogOpened(AppDialogRequest request)
@@ -163,12 +165,12 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
                     FinishMigrationActivity();
                     Percent = 100;
                     IsProgressVisible = true;
-                    Message = "下载信息迁移完成";
+                    Message = DictionaryResource.GetString("MigrationDownloadComplete", "下载信息迁移完成");
                     RestartVisible = true;
                     break;
                 case LegacyUpgradeOutcome.Failed:
                     FinishMigrationActivity();
-                    Message = result.ErrorMessage ?? "数据迁移失败，请查看日志";
+                    Message = result.ErrorMessage ?? DictionaryResource.GetString("MigrationFailedSeeLogs", "数据迁移失败，请查看日志");
                     RestartVisible = false;
                     var failure = result.Failure ?? new InvalidOperationException(Message);
                     CloseDialog(
@@ -190,7 +192,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
         {
             _logger.LogErrorMessage("Legacy data migration dialog failed.", e);
             FinishMigrationActivity();
-            Message = "数据迁移失败，请查看日志";
+            Message = DictionaryResource.GetString("MigrationFailedSeeLogs", "数据迁移失败，请查看日志");
             RestartVisible = false;
             CloseDialog(
                 AppDialogOutcome.Rejected,
@@ -216,7 +218,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
 
     private async Task ExecuteRestartAsync()
     {
-        Message = "正在重新启动应用";
+        Message = DictionaryResource.GetString("MigrationRestarting", "正在重新启动应用");
         RestartVisible = false;
         try
         {
@@ -230,7 +232,7 @@ internal sealed class ViewUpgradingDialogViewModel : BaseDialogViewModel, IAsync
             _logger.LogErrorMessage("Application restart failed after legacy data migration.", e);
         }
 
-        Message = "无法重新启动应用，请查看日志";
+        Message = DictionaryResource.GetString("MigrationRestartFailed", "无法重新启动应用，请查看日志");
         RestartVisible = true;
     }
 

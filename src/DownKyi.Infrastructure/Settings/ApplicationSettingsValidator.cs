@@ -22,6 +22,7 @@ internal static class ApplicationSettingsValidator
         var basic = settings.Basic with
         {
             ThemeMode = EnumValue(settings.Basic.ThemeMode, ThemeMode.Default, "Basic.ThemeMode", corrections),
+            UiLanguage = EnumValue(settings.Basic.UiLanguage, UiLanguage.ChineseSimplified, "Basic.UiLanguage", corrections),
             AfterDownload = EnumValue(settings.Basic.AfterDownload, AfterDownloadOperation.None, "Basic.AfterDownload", corrections),
             IsListenClipboard = AllowValue(settings.Basic.IsListenClipboard, AllowStatus.Yes, "Basic.IsListenClipboard", corrections),
             DownloadFinishedSort = EnumValue(settings.Basic.DownloadFinishedSort, DownloadFinishedSort.DownloadAsc, "Basic.DownloadFinishedSort", corrections)

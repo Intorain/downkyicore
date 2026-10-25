@@ -2,17 +2,19 @@ using System;
 using System.Globalization;
 using System.Reflection;
 using DownKyi.Application.Versioning;
+using DownKyi.Utils;
 
 namespace DownKyi.Models;
 
 internal class AppInfo
 {
-    public string Name { get; } = "哔哩下载姬";
+    public string Name { get; }
     public int VersionCode { get; }
     public string VersionName { get; }
 
     public AppInfo()
     {
+        Name = DictionaryResource.GetIfApplicationInitialized<string>("AppName") ?? "哔哩下载姬";
         var versionName = ResolveVersionName();
         VersionCode = VersionNameToCode(versionName);
 

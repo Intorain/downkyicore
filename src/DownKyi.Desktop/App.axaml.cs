@@ -85,6 +85,7 @@ internal partial class App : Avalonia.Application, IAsyncDisposable
         ImageLoader.AsyncImageLoader = imageLoader;
         ImageBrushLoader.AsyncImageLoader = imageLoader;
 
+        host.Services.GetRequiredService<DesktopLanguageController>().ApplySavedLanguage();
         var mainWindow = host.Services.GetRequiredService<MainWindow>();
         desktopContext.AttachMainWindow(mainWindow);
         desktop.MainWindow = mainWindow;
