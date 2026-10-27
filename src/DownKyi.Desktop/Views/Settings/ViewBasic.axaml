@@ -88,10 +88,10 @@
             <StackPanel Margin="0,20,0,0" Orientation="Vertical">
                 <TextBlock FontSize="{DynamicResource DownKyiFontSizeBody}" Foreground="{DynamicResource SpaceInk}" Text="{DynamicResource InterfaceLanguage}" />
                 <WrapPanel Margin="0,10,0,0" Orientation="Horizontal">
-                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.ChineseSimplified}" Content="{StaticResource LanguageChineseSimplified}" IsChecked="{Binding LanguageChineseSimplified}" Margin="0,0,24,8" />
-                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.ChineseTraditional}" Content="{StaticResource LanguageChineseTraditional}" IsChecked="{Binding LanguageChineseTraditional}" Margin="0,0,24,8" />
-                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.English}" Content="{StaticResource LanguageEnglish}" IsChecked="{Binding LanguageEnglish}" Margin="0,0,24,8" />
-                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.Japanese}" Content="{StaticResource LanguageJapanese}" IsChecked="{Binding LanguageJapanese}" Margin="0,0,24,8" />
+                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.ChineseSimplified}" Content="简体中文" IsChecked="{Binding LanguageChineseSimplified}" Margin="0,0,24,8" />
+                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.ChineseTraditional}" Content="繁體中文" IsChecked="{Binding LanguageChineseTraditional}" Margin="0,0,24,8" />
+                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.English}" Content="English" IsChecked="{Binding LanguageEnglish}" Margin="0,0,24,8" />
+                    <RadioButton GroupName="InterfaceLanguage" Command="{Binding LanguageCommand}" CommandParameter="{x:Static settings:UiLanguage.Japanese}" Content="日本語" IsChecked="{Binding LanguageJapanese}" Margin="0,0,24,8" />
                 </WrapPanel>
                 <TextBlock Foreground="{DynamicResource SpaceMuted}" Text="{DynamicResource LanguageRestartHint}" />
             </StackPanel>

@@ -14,7 +14,7 @@ internal static class DesktopTestResources
         {
             AddProductResource(
                 application,
-                new Uri("avares://DownKyi.Desktop/Languages/Default.axaml"));
+                new Uri("avares://DownKyi.Desktop/Languages/zh-CN.axaml"));
         }
 
         if (!application.TryGetResource("videoUpDrawingImage", ThemeVariant.Default, out _))

@@ -5,10 +5,6 @@
     <system:String x:Key="AppName">DownKyi</system:String>
     <system:String x:Key="Unknown">Unknown</system:String>
     <system:String x:Key="InterfaceLanguage">Interface language</system:String>
-    <system:String x:Key="LanguageChineseSimplified">简体中文</system:String>
-    <system:String x:Key="LanguageChineseTraditional">繁體中文</system:String>
-    <system:String x:Key="LanguageEnglish">English</system:String>
-    <system:String x:Key="LanguageJapanese">日本語</system:String>
     <system:String x:Key="RestartToApplyLanguage">Language saved. Restart DownKyi to apply it.</system:String>
     <system:String x:Key="LanguageRestartHint">The selected language takes effect after a restart.</system:String>
 
@@ -397,7 +393,7 @@
     <system:String x:Key="LogoX">X:</system:String>
     <system:String x:Key="LogoY">Y:</system:String>
     <system:String x:Key="TipWaitTaskFinished">Wait for the current task to finish.</system:String>
-    <system:String x:Key="TipNoSeletedVideo">No video selected!</system:String>
+    <system:String x:Key="TipNoSelectedVideo">No video selected!</system:String>
     <system:String x:Key="TipInputRightLogoWidth">Please enter the correct width (positive integer)!</system:String>
     <system:String x:Key="TipInputRightLogoHeight">Please enter the correct height (positive integer)!</system:String>
     <system:String x:Key="TipInputRightLogoX">Please enter the correct X (positive integer)!</system:String>

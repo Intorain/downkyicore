@@ -226,7 +226,7 @@ internal class ViewDelogoViewModel : ViewModelBase
 
         if (VideoPath is null or "")
         {
-            Notifications.Show(DictionaryResource.GetString("TipNoSeletedVideo"));
+            Notifications.Show(DictionaryResource.GetString("TipNoSelectedVideo"));
             return;
         }
 

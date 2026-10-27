@@ -152,7 +152,7 @@ internal class ViewExtractMediaViewModel : ViewModelBase
 
         if (VideoPaths.Count <= 0)
         {
-            Notifications.Show(DictionaryResource.GetString("TipNoSeletedVideo"));
+            Notifications.Show(DictionaryResource.GetString("TipNoSelectedVideo"));
             return;
         }
 

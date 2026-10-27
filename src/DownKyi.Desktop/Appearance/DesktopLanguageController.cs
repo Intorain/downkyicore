@@ -40,7 +40,7 @@ internal sealed class DesktopLanguageController
 
         var source = _settingsStore.Current.Basic.UiLanguage switch
         {
-            UiLanguage.ChineseSimplified => "/Languages/Default.axaml",
+            UiLanguage.ChineseSimplified => "/Languages/zh-CN.axaml",
             UiLanguage.ChineseTraditional => "/Languages/zh-TW.axaml",
             UiLanguage.English => "/Languages/en-US.axaml",
             UiLanguage.Japanese => "/Languages/ja-JP.axaml",

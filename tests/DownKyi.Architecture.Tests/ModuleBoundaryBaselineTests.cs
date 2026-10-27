@@ -92,7 +92,8 @@ public sealed class ModuleBoundaryBaselineTests
         Assert.DoesNotContain("Languanges", desktopDirectories);
 
         var appSource = File.ReadAllText(Path.Combine(desktopRoot, "App.axaml"));
-        Assert.Contains("/Languages/Default.axaml", appSource, StringComparison.Ordinal);
+        Assert.Contains("/Languages/zh-CN.axaml", appSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("/Languages/Default.axaml", appSource, StringComparison.Ordinal);
         Assert.DoesNotContain("/Languanges/", appSource, StringComparison.Ordinal);
 
         var infrastructureDirectories = Directory

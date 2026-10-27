@@ -5,10 +5,6 @@
     <system:String x:Key="AppName">哔哩下载姬</system:String>
     <system:String x:Key="Unknown">未知</system:String>
     <system:String x:Key="InterfaceLanguage">界面语言</system:String>
-    <system:String x:Key="LanguageChineseSimplified">简体中文</system:String>
-    <system:String x:Key="LanguageChineseTraditional">繁體中文</system:String>
-    <system:String x:Key="LanguageEnglish">English</system:String>
-    <system:String x:Key="LanguageJapanese">日本語</system:String>
     <system:String x:Key="RestartToApplyLanguage">语言设置已保存，请重新启动程序以应用。</system:String>
     <system:String x:Key="LanguageRestartHint">重新启动程序后会应用所选语言。</system:String>
 
@@ -397,7 +393,7 @@
     <system:String x:Key="LogoX">X：</system:String>
     <system:String x:Key="LogoY">Y：</system:String>
     <system:String x:Key="TipWaitTaskFinished">请等待当前任务完成！</system:String>
-    <system:String x:Key="TipNoSeletedVideo">没有选择视频！</system:String>
+    <system:String x:Key="TipNoSelectedVideo">没有选择视频！</system:String>
     <system:String x:Key="TipInputRightLogoWidth">请输入正确的宽度（正整数）！</system:String>
     <system:String x:Key="TipInputRightLogoHeight">请输入正确的高度（正整数）！</system:String>
     <system:String x:Key="TipInputRightLogoX">请输入正确的X（正整数）！</system:String>
@@ -496,21 +492,21 @@
     <system:String x:Key="SkipDuplicateBatch">跳过这 {0} 部</system:String>
     <system:String x:Key="DownloadContentConflictMessage">“{0}”无法完全符合原下载设置。请接受实际可取得的内容和品质，或跳过这一页。</system:String>
     <system:String x:Key="UseAvailableDownloadContent">使用{0}继续下载</system:String>
-    <system:String x:Key="VideoQualitySubstitution">畫質：{0} → {1}</system:String>
-    <system:String x:Key="AudioQualitySubstitution">音質：{0} → {1}</system:String>
+    <system:String x:Key="VideoQualitySubstitution">画质：{0} → {1}</system:String>
+    <system:String x:Key="AudioQualitySubstitution">音质：{0} → {1}</system:String>
     <system:String x:Key="QualitySubstitutionSeparator">；</system:String>
     <system:String x:Key="DownloadAudioAndVideo">音频和视频</system:String>
     <system:String x:Key="SkipDownloadPage">跳过此页</system:String>
     <system:String x:Key="ApplyToAllSameContentConflict">应用到具有相同冲突的所有页面</system:String>
-    <system:String x:Key="ApplyToAllQualitySubstitution">一鍵確定</system:String>
-    <system:String x:Key="ApplyToAllQualitySubstitutionExplanation">「一鍵確定」表示對本次批次中的每一集，分別使用該集實際可取得、最接近原設定的替代品質。&#x000A;&#x000A;不同集數可能使用不同畫質或音質，不會強制全部使用相同品質，也不會增加原本未勾選的下載內容。&#x000A;&#x000A;使用者仍可選擇跳過下載。</system:String>
-    <system:String x:Key="DownloadQualityBatchTitle">下載品質需要確認</system:String>
-    <system:String x:Key="DownloadQualityBatchMessage">本次下載清單中有 {0} 部影片無法取得偏好品質。確認後會依下列實際品質下載。</system:String>
-    <system:String x:Key="DownloadQualityBatchGroup">{0}（{1} 部）</system:String>
-    <system:String x:Key="DownloadQualityBatchAffectedItems">查看受影響的 {0} 部影片</system:String>
-    <system:String x:Key="DownloadQualityBatchSettingsHint">若經常出現此提醒，可到「設定 → 影片」調整優先下載畫質與音質。</system:String>
-    <system:String x:Key="UseAvailableQualityBatch">依清單品質下載（{0} 部）</system:String>
-    <system:String x:Key="SkipQualityBatch">略過這 {0} 部</system:String>
+    <system:String x:Key="ApplyToAllQualitySubstitution">一键确认</system:String>
+    <system:String x:Key="ApplyToAllQualitySubstitutionExplanation">“一键确认”表示为本次批量中的每一集分别使用实际可用且最接近原设置的替代画质或音质。&#x000A;&#x000A;不同集数可能使用不同的画质或音质；不会强制所有集数使用相同品质，也不会增加原本未勾选的下载内容。&#x000A;&#x000A;仍可选择跳过下载。</system:String>
+    <system:String x:Key="DownloadQualityBatchTitle">下载品质需要确认</system:String>
+    <system:String x:Key="DownloadQualityBatchMessage">本次下载列表中有 {0} 个视频无法取得首选画质或音质。确认后将按下列实际可用品质下载。</system:String>
+    <system:String x:Key="DownloadQualityBatchGroup">{0}（{1} 个视频）</system:String>
+    <system:String x:Key="DownloadQualityBatchAffectedItems">查看受影响的 {0} 个视频</system:String>
+    <system:String x:Key="DownloadQualityBatchSettingsHint">如果经常出现此提示，可在“设置 → 视频”中调整优先下载的画质和音质。</system:String>
+    <system:String x:Key="UseAvailableQualityBatch">按列表所示品质下载（{0} 个视频）</system:String>
+    <system:String x:Key="SkipQualityBatch">跳过这 {0} 个视频</system:String>
     
     
     <!-- CustomControl -->

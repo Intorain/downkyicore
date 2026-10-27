@@ -14,28 +14,44 @@ internal static class DictionaryResource
     /// <returns></returns>
     public static string GetString(string resourceKey)
     {
-        var application = Avalonia.Application.Current;
-        if (application == null)
+        // Headless presentation models have no Avalonia resources to resolve.
+        if (Avalonia.Application.Current == null)
         {
             return string.Empty;
         }
 
-        var obj = Dispatcher.UIThread.Invoke(() =>
-        {
-            object? obj = null;
-            application.TryGetResource(
-                resourceKey,
-                application.ActualThemeVariant,
-                out obj);
-            return obj;
-        });
-        return obj == null ? "" : (string)obj;
+        return TryGetString(resourceKey)
+            ?? throw new KeyNotFoundException($"Language resource '{resourceKey}' is unavailable.");
     }
 
     public static string GetString(string resourceKey, string fallback)
     {
-        var value = GetString(resourceKey);
+        var value = TryGetString(resourceKey);
         return string.IsNullOrEmpty(value) ? fallback : value;
+    }
+
+    private static string? TryGetString(string resourceKey)
+    {
+        var application = Avalonia.Application.Current;
+        if (application == null)
+        {
+            return null;
+        }
+
+        var resource = Dispatcher.UIThread.Invoke(() =>
+        {
+            application.TryGetResource(
+                resourceKey,
+                application.ActualThemeVariant,
+                out var value);
+            return value;
+        });
+        return resource switch
+        {
+            null => null,
+            string value => value,
+            _ => throw new InvalidOperationException($"Language resource '{resourceKey}' is not a string.")
+        };
     }
 
     public static string Format(string resourceKey, string fallback, params object?[] arguments)
