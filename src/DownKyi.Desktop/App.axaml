@@ -18,7 +18,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="/Languages/Default.axaml" />
+                <!-- Startup fallback; DesktopLanguageController replaces it before views are created. -->
+                <ResourceInclude Source="/Languages/zh-CN.axaml" />
                 <ResourceInclude Source="/Themes/DesignTokens.axaml" />
                 <ResourceInclude Source="/Themes/ThemeDefault.axaml" />
                 <ResourceInclude Source="/Resources/Bilibili/ZoneImages.axaml" />

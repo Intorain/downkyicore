@@ -5,16 +5,35 @@ namespace DownKyi.Architecture.Tests;
 
 public sealed class UiThemeArchitectureTests
 {
+    private static readonly string[] ExpectedLanguageCatalogFiles =
+        ["en-US.axaml", "ja-JP.axaml", "zh-CN.axaml", "zh-TW.axaml"];
     private static readonly string RepositoryRoot = FindRepositoryRoot();
 
     [Fact]
-    public void DesktopLanguagesKeepTheSameKeysAndFormatArguments()
+    public void DesktopLanguageCatalogsUseCanonicalLocaleFileNames()
     {
-        var baseline = ReadLanguage("Default.axaml");
+        var languageDirectory = Path.Combine(
+            RepositoryRoot,
+            "src",
+            "DownKyi.Desktop",
+            "Languages");
+        var actual = Directory
+            .EnumerateFiles(languageDirectory, "*.axaml", SearchOption.TopDirectoryOnly)
+            .Select(Path.GetFileName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(ExpectedLanguageCatalogFiles, actual);
+    }
+
+    [Fact]
+    public void DesktopLanguagesKeepTheSameKeyOrderAndFormatArguments()
+    {
+        var baseline = ReadLanguage("zh-CN.axaml");
         foreach (var language in new[] { "zh-TW.axaml", "en-US.axaml", "ja-JP.axaml" })
         {
             var translated = ReadLanguage(language);
-            Assert.Equal(baseline.Keys.Order(StringComparer.Ordinal), translated.Keys.Order(StringComparer.Ordinal));
+            Assert.Equal(baseline.Keys.ToArray(), translated.Keys.ToArray());
             foreach (var (key, value) in baseline)
             {
                 Assert.Equal(
@@ -22,6 +41,91 @@ public sealed class UiThemeArchitectureTests
                     FormatArguments(translated[key]));
             }
         }
+    }
+
+    [Fact]
+    public void LiteralDesktopLanguageLookupsUseDeclaredKeys()
+    {
+        var languageKeys = ReadLanguage("zh-CN.axaml").Keys.ToHashSet(StringComparer.Ordinal);
+        var desktopRoot = Path.Combine(RepositoryRoot, "src", "DownKyi.Desktop");
+        var missing = Directory
+            .EnumerateFiles(desktopRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(IsRepositorySourcePath)
+            .SelectMany(path => Regex.Matches(
+                    File.ReadAllText(path),
+                    "DictionaryResource\\.(?:GetString|Format)\\(\\s*\"(?<key>[^\"]+)\"")
+                .Select(match => new
+                {
+                    Path = Path.GetRelativePath(RepositoryRoot, path).Replace('\\', '/'),
+                    Key = match.Groups["key"].Value
+                }))
+            .Where(reference => !languageKeys.Contains(reference.Key))
+            .Select(reference => $"{reference.Path}: {reference.Key}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(missing.Length == 0, $"Undeclared language lookups: {string.Join(", ", missing)}");
+    }
+
+    [Fact]
+    public void DesktopXamlResourcesResolveToLocalOrThemeKeys()
+    {
+        var desktopRoot = Path.Combine(RepositoryRoot, "src", "DownKyi.Desktop");
+        var sources = Directory
+            .EnumerateFiles(desktopRoot, "*.axaml", SearchOption.AllDirectories)
+            .Where(IsRepositorySourcePath)
+            .Select(path => new
+            {
+                Path = Path.GetRelativePath(RepositoryRoot, path).Replace('\\', '/'),
+                Source = File.ReadAllText(path)
+            })
+            .ToArray();
+        var declaredKeys = sources
+            .SelectMany(source => Regex.Matches(source.Source, "\\bx:Key=\"(?<key>[^\"]+)\"")
+                .Select(match => match.Groups["key"].Value))
+            .ToHashSet(StringComparer.Ordinal);
+        // These control resources are supplied by Avalonia's FluentTheme.
+        var fluentThemeKeys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "DataGridTextColumnCellTextBlockMargin",
+            "VerticalSmallScrollThumbScaleTransform"
+        };
+        var missing = sources
+            .SelectMany(source => Regex.Matches(
+                    source.Source,
+                    "\\{(?:DynamicResource|StaticResource)\\s+(?<key>[A-Za-z][\\w.-]*)\\}")
+                .Select(match => new { source.Path, Key = match.Groups["key"].Value }))
+            .Where(reference => !declaredKeys.Contains(reference.Key) && !fluentThemeKeys.Contains(reference.Key))
+            .Select(reference => $"{reference.Path}: {reference.Key}")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(missing.Length == 0, $"Unresolved AXAML resources: {string.Join(", ", missing)}");
+    }
+
+    [Fact]
+    public void SimplifiedChineseResourcesDoNotContainTraditionalScriptCharacters()
+    {
+        const string traditionalCharacters =
+            "並佇佈併個備傳僅優儲內兩別刪則剛創劇動務匯區參問啟單嗎嗶嘗國圍圖執報壞夾學實寫寬將專尋對幣庫強彈後徑復態憑憶應掃換損擇擔敗數斷於時暫會條棄業構標機檔檢欄權歷歸決沒測準滾濾瀏為無營狀獲現產畫異當發監確碼種稱筆節範簡紀級結絕統絲綁經綜網緒線編繼續義習聲腦與舊藝處號術衝補裝裡製複見規視覽觀訂計訊記設診詢試該詳誌認語誤課調請證識議讀變讚負責貼資質軌軟載輸轉這連進過違選遺還邊郵錄錯鍵鎖鏈鑰長閉開間閱關際離電韓響頁頂項須預頭頻題類顯餘饋驗驟體麼點";
+        var violations = ReadLanguage("zh-CN.axaml")
+            .Select(resource => new
+            {
+                resource.Key,
+                Characters = resource.Value
+                    .Where(traditionalCharacters.Contains)
+                    .Distinct()
+                    .Order()
+                    .ToArray()
+            })
+            .Where(resource => resource.Characters.Length > 0)
+            .Select(resource => $"{resource.Key} ({new string(resource.Characters)})")
+            .ToArray();
+
+        Assert.True(
+            violations.Length == 0,
+            $"Simplified Chinese resources contain Traditional-only characters: {string.Join(", ", violations)}");
     }
 
     private static Dictionary<string, string> ReadLanguage(string fileName)
@@ -188,7 +292,7 @@ public sealed class UiThemeArchitectureTests
             Environment.NewLine,
             Directory.EnumerateFiles(settingsRoot, "*.axaml").Select(File.ReadAllText));
         var languageSource = ReadSource(
-            "src", "DownKyi.Desktop", "Languages", "Default.axaml");
+            "src", "DownKyi.Desktop", "Languages", "zh-CN.axaml");
 
         Assert.DoesNotContain("Background=\"LightGray\"", settingsSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FontSize=\"12\"", settingsSource, StringComparison.Ordinal);

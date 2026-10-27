@@ -25,12 +25,12 @@ public sealed class DesktopLanguageControllerTests
 
             try
             {
-                foreach (var (language, expectedLabel) in new[]
+                foreach (var (language, expectedLabel, expectedQualityTitle) in new[]
                          {
-                             (UiLanguage.ChineseSimplified, "界面语言"),
-                             (UiLanguage.ChineseTraditional, "介面語言"),
-                             (UiLanguage.English, "Interface language"),
-                             (UiLanguage.Japanese, "表示言語")
+                             (UiLanguage.ChineseSimplified, "界面语言", "下载品质需要确认"),
+                             (UiLanguage.ChineseTraditional, "介面語言", "下載品質需要確認"),
+                             (UiLanguage.English, "Interface language", "Confirm download quality"),
+                             (UiLanguage.Japanese, "表示言語", "ダウンロード品質を確認")
                          })
                 {
                     using (var settings = new SettingsStore(settingsPath))
@@ -47,6 +47,11 @@ public sealed class DesktopLanguageControllerTests
                     new DesktopLanguageController(restored).ApplySavedLanguage();
                     Assert.True(application.TryGetResource("InterfaceLanguage", ThemeVariant.Default, out var label));
                     Assert.Equal(expectedLabel, label);
+                    Assert.True(application.TryGetResource(
+                        "DownloadQualityBatchTitle",
+                        ThemeVariant.Default,
+                        out var qualityTitle));
+                    Assert.Equal(expectedQualityTitle, qualityTitle);
                 }
             }
             finally

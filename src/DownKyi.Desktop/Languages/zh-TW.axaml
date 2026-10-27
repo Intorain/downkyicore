@@ -5,10 +5,6 @@
     <system:String x:Key="AppName">嗶哩下載姬</system:String>
     <system:String x:Key="Unknown">未知</system:String>
     <system:String x:Key="InterfaceLanguage">介面語言</system:String>
-    <system:String x:Key="LanguageChineseSimplified">简体中文</system:String>
-    <system:String x:Key="LanguageChineseTraditional">繁體中文</system:String>
-    <system:String x:Key="LanguageEnglish">English</system:String>
-    <system:String x:Key="LanguageJapanese">日本語</system:String>
     <system:String x:Key="RestartToApplyLanguage">語言設定已儲存，請重新啟動 DownKyi 以套用。</system:String>
     <system:String x:Key="LanguageRestartHint">重新啟動程式後會套用所選語言。</system:String>
 
@@ -397,7 +393,7 @@
     <system:String x:Key="LogoX">X：</system:String>
     <system:String x:Key="LogoY">Y：</system:String>
     <system:String x:Key="TipWaitTaskFinished">請等待目前的任務完成。</system:String>
-    <system:String x:Key="TipNoSeletedVideo">沒有選擇影片！</system:String>
+    <system:String x:Key="TipNoSelectedVideo">沒有選擇影片！</system:String>
     <system:String x:Key="TipInputRightLogoWidth">請輸入正確的寬度（正整數）！</system:String>
     <system:String x:Key="TipInputRightLogoHeight">請輸入正確的高度（正整數）！</system:String>
     <system:String x:Key="TipInputRightLogoX">請輸入正確的X（正整數）！</system:String>

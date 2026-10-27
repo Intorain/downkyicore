@@ -594,7 +594,7 @@ public sealed class VideoDetailCommandStateTests
                 new Avalonia.Markup.Xaml.Styling.ResourceInclude(
                     new Uri("avares://DownKyi.Desktop.Tests/"))
                 {
-                    Source = new Uri("avares://DownKyi.Desktop/Languages/Default.axaml")
+                    Source = new Uri("avares://DownKyi.Desktop/Languages/zh-CN.axaml")
                 });
         }
     }
