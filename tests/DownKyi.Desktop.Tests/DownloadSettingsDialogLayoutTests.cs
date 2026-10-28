@@ -325,12 +325,15 @@ public sealed class DownloadSettingsDialogLayoutTests
 
         public SettingsStore Settings { get; }
 
-        public ViewDownloadSetterViewModel CreateViewModel() =>
-            new(
+        public ViewDownloadSetterViewModel CreateViewModel()
+        {
+            DesktopTestResources.EnsureDownloadProjectionResources();
+            return new(
                 new NotificationServiceStub(),
                 new FilePickerServiceStub(),
                 Settings,
                 NullLogger<ViewDownloadSetterViewModel>.Instance);
+        }
 
         public void Dispose()
         {
