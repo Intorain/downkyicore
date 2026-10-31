@@ -177,17 +177,35 @@ internal sealed class UserSpacePageCoordinator : IUserSpacePageCoordinator
         foreach (var video in videos)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            result.Add(new PublicationMedia(navigationService, AppRoute.Publication)
+            var isSeason = video.IsAvoided != 0
+                && video.SeasonId > 0
+                && video.Mid > 0;
+            var seasonMeta = isSeason ? video.Meta : null;
+            var publishTime = seasonMeta is { PublishTime: > 0 }
+                ? seasonMeta.PublishTime
+                : video.Created;
+            result.Add(new PublicationMedia(
+                navigationService,
+                AppRoute.Publication,
+                isSeason ? new SeasonNavigationPayload(video.Mid, video.SeasonId) : null)
             {
                 Avid = video.Aid,
                 Bvid = video.Bvid,
-                Duration = video.Length,
-                Title = video.Title,
-                PlayNumber = video.Play > 0 ? Format.FormatNumber(video.Play) : "--",
-                CreateTime = DateTimeOffset.FromUnixTimeSeconds(video.Created)
+                Duration = seasonMeta is { EpisodeCount: > 0 }
+                    ? seasonMeta.EpisodeCount.ToString(CultureInfo.CurrentCulture)
+                    : video.Length,
+                Title = !string.IsNullOrWhiteSpace(seasonMeta?.Title)
+                    ? seasonMeta.Title
+                    : video.Title,
+                PlayNumber = isSeason
+                    ? DictionaryResource.GetString("SeasonsSeries")
+                    : video.Play > 0 ? Format.FormatNumber(video.Play) : "--",
+                CreateTime = DateTimeOffset.FromUnixTimeSeconds(publishTime)
                     .ToLocalTime()
                     .ToString("yyyy-MM-dd", CultureInfo.CurrentCulture),
-                CoverUrl = video.Pic
+                CoverUrl = !string.IsNullOrWhiteSpace(seasonMeta?.Cover)
+                    ? seasonMeta.Cover
+                    : video.Pic
             });
         }
 

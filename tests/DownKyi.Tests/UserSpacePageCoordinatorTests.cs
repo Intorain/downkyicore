@@ -1,6 +1,9 @@
+using DownKyi.Application.Desktop;
 using DownKyi.Core.BiliApi;
 using DownKyi.Core.BiliApi.Users.Models;
+using DownKyi.Presentation;
 using DownKyi.Services.UserSpace;
+using DownKyi.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DownKyi.Tests;
@@ -56,6 +59,76 @@ public sealed class UserSpacePageCoordinatorTests
 
         Assert.Equal(35, result.TotalCount);
         Assert.Equal("BV1fixture01", Assert.Single(result.Medias).Bvid);
+    }
+
+    [Fact]
+    public void AvoidedSeasonRepresentativeNavigatesToExistingCollectionPage()
+    {
+        var publication = new SpacePublication
+        {
+            Page = new SpacePublicationPage { Count = 1, Pn = 1, Ps = 30 },
+            List = new SpacePublicationList
+            {
+                Vlist =
+                [
+                    new SpacePublicationListVideo
+                    {
+                        Aid = 100,
+                        Bvid = "BV1fixture01",
+                        Mid = 42,
+                        Title = "representative video",
+                        Length = "01:30",
+                        Created = 1_700_000_000,
+                        Pic = "video cover",
+                        IsAvoided = 1,
+                        SeasonId = 99,
+                        Meta = new SpacePublicationListSeasonMeta
+                        {
+                            Id = 99,
+                            Mid = 42,
+                            Title = "fixture collection",
+                            Cover = "collection cover",
+                            EpisodeCount = 26,
+                            PublishTime = 1_700_000_100
+                        }
+                    }
+                ]
+            }
+        };
+        var navigation = new TestNavigationService();
+
+        var result = UserSpacePageCoordinator.MapPublicationPage(
+            publication,
+            navigation,
+            NullLogger.Instance,
+            CancellationToken.None);
+
+        var media = Assert.Single(result.Medias);
+        Assert.False(media.IsDirectVideo);
+        Assert.Equal("fixture collection", media.Title);
+        Assert.Equal("collection cover", media.CoverUrl);
+        Assert.Equal("26", media.Duration);
+        media.IsSelected = true;
+        Assert.False(media.IsSelected);
+
+        media.TitleCommand.Execute(null);
+
+        var request = Assert.Single(navigation.Requests);
+        Assert.Equal(AppRoute.SeasonsSeries, request.Route);
+        Assert.Equal(AppRoute.Publication, request.Parent);
+        var payload = Assert.IsType<SeasonNavigationPayload>(request.Parameter);
+        Assert.Equal(42, payload.Mid);
+        Assert.Equal(99, payload.SeasonId);
+
+        var directVideo = new PublicationMedia(navigation, AppRoute.Publication)
+        {
+            Bvid = "BV1direct001",
+            IsSelected = true
+        };
+        var downloadItem = Assert.Single(ViewPublicationViewModel.CreateDownloadItems(
+            [media, directVideo]));
+        Assert.Equal("BV1direct001", downloadItem.Source);
+        Assert.True(downloadItem.IsSelected);
     }
 
     [Fact]
