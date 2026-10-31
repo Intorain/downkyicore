@@ -297,7 +297,12 @@ namespace DownKyi.ViewModels
                 return;
             }
 
-            IsSelectAll = selectedMedia.Count == Medias.Count;
+            var downloadableCount = Medias.Count(static media => media.IsDirectVideo);
+            var selectedDownloadableCount = selectedMedia
+                .OfType<PublicationMedia>()
+                .Count(static media => media.IsDirectVideo);
+            IsSelectAll = downloadableCount > 0
+                && selectedDownloadableCount == downloadableCount;
         }
 
         // 添加选中项到下载列表事件
@@ -343,11 +348,15 @@ namespace DownKyi.ViewModels
         private async Task AddToDownloadAsync(bool isOnlySelected)
         {
             var cancellationToken = ReplaceCancellationSource(ref _downloadCancellation);
-            var items = Medias
-                .Select(media => new ContentDownloadItem(media.Bvid, DownloadInfoKind.Video, media.IsSelected))
-                .ToArray();
+            var items = CreateDownloadItems(Medias);
             try
             {
+                if (items.Length == 0)
+                {
+                    Notifications.Show(DictionaryResource.GetString("TipNoSelectedVideo"));
+                    return;
+                }
+
                 var result = await _downloadCoordinator.AddAsync(
                     items,
                     isOnlySelected,
@@ -374,6 +383,15 @@ namespace DownKyi.ViewModels
             {
                 ReleaseCancellationSource(ref _downloadCancellation, cancellationToken);
             }
+        }
+
+        internal static ContentDownloadItem[] CreateDownloadItems(IEnumerable<PublicationMedia> medias)
+        {
+            ArgumentNullException.ThrowIfNull(medias);
+            return medias
+                .Where(static media => media.IsDirectVideo)
+                .Select(media => new ContentDownloadItem(media.Bvid, DownloadInfoKind.Video, media.IsSelected))
+                .ToArray();
         }
 
         private void OnCurrentChangedPager(object? sender, CancelEventArgs e)

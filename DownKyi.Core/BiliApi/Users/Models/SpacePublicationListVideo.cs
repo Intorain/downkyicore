@@ -34,6 +34,9 @@ public class SpacePublicationListVideo : BaseModel
     [JsonProperty("aid")] public long Aid { get; set; }
 
     [JsonProperty("bvid")] public string Bvid { get; set; } = string.Empty;
+    [JsonProperty("meta")] public SpacePublicationListSeasonMeta? Meta { get; set; }
+    [JsonProperty("is_avoided")] public int IsAvoided { get; set; }
+    [JsonProperty("season_id")] public long SeasonId { get; set; }
     //[JsonProperty("hide_click")]
     //public bool HideClick { get; set; }
     //[JsonProperty("is_pay")]
@@ -44,4 +47,14 @@ public class SpacePublicationListVideo : BaseModel
     //public int IsSteinsGate { get; set; }
     //[JsonProperty("is_live_playback")]
     //public int IsLivePlayback { get; set; }
+}
+
+public class SpacePublicationListSeasonMeta : BaseModel
+{
+    [JsonProperty("id")] public long Id { get; set; }
+    [JsonProperty("title")] public string Title { get; set; } = string.Empty;
+    [JsonProperty("cover")] public string Cover { get; set; } = string.Empty;
+    [JsonProperty("mid")] public long Mid { get; set; }
+    [JsonProperty("ep_count")] public int EpisodeCount { get; set; }
+    [JsonProperty("ptime")] public long PublishTime { get; set; }
 }

@@ -11,12 +11,19 @@ internal class PublicationMedia : ObservableObject
 {
     private readonly IAppNavigationService _navigationService;
     private readonly AppRoute _parentRoute;
+    private readonly SeasonNavigationPayload? _season;
 
-    public PublicationMedia(IAppNavigationService navigationService, AppRoute parentRoute)
+    public PublicationMedia(
+        IAppNavigationService navigationService,
+        AppRoute parentRoute,
+        SeasonNavigationPayload? season = null)
     {
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _parentRoute = parentRoute;
+        _season = season;
     }
+
+    public bool IsDirectVideo => _season == null;
 
     private string _coverUrl = string.Empty;
 
@@ -36,7 +43,7 @@ internal class PublicationMedia : ObservableObject
     public bool IsSelected
     {
         get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        set => SetProperty(ref _isSelected, IsDirectVideo && value);
     }
 
     private Bitmap _cover = null!;
@@ -93,6 +100,15 @@ internal class PublicationMedia : ObservableObject
     /// </summary>
     private void ExecuteTitleCommand()
     {
+        if (_season != null)
+        {
+            _navigationService.Navigate(new AppNavigationRequest(
+                AppRoute.SeasonsSeries,
+                _parentRoute,
+                _season));
+            return;
+        }
+
         _navigationService.Navigate(new AppNavigationRequest(
             AppRoute.VideoDetail,
             _parentRoute,

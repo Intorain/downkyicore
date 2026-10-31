@@ -24,6 +24,42 @@ public sealed class PublicationSearchContractTests
     }
 
     [Fact]
+    public void AvoidedSeasonRepresentativePreservesCollectionIdentity()
+    {
+        var origin = JsonConvert.DeserializeObject<SpacePublicationOrigin>("""
+            {
+              "data": {
+                "list": {
+                  "vlist": [
+                    {
+                      "mid": 42,
+                      "aid": 100,
+                      "bvid": "BV1fixture01",
+                      "is_avoided": 1,
+                      "season_id": 99,
+                      "meta": {
+                        "id": 99,
+                        "title": "fixture collection",
+                        "cover": "collection cover",
+                        "mid": 42,
+                        "ep_count": 26,
+                        "ptime": 1700000000
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+
+        var video = Assert.Single(origin!.Data!.List.Vlist!);
+        Assert.Equal(1, video.IsAvoided);
+        Assert.Equal(99, video.SeasonId);
+        Assert.Equal("fixture collection", video.Meta!.Title);
+        Assert.Equal(26, video.Meta.EpisodeCount);
+    }
+
+    [Fact]
     public async Task DynamicFixturePreservesCursorAndDirectVideoShape()
     {
         var json = await File.ReadAllTextAsync(
